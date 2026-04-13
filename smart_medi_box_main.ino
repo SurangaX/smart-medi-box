@@ -79,10 +79,10 @@
 #define GSM_TX 1  // GSM RX -> Arduino TX
 
 // ==================== CONFIGURATION ====================
-// Server Details (Update with XAMPP: http://localhost or your PC IP)
-const char* SERVER_URL = "http://localhost/smart-medi-box/robot_api/index.php";  // XAMPP Apache server
-const char* SERVER_HOST = "localhost";  // XAMPP server
-const int SERVER_PORT = 80;  // Apache default port
+// Server Details (Render cloud deployment)
+const char* SERVER_URL = "https://smart-medi-box.onrender.com";  // Public API on Render
+const char* SERVER_HOST = "smart-medi-box.onrender.com";  // Render domain
+const int SERVER_PORT = 443;  // HTTPS port
 
 // GSM Configuration (for SIM800L)
 const char* GSM_APN = "hutch3g";      // Sri Lanka carrier APN
@@ -93,7 +93,7 @@ const char* GSM_PASS = "";                     // Usually empty
 const float TIMEZONE_OFFSET = 5.5;  // Sri Lanka (UTC+5:30)
 
 // Temperature Settings
-const float TARGET_TEMP = 20;       // Refrigerator target: 20°C
+const float TARGET_TEMP = 4.0;      // Refrigerator target: 4°C for medication
 const float TEMP_HYSTERESIS = 0.5;  // ±0.5°C band for cooling
 
 // Alarm Settings

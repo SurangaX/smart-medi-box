@@ -4,7 +4,7 @@ import { AlertCircle, Thermometer, Clock, Users, CheckCircle, Activity, Lock, Wi
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
-const API_URL = 'http://192.168.8.126/smart-medi-box/robot_api';
+const API_URL = 'https://smart-medi-box.onrender.com';
 
 const PairingScreen = ({ onPaired }) => {
   const [scannerActive, setScannerActive] = useState(true);
