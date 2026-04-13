@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Medi Box - Wiring Guide (Professional Edition)</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+    :root {
+      --ink: #0f1a2b;
+      --muted: #4a5568;
+      --primary: #0f3a5f;
+      --accent: #e07a2f;
+      --panel: #f7fafc;
+      --panel-strong: #eef3f8;
+      --edge: #d9e2ec;
+      --warn: #b83a2a;
+      --ok: #207a3f;
+      --shadow: 0 16px 40px rgba(15, 26, 43, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 480px at 20% -10%, #e7f0ff 0%, transparent 60%),
+        radial-gradient(700px 360px at 110% 0%, #ffe9d9 0%, transparent 55%),
+        #f4f7fb;
+      font-family: "Space Grotesk", "Segoe UI", Tahoma, sans-serif;
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 1024px;
+      margin: 0 auto;
+      padding: 36px 20px 64px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f3a5f 0%, #133f6d 55%, #0c2c47 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 32px 32px 26px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      right: -120px;
+      top: -140px;
+      background: radial-gradient(circle, rgba(224, 122, 47, 0.55), transparent 70%);
+    }
+
+    .hero h1 {
+      font-size: clamp(26px, 4vw, 40px);
+      margin: 0 0 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 14px;
+    }
+
+    .hero .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+
+    .pill {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 10px;
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .grid.cols-2 {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--edge);
+      box-shadow: 0 10px 26px rgba(15, 26, 43, 0.06);
+    }
+
+    .section {
+      margin-top: 22px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid var(--edge);
+      box-shadow: 0 10px 28px rgba(15, 26, 43, 0.06);
+    }
+
+    .section h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    .section h3 {
+      margin: 16px 0 6px;
+      font-size: 15px;
+      color: var(--accent);
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--panel);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: #fff1ef;
+      color: var(--warn);
+      font-weight: 600;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .list li { margin-bottom: 6px; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--edge);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--edge);
+      color: var(--muted);
+    }
+
+    tr:nth-child(even) td { background: #ffffff; }
+    tr:nth-child(odd) td { background: var(--panel-strong); }
+
+    .mono {
+      font-family: "IBM Plex Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #e7f7ec;
+      color: var(--ok);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .diagram {
+      background: #0b1f33;
+      color: #dbe7f6;
+      padding: 14px;
+      border-radius: 12px;
+      font-family: "IBM Plex Mono", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow-x: auto;
+      border: 1px solid #12314d;
+      white-space: pre;
+    }
+
+    .code {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 12px;
+      font-family: "IBM Plex Mono", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      white-space: pre;
+      margin-top: 10px;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #d2dee9, transparent);
+      margin: 18px 0 6px;
+    }
+
+    @media (max-width: 720px) {
+      .hero { padding: 24px; }
+      table { min-width: 460px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <h1>Smart Medi Box - Wiring Guide</h1>
+      <p>Professional Edition</p>
+      <div class="meta">
+        <span class="pill">Version 2.1 (Corrected and Optimized)</span>
+        <span class="pill">Status: Ready for Build</span>
+        <span class="pill">Document Type: Wiring Master Sheet</span>
+      </div>
+    </header>
+
+    <section class="grid cols-2">
+      <div class="card">
+        <h2>System Overview</h2>
+        <p>The Smart Medi Box runs from a 12V supply split into two rails for power isolation.</p>
+        <h3>12V Rail (Direct)</h3>
+        <ul class="list">
+          <li>Solenoid Lock</li>
+          <li>Optional Cooling System</li>
+        </ul>
+        <h3>5V-6V Rail (via buck converter)</h3>
+        <ul class="list">
+          <li>Servo Motor</li>
+        </ul>
+        <h3>5V Rail (via regulator)</h3>
+        <ul class="list">
+          <li>Arduino Leonardo</li>
+          <li>SIM800L EVB</li>
+          <li>Sensors (DHT22, DS18B20, RTC)</li>
+          <li>LCD Display</li>
+          <li>RFID Module (via 3.3V pin)</li>
+        </ul>
+        <div class="callout warn">Critical rule: All components must share a common ground (GND).</div>
+      </div>
+      <div class="card">
+        <h2>Power System Design</h2>
+        <h3>Input Supply</h3>
+        <p class="mono">12V / 5A DC Power Supply (recommended)</p>
+        <h3>Voltage Regulation</h3>
+        <p><strong>Recommended:</strong> Buck Converter (LM2596)<br />
+          <strong>Alternative:</strong> LM7805 (with heatsink)</p>
+        <h3>Capacitors (Essential)</h3>
+        <ul class="list">
+          <li>Input: 100uF electrolytic</li>
+          <li>Output: 10uF electrolytic + 100nF ceramic</li>
+          <li>SIM800L: 1000uF near VCC</li>
+        </ul>
+        <div class="callout">
+          Linear regulators generate heat: Power Loss = (12V - 5V) x Current. Use a buck converter for efficiency.
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Microcontroller (Arduino Leonardo)</h2>
+      <h3>Power</h3>
+      <ul class="list">
+        <li>VCC -> 5V</li>
+        <li>GND -> Common Ground</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Pin Configuration</h2>
+      <h3>Digital Pins</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Function</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0</td><td>SIM800L RX</td></tr>
+            <tr><td>1</td><td>SIM800L TX</td></tr>
+            <tr><td>2</td><td>Door Switch</td></tr>
+            <tr><td>3</td><td>Cooling (MOSFET Gate)</td></tr>
+            <tr><td>4</td><td>Stepper STEP</td></tr>
+            <tr><td>5</td><td>Solenoid (MOSFET Gate)</td></tr>
+            <tr><td>6</td><td>RFID RST</td></tr>
+            <tr><td>7</td><td>Buzzer</td></tr>
+            <tr><td>8</td><td>LCD Reset</td></tr>
+            <tr><td>9</td><td>RFID CS</td></tr>
+            <tr><td>10</td><td>LCD RS</td></tr>
+            <tr><td>11</td><td>LCD RW</td></tr>
+            <tr><td>12</td><td>Stepper DIR</td></tr>
+            <tr><td>13</td><td>LCD E</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Analog Pins</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Function</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A0</td><td>DHT22 Data</td></tr>
+            <tr><td>A1</td><td>DS18B20 Data</td></tr>
+            <tr><td>A2</td><td>Servo Signal (MG995)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Hardware Compatibility Check</h2>
+      <ul class="list">
+        <li>SIM800L EVB: Requires stable 5V with high peak current. Keep 1000uF cap close to VCC/GND.</li>
+        <li>RC522 RFID: Must use 3.3V logic. Do not connect VCC to 5V. Keep SPI lines short.</li>
+        <li>ST7920 LCD: Uses ST7920 serial (not standard SPI). Verify PSB to GND for serial mode.</li>
+        <li>DHT22 + DS18B20: Use 4.7K pull-up on data. Keep data lines away from motor wiring.</li>
+        <li>Servo MG995: Use 5V-6V only. Do not power from 12V rail.</li>
+        <li>Solenoid: Must use flyback diode across coil. MOSFET required.</li>
+        <li>Shared GND: All modules must share a common ground reference.</li>
+        <li>Door switch on D2 conflicts with I2C SDA. If RTC is used, move the door switch to a free pin.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Power Wiring Diagram (ASCII)</h2>
+      <div class="diagram">12V DC IN
+   |
+   +--------------------> Servo (5V-6V supply via buck)
+   |
+   +--------------------> Solenoid (12V) -> MOSFET -> GND
+   |
+   +--> Buck Converter (LM2596) -> 5V RAIL
+           |
+           +--> Arduino Leonardo 5V
+           +--> SIM800L EVB 5V (1000uF cap near VCC/GND)
+           +--> LCD 5V
+           +--> Sensors 5V
+           +--> Stepper Driver (5V logic + separate motor supply 6V-12V)
+           +--> RC522 3.3V (from Arduino 3.3V pin)
+
+ALL GROUNDS TIED TO COMMON GND</div>
+    </section>
+
+    <section class="section">
+      <h2>Arduino Leonardo Full Pinout (Reference)</h2>
+      <h3>Digital Pins</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Function</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0</td><td>RX</td><td>UART RX (Serial1)</td></tr>
+            <tr><td>1</td><td>TX</td><td>UART TX (Serial1)</td></tr>
+            <tr><td>2</td><td>SDA</td><td>I2C SDA</td></tr>
+            <tr><td>3</td><td>SCL</td><td>I2C SCL</td></tr>
+            <tr><td>4</td><td>GPIO</td><td>Digital I/O</td></tr>
+            <tr><td>5</td><td>PWM</td><td>Digital I/O, PWM</td></tr>
+            <tr><td>6</td><td>PWM</td><td>Digital I/O, PWM</td></tr>
+            <tr><td>7</td><td>GPIO</td><td>Digital I/O</td></tr>
+            <tr><td>8</td><td>GPIO</td><td>Digital I/O</td></tr>
+            <tr><td>9</td><td>PWM</td><td>Digital I/O, PWM</td></tr>
+            <tr><td>10</td><td>PWM</td><td>Digital I/O, PWM</td></tr>
+            <tr><td>11</td><td>PWM</td><td>Digital I/O, PWM</td></tr>
+            <tr><td>12</td><td>GPIO</td><td>Digital I/O</td></tr>
+            <tr><td>13</td><td>LED</td><td>Digital I/O, onboard LED</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Analog Pins</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Function</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A0</td><td>Analog In</td><td>ADC0</td></tr>
+            <tr><td>A1</td><td>Analog In</td><td>ADC1</td></tr>
+            <tr><td>A2</td><td>Analog In</td><td>ADC2</td></tr>
+            <tr><td>A3</td><td>Analog In</td><td>ADC3</td></tr>
+            <tr><td>A4</td><td>Analog In</td><td>ADC4</td></tr>
+            <tr><td>A5</td><td>Analog In</td><td>ADC5</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Power Pins</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Function</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>VIN</td><td>External input (7V-12V)</td></tr>
+            <tr><td>5V</td><td>Regulated 5V output</td></tr>
+            <tr><td>3.3V</td><td>3.3V output (for RC522)</td></tr>
+            <tr><td>GND</td><td>Ground</td></tr>
+            <tr><td>RESET</td><td>Reset input</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>SPI Pins</h3>
+      <ul class="list">
+        <li><strong>IMPORTANT (Arduino Leonardo):</strong> Use ICSP header for SPI (MOSI, MISO, SCK).</li>
+        <li>D11-D13 are not used for SPI on Leonardo. Use ICSP for RC522.</li>
+      </ul>
+
+      <h3>USB Serial</h3>
+      <ul class="list">
+        <li>USB serial is separate from pins 0/1 on Leonardo.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>SIM800L EVB (GSM Module)</h2>
+      <h3>Connections (4 wires only)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Connection</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>VCC</td><td>5V</td></tr>
+            <tr><td>GND</td><td>GND</td></tr>
+            <tr><td>TX</td><td>Arduino Pin 0 (RX)</td></tr>
+            <tr><td>RX</td><td>Arduino Pin 1 (TX)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">Note: TX/RX must be crossed (TX -> RX, RX -> TX).</div>
+      <h3>Requirements</h3>
+      <ul class="list">
+        <li>SIM card (correct orientation)</li>
+        <li>Antenna connected</li>
+        <li>1000uF capacitor for stability</li>
+      </ul>
+      <div class="callout warn">
+        Important: SIM800L draws up to 2A peak current. Ensure:<br />
+        - Thick power wires<br />
+        - Short connection to power source<br />
+        - 1000uF-2200uF capacitor near module<br />
+        - Do NOT power from Arduino 5V pin
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>LCD Display (12864B V2.3 - ST7920)</h2>
+      <h3>LCD Type &amp; Mode</h3>
+      <ul class="list">
+        <li><strong>Model:</strong> ST7920 128&times;64</li>
+        <li><strong>Mode:</strong> Serial (SPI-like mode) when PSB = GND</li>
+        <li><strong>⚠️ IMPORTANT:</strong> PSB must be GND for serial mode. If PSB = 5V, it switches to parallel mode and U8g2 wiring/constructor must change.</li>
+      </ul>
+      <h3>Connections</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>LCD Pin</th><th>Function</th><th>Arduino Pin</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>PSB</td><td>Mode Select</td><td>GND (Serial mode)</td></tr>
+            <tr><td>VCC</td><td>Power</td><td>5V</td></tr>
+            <tr><td>GND</td><td>Ground</td><td>GND</td></tr>
+            <tr><td>RS</td><td>Register Select</td><td>Pin 10</td></tr>
+            <tr><td>RW</td><td>Read/Write</td><td>Pin 11</td></tr>
+            <tr><td>E</td><td>Enable</td><td>Pin 13</td></tr>
+            <tr><td>RST</td><td>Reset</td><td>Pin 8</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Library:</strong> U8g2</p>
+      <h3>U8g2 Constructor (Working - Serial/SPI Mode)</h3>
+      <pre class="code">#include &lt;U8g2lib.h&gt;
+U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, 13, 11, 10, 8);
+// Parameters: (rotation, clock=Pin13(E), data=Pin11(RW), cs=Pin10(RS), reset=Pin8(RST))</pre>
+      <div class="callout warn">Uses ST7920 serial protocol (not standard SPI). PSB = GND → Serial mode (this config). PSB = 5V → Parallel mode (requires different constructor &amp; wiring).</div>
+      <h3>Backlight</h3>
+      <ul class="list">
+        <li><strong>🔆 BLA</strong> (Backlight Anode, +) → 5V</li>
+        <li><strong>⚫ BLK</strong> (Backlight Cathode, −) → GND</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Sensors</h2>
+      <h3>DHT22 (Temperature &amp; Humidity)</h3>
+      <p class="mono"><strong>Required Libraries:</strong> DHT sensor library, OneWire, DallasTemperature</p>
+      <p><strong>Wiring:</strong></p>
+      <ul class="list">
+        <li>VCC → 5V</li>
+        <li>GND → GND</li>
+        <li>DATA → A0</li>
+        <li><strong>4.7K pull-up resistor required</strong> between DATA and 5V (or 3.3V)</li>
+      </ul>
+      <h3>DS18B20 (Temperature)</h3>
+      <p><strong>Wiring:</strong></p>
+      <ul class="list">
+        <li>VCC → 5V</li>
+        <li>GND → GND</li>
+        <li>DATA → A1</li>
+        <li><strong>4.7K pull-up resistor required</strong> between DATA and 5V (or 3.3V)</li>
+      </ul>
+      <h3>RTC DS3231 (I2C)</h3>
+      <p class="mono"><strong>Required Library:</strong> RTClib by Adafruit</p>
+      <p><strong>DS3231 Wiring on Leonardo:</strong></p>
+      <ul class="list">
+        <li>Use the <strong>SDA/SCL labeled pins</strong> (near AREF), NOT D2/D3</li>
+        <li>DS3231 SDA → SDA header pin</li>
+        <li>DS3231 SCL → SCL header pin</li>
+        <li>VCC → 5V</li>
+        <li>GND → GND</li>
+      </ul>
+      <div class="callout warn">⚠️ Important: On Leonardo, use the dedicated SDA/SCL header pins (near AREF), not the D2/D3 digital pins. This avoids conflicts with the door switch on D2.</div>
+      <h3>RTC Time Set (Compile Time)</h3>
+      <pre class="code">#include &lt;Wire.h&gt;
+#include &lt;RTClib.h&gt;
+
+RTC_DS3231 rtc;
+
+void setup() {
+  Serial.begin(9600);
+  delay(1000);
+
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find DS3231 (check SDA/SCL pins).");
+    while (1) {}
+  }
+
+  Serial.println("RTC will be set to COMPILE TIME after countdown.");
+  for (int i = 10; i &gt;= 1; i--) {
+    Serial.print("Setting in ");
+    Serial.println(i);
+    delay(1000);
+  }
+
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  Serial.println("Done. RTC set.");
+}
+
+void loop() {}</pre>
+    </section>
+
+    <section class="section">
+      <h2>RFID Module (RC522)</h2>
+      <h3>Connections (ICSP Header)</h3>
+      <p><strong>RC522 Pin → Arduino Pin/Header:</strong></p>
+      <ul class="list">
+        <li>RC522 MOSI → ICSP MOSI</li>
+        <li>RC522 MISO → ICSP MISO</li>
+        <li>RC522 SCK → ICSP SCK</li>
+        <li>RC522 VCC → <strong>3.3V</strong> (NOT 5V)</li>
+        <li>RC522 GND → GND</li>
+        <li>RC522 SDA/SS (CS) → Pin 9</li>
+        <li>RC522 RST → Pin 6</li>
+      </ul>
+      <div class="callout warn"><strong>⚠️ CRITICAL NOTES:</strong><br />
+        ✓ RC522 operates at 3.3V logic level. Do NOT connect VCC to 5V.<br />
+        ✓ Use ICSP header for SPI (not digital pins D11-D13 on Leonardo).<br />
+        ✓ ICSP pinout diagram is attached in the build pack.<br />
+        ✓ Consider using a logic-level converter or resistor dividers for MOSI, SCK, and CS lines if power supply is not stable.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Motors and Actuators</h2>
+      <h3>Stepper Motor (EasyDriver HW-135)</h3>
+      <ul class="list">
+        <li>STEP -> Pin 4</li>
+        <li>DIR -> Pin 12</li>
+        <li>VCC -> 5V (logic)</li>
+        <li>M+ -> 6V-12V (motor supply)</li>
+        <li>GND -> GND</li>
+      </ul>
+      <h3>Servo Motor (MG995)</h3>
+      <ul class="list">
+        <li>Signal → A2 (digital pin 20)</li>
+        <li>VCC → 5V–6V (NOT 12V)</li>
+        <li>GND → GND</li>
+      </ul>
+      <div class="callout">On Leonardo, analog pins can be used as digital I/O. Using <span class="mono">s.attach(A2)</span> is valid (A2 is also known as digital pin 20). Use external 5V supply if needed.</div>
+      <h3>Solenoid Lock (12V)</h3>
+      <ul class="list">
+        <li>Positive -> 12V</li>
+        <li>Negative -> MOSFET Drain</li>
+      </ul>
+      <h3>MOSFET (N-Channel)</h3>
+      <ul class="list">
+        <li>Gate -> Pin 5 (via 1K resistor)</li>
+        <li>Drain -> Solenoid</li>
+        <li>Source -> GND</li>
+      </ul>
+      <h3>Protection</h3>
+      <ul class="list">
+        <li>Diode (1N4007) across solenoid</li>
+      </ul>
+      <h3>Buzzer (TMB12A05 + BC337 Driver)</h3>
+      <p><strong>Buzzer Type:</strong> Active electromagnetic buzzer</p>
+      <p><strong>Wiring:</strong></p>
+      <ul class="list">
+        <li>Arduino D7 → 1K resistor → BC337 BASE</li>
+        <li>BC337 EMITTER → GND</li>
+        <li>BC337 COLLECTOR → Buzzer (-)</li>
+        <li>Buzzer (+) → +5V</li>
+      </ul>
+      <p><strong>Protection Diode (Recommended):</strong></p>
+      <ul class="list">
+        <li>Use 1N4148 or 1N4007 across the buzzer coil</li>
+        <li>Diode cathode (stripe) → +5V (buzzer +)</li>
+        <li>Diode anode → Buzzer (-) / BC337 collector</li>
+      </ul>
+      <p><strong>Common Ground:</strong> Arduino GND must be connected to the buzzer supply GND</p>
+      <p><strong>Operation:</strong> This is an ACTIVE buzzer—it makes sound with DC voltage</p>
+      <ul class="list">
+        <li>Use <span class="mono">digitalWrite(D7, HIGH)</span> to turn ON</li>
+        <li>Use <span class="mono">digitalWrite(D7, LOW)</span> to turn OFF</li>
+      </ul>
+
+      <h3>Cooling System (Pin D3) – MOSFET Low-Side Switch</h3>
+      <p><strong>Supported Loads:</strong></p>
+      <ul class="list">
+        <li>DC fan (2-wire)</li>
+        <li>Peltier / TEC module (thermoelectric cooler)</li>
+        <li>Any DC load within MOSFET + power supply limits</li>
+      </ul>
+      <p><strong>Wiring (LOW-SIDE MOSFET SWITCH):</strong></p>
+      <ul class="list">
+        <li>Arduino D3 → 1K resistor → MOSFET GATE</li>
+        <li>MOSFET SOURCE → GND (power supply negative)</li>
+        <li>MOSFET DRAIN → Load (-) (fan- or TEC-)</li>
+        <li>Load (+) → +V supply (12V typical for fan/TEC)</li>
+      </ul>
+      <p><strong>CRITICAL REQUIREMENTS:</strong></p>
+      <ul class="list">
+        <li><strong>1) Common Ground Required:</strong> Arduino GND must be connected to the load power supply GND</li>
+        <li><strong>2) Gate Pulldown (Recommended):</strong> Add 100K (or 10K) resistor from MOSFET GATE to GND to prevent floating gate</li>
+        <li><strong>3) Flyback Diode:</strong> REQUIRED for inductive loads (DC fan, motor, relay). NOT used for TEC/Peltier.</li>
+        <li><strong>4) Peltier (TEC) WARNING:</strong> TEC modules draw HIGH current (3A–10A+). Use a separate PSU and logic-level MOSFET. Consider a fuse.</li>
+        <li><strong>5) PWM Control:</strong> D3 supports PWM. For TEC, PWM can reduce efficiency; consider a thermostat/PID approach for stable temperature.</li>
+      </ul>
+
+      <h3>Door Switch (Pin D2)</h3>
+      <p><strong>Pin Configuration:</strong> Pin 2 with INPUT_PULLUP</p>
+      <pre class="code">const int DOOR_PIN = 2;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(DOOR_PIN, INPUT_PULLUP);
+}
+
+void loop() {
+  int state = digitalRead(DOOR_PIN);
+  if (state == LOW) {
+    Serial.println("Door CLOSED (switch closed to GND)");
+  } else {
+    Serial.println("Door OPEN (switch open)");
+  }
+  delay(100);
+}</pre>
+    </section>
+
+    <section class="section">
+      <h2>Power Budget</h2>
+      <h3>5V Rail</h3>
+      <p>Approx: 350mA typical | Peak: ~600mA</p>
+      <h3>12V Rail</h3>
+      <p>Servo + Solenoid: up to ~1.8A</p>
+      <h3>SIM800L</h3>
+      <p>Peak bursts: ~2A</p>
+      <span class="badge">Power supply: 12V / 5A recommended (SIM800L + servo peaks)</span>
+    </section>
+
+    <section class="section">
+      <h2>Protection (Recommended)</h2>
+      <ul class="list">
+        <li>Add inline fuse (2A-5A) on 12V input</li>
+        <li>Add reverse polarity protection diode</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Key Design Rules</h2>
+      <ul class="list">
+        <li>All grounds must be connected together</li>
+        <li>Use 3.3V for RFID (RC522)</li>
+        <li>Servo must use 5V-6V only (not 12V)</li>
+        <li>Add capacitors for stability</li>
+        <li>Avoid pin conflicts</li>
+        <li>Use short wires for communication lines</li>
+        <li>Linear regulators generate excessive heat (use buck converter)</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>First Power-On Procedure</h2>
+      <ol class="list">
+        <li>Verify 5V and 12V using multimeter</li>
+        <li>Power Arduino only -> test code</li>
+        <li>Connect SIM800L -> test AT command</li>
+        <li>Add sensors one by one</li>
+        <li>Test actuators last</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>Troubleshooting Essentials</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>No GSM Response</h3>
+          <ul class="list">
+            <li>Check TX/RX wiring</li>
+            <li>Check power stability</li>
+            <li>Verify baud rate (115200)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Sensor Failure</h3>
+          <ul class="list">
+            <li>Check pull-up resistors</li>
+            <li>Verify pin connections</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Motor Issues</h3>
+          <ul class="list">
+            <li>Check driver wiring</li>
+            <li>Verify control signals</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>System Resets</h3>
+          <ul class="list">
+            <li>Add bulk capacitor (1000uF)</li>
+            <li>Improve grounding</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="section" style="text-align:center; font-size:12px; color:#6b7280;">
+      Created By SurangaX
+    </footer>
+  </div>
+</body>
+</html>

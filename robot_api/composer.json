@@ -1,0 +1,7 @@
+{
+  "name": "smart-medi-box/api",
+  "description": "Smart Medi Box API",
+  "require": {
+    "php": ">=8.0"
+  }
+}
