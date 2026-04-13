@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: smart-medi-box-api
+    runtime: docker
+    rootDir: robot_api
+    region: singapore
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        sync: false
