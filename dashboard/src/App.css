@@ -17,11 +17,41 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
+:root[data-theme="dark"] {
+  --primary: #3b82f6;
+  --secondary: #8b5cf6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --dark: #f3f4f6;
+  --light: #111827;
+  --border: #374151;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f3f4f6;
+  --text-secondary: #d1d5db;
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: var(--dark);
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:root[data-theme="dark"] body {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: var(--text-primary);
 }
 
 .app {
@@ -30,6 +60,12 @@ body {
   min-height: 100vh;
   background-color: var(--light);
   margin: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:root[data-theme="dark"] .app {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* PAIRING SCREEN */
@@ -400,6 +436,24 @@ body {
   font-weight: 600;
 }
 
+.btn-theme-toggle {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
 .btn-unpair {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.4);
@@ -429,6 +483,13 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+:root[data-theme="dark"] .nav {
+  background: var(--bg-secondary);
+  border-bottom-color: var(--border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .nav-btn {
@@ -449,9 +510,17 @@ body {
   white-space: nowrap;
 }
 
+:root[data-theme="dark"] .nav-btn {
+  color: var(--text-secondary);
+}
+
 .nav-btn:hover {
   color: var(--primary);
   background: var(--light);
+}
+
+:root[data-theme="dark"] .nav-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .nav-btn.active {
@@ -500,6 +569,13 @@ body {
   margin-bottom: 1.5rem;
   border: 1px solid var(--border);
   transition: all 0.3s ease;
+  color: var(--dark);
+}
+
+:root[data-theme="dark"] .card {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
 }
 
 .card:hover {
@@ -518,12 +594,22 @@ body {
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--light);
+  transition: border-color 0.3s ease;
+}
+
+:root[data-theme="dark"] .card-header {
+  border-bottom-color: var(--border);
 }
 
 .card-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--dark);
+  transition: color 0.3s ease;
+}
+
+:root[data-theme="dark"] .card-header h3 {
+  color: var(--text-primary);
 }
 
 .card-header svg {
@@ -532,6 +618,11 @@ body {
 
 .card-content {
   color: var(--dark);
+  transition: color 0.3s ease;
+}
+
+:root[data-theme="dark"] .card-content {
+  color: var(--text-primary);
 }
 
 .placeholder {
@@ -539,6 +630,11 @@ body {
   color: #9ca3af;
   padding: 2rem;
   font-size: 1rem;
+  transition: color 0.3s ease;
+}
+
+:root[data-theme="dark"] .placeholder {
+  color: #6b7280;
 }
 
 /* Dashboard Grid */

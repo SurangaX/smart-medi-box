@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, CheckCircle, Activity, Lock, Wifi, QrCode, LogOut, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, CheckCircle, Activity, Lock, Wifi, QrCode, LogOut, CheckCircle2, Sun, Moon } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
@@ -148,6 +148,10 @@ export default function App() {
   const [schedules, setSchedules] = useState([]);
   const [temperature, setTemperature] = useState(null);
   const [tempHistory, setTempHistory] = useState([]);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved !== null ? JSON.parse(saved) : true; // Default to dark mode
+  });
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -160,6 +164,15 @@ export default function App() {
       setPairedDevice(JSON.parse(stored));
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }, [darkMode]);
 
   const fetchProfile = async () => {
     try {
@@ -291,6 +304,9 @@ export default function App() {
               📱 {pairedDevice.deviceName}
             </span>
             {userData && <span className="user-name">{userData.name}</span>}
+            <button className="btn-theme-toggle" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Light mode' : 'Dark mode'}>
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <button className="btn-unpair" onClick={handleUnpair} title="Unpair device">
               <LogOut size={16} />
             </button>
