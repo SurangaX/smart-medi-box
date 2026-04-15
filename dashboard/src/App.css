@@ -572,13 +572,14 @@ body {
   font-size: 1rem;
   color: var(--dark);
   border-bottom: 3px solid transparent;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   font-weight: 500;
   white-space: nowrap;
+  position: relative;
 }
 
 :root[data-theme="dark"] .nav-btn {
@@ -587,17 +588,24 @@ body {
 
 .nav-btn:hover {
   color: var(--primary);
-  background: var(--light);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 :root[data-theme="dark"] .nav-btn:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .nav-btn.active {
-  color: white;
-  background: var(--primary);
-  border-bottom-color: var(--secondary);
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.08);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .nav-btn.active {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  border-bottom-color: #60a5fa;
 }
 
 /* Main Content */
