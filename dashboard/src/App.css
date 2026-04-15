@@ -232,6 +232,102 @@ body {
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
 }
 
+/* HTML5 QRCode Scanner Styling */
+#qr-scanner .qrcode-scanner-container {
+  width: 100%;
+  border-radius: 1rem;
+}
+
+#qr-scanner #qr-shaded-region {
+  border: none !important;
+  outline: none !important;
+}
+
+#qr-scanner .qrcode__scan_region {
+  border-radius: 1rem;
+  border: none;
+}
+
+/* QRCode Buttons */
+#qr-scanner button,
+#qr-scanner input[type="button"],
+#qr-scanner input[type="submit"] {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  margin: 0.5rem 0.25rem;
+}
+
+#qr-scanner button:hover,
+#qr-scanner input[type="button"]:hover,
+#qr-scanner input[type="submit"]:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+  transform: translateY(-2px);
+}
+
+#qr-scanner button:active,
+#qr-scanner input[type="button"]:active,
+#qr-scanner input[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+:root[data-theme="dark"] #qr-scanner button,
+:root[data-theme="dark"] #qr-scanner input[type="button"],
+:root[data-theme="dark"] #qr-scanner input[type="submit"] {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+:root[data-theme="dark"] #qr-scanner button:hover,
+:root[data-theme="dark"] #qr-scanner input[type="button"]:hover,
+:root[data-theme="dark"] #qr-scanner input[type="submit"]:hover {
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+}
+
+/* Select elements */
+#qr-scanner select {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #1f2937;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0.5rem 0.25rem;
+}
+
+#qr-scanner select:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#qr-scanner select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+:root[data-theme="dark"] #qr-scanner select {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  color: #f3f4f6;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+:root[data-theme="dark"] #qr-scanner select:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 .error-message {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   border: 1px solid #fca5a5;
