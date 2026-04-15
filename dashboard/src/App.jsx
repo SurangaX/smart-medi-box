@@ -43,6 +43,35 @@ const PairingScreen = ({ onPaired }) => {
 
     scanner.render(onScanSuccess, () => {});
 
+    // Clean up camera labels and device IDs after rendering
+    setTimeout(() => {
+      // Remove device count from "Select Camera (2)" label
+      const selectLabel = document.querySelector('#qr-scanner label');
+      if (selectLabel) {
+        selectLabel.textContent = selectLabel.textContent.replace(/\s*\(\d+\)\s*$/, '');
+      }
+
+      // Clean up camera options to remove device IDs like (13d3:54b6)
+      const cameraSelect = document.querySelector('#qr-scanner select');
+      if (cameraSelect) {
+        // Remove disabled attribute to allow interaction
+        cameraSelect.removeAttribute('disabled');
+        
+        // Clean up all options
+        Array.from(cameraSelect.options).forEach(option => {
+          option.textContent = option.textContent.replace(/\s*\([0-9a-fA-F:]+\)\s*$/, '');
+        });
+      }
+
+      // Center the scanning frame
+      const shadesRegion = document.querySelector('#qr-shaded-region');
+      if (shadesRegion) {
+        shadesRegion.style.display = 'flex';
+        shadesRegion.style.alignItems = 'center';
+        shadesRegion.style.justifyContent = 'center';
+      }
+    }, 500);
+
     return () => {
       try {
         scanner.clear();
