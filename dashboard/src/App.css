@@ -230,12 +230,18 @@ body {
   border-radius: 1rem;
   max-width: 100%;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+  border: none !important;
 }
 
 /* HTML5 QRCode Scanner Styling */
 #qr-scanner .qrcode-scanner-container {
   width: 100%;
   border-radius: 1rem;
+  border: none !important;
+}
+
+#qr-scanner > div {
+  border: none !important;
 }
 
 #qr-scanner #qr-shaded-region {
@@ -245,7 +251,11 @@ body {
 
 #qr-scanner .qrcode__scan_region {
   border-radius: 1rem;
-  border: none;
+  border: none !important;
+}
+
+#qr-scanner [style*="border"] {
+  border: none !important;
 }
 
 /* QRCode Buttons */
