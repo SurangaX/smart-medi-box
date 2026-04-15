@@ -30,15 +30,9 @@ Smart Medi Box is a comprehensive IoT solution designed to:
 
 ## 📦 What's Included
 
-### 1. **Arduino Firmware** (`smart_medi_box_main.ino`)
-- Real-time scheduling with DS3231 RTC
-- GSM-based communication (SIM800L)
-- LCD display (U8g2 library, ST7920 128x64)
-- Multi-sensor monitoring (DHT22, DS18B20, RFID RC522)
-- Automatic alarm triggering and SMS notifications
-- Door sensor for unauthorized access detection
-- Solenoid lock control
-- Peltier cooler management with temperature hysteresis
+### 1. **Arduino Firmware** (`arduino/`)
+- **arduino_leonardo_sensors.ino** - Real-time scheduling with DS3231 RTC, multi-sensor monitoring (DHT22, DS18B20, RFID), alarm control, solenoid lock, buzzer
+- **arduino_esp32_gateway.ino** - GSM-based communication (SIM800L), WiFi support, API integration, command routing to Leonardo
 
 ### 2. **PHP REST API** (`robot_api/`)
 - **auth.php** - User registration, QR verification, MAC address lookup
@@ -48,16 +42,15 @@ Smart Medi Box is a comprehensive IoT solution designed to:
 - **device.php** - Arduino device management and command queue
 - **index.php** - Central router with CORS and documentation
 
-### 3. **Database** (`robot_api/database_schema.sql`)
+### 3. **Database** (`robot_api/database_schema_postgresql.sql`)
 - 13 fully-normalized tables with relationships
-- MySQL triggers for auto-configuration
+- MySQL/PostgreSQL triggers for auto-configuration
 - Performance indexes on critical columns
 - Support for soft deletes and audit logging
 
 ### 4. **Documentation**
-- [**QUICK_START_GUIDE.md**](QUICK_START_GUIDE.md) - Get running in 30 minutes
+- [**SETUP_INSTRUCTIONS.md**](SETUP_INSTRUCTIONS.md) - Complete consolidated setup guide
 - [**SYSTEM_DOCUMENTATION.md**](SYSTEM_DOCUMENTATION.md) - Complete technical reference
-- [**ARDUINO_SETUP_GUIDE.md**](ARDUINO_SETUP_GUIDE.md) - Hardware & firmware deployment
 - [**API_DEPLOYMENT_GUIDE.md**](API_DEPLOYMENT_GUIDE.md) - Server setup & security
 - [**WIRING_MASTER_SHEET.md**](WIRING_MASTER_SHEET.md) - Pin assignments & schematics
 
@@ -68,36 +61,20 @@ Smart Medi Box is a comprehensive IoT solution designed to:
 ### Prerequisites
 - Arduino IDE (1.8.13+)
 - PHP 7.4+ with MySQLi extension
-- MySQL 5.7+
+- MySQL 5.7+ or PostgreSQL
 - SIM800L GSM module with active phone connection
 
-### Get Started in 30 Minutes
+### Get Started Now
 
-```bash
-# 1. Clone/download project
-cd ~/Documents/smart-medi-box
+👉 **Start here:** [**SETUP_INSTRUCTIONS.md**](SETUP_INSTRUCTIONS.md) - Complete consolidated setup guide covering:
+- Database setup (5 minutes)
+- API deployment (5 minutes)  
+- Arduino firmware (10 minutes)
+- Hardware wiring (10 minutes)
+- Testing and configuration
+- Troubleshooting guide
 
-# 2. Setup database
-mysql -u root -p < robot_api/database_schema.sql
-
-# 3. Configure API
-nano robot_api/db_config.php
-# Update: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
-
-# 4. Deploy PHP files to web server
-cp -r robot_api /var/www/html/smart-medi-box/
-
-# 5. Install Arduino libraries
-# Arduino IDE → Sketch → Include Library → Manage Libraries
-# Install: U8g2, RTClib, DHT, DallasTemperature, OneWire
-
-# 6. Upload firmware
-# Edit: SERVER_URL in smart_medi_box_main.ino
-# Select: Board=Leonardo, Port=COM3
-# Upload via: Sketch → Upload
-
-# 7. Wire hardware (see WIRING_MASTER_SHEET.md)
-# Connect all sensors and actuators
+The guide includes all previously separate documentation consolidated into one comprehensive resource.
 
 # 8. Test API
 curl http://localhost/robot_api/index.php/api/status

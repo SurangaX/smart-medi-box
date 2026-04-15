@@ -7,12 +7,12 @@
 ## 📋 Quick Navigation
 
 ### 🚀 **Get Started Immediately**
-1. **[QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)** ← Start here! 30-minute setup
+1. **[SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)** ← Start here! Complete consolidated setup guide
 2. **[README.md](README.md)** - Project overview and features
 
 ### 📚 **Complete Documentation**
-3. **[SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md)** - Full technical reference (450+ lines)
-4. **[ARDUINO_SETUP_GUIDE.md](ARDUINO_SETUP_GUIDE.md)** - Firmware & hardware guide (400+ lines)
+3. **[SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)** - Consolidated setup (covers Arduino, API, database, wiring)
+4. **[SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md)** - Full technical reference (450+ lines)
 5. **[API_DEPLOYMENT_GUIDE.md](API_DEPLOYMENT_GUIDE.md)** - Server setup & security (450+ lines)
 6. **[WIRING_MASTER_SHEET.md](WIRING_MASTER_SHEET.md)** - Hardware pin assignments
 
@@ -29,14 +29,15 @@
 smart-medi-box/
 │
 ├── 📄 README.md                          ⭐ Project overview
-├── 📄 QUICK_START_GUIDE.md              ⭐ 30-minute setup guide
+├── 📄 SETUP_INSTRUCTIONS.md             ⭐ Complete setup guide (consolidated)
 ├── 📄 SYSTEM_DOCUMENTATION.md           📚 Complete technical reference
-├── 📄 ARDUINO_SETUP_GUIDE.md            📚 Arduino deployment guide
 ├── 📄 API_DEPLOYMENT_GUIDE.md           📚 Server deployment guide
 ├── 📄 WIRING_MASTER_SHEET.md            📚 Hardware specifications
 ├── 📄 PROJECT_INDEX.md                  🔍 This file
 │
-├── 🔧 smart_medi_box_main.ino           ⚙️ Arduino firmware (700 lines)
+├── 📁 arduino/                          ⚙️ Arduino firmware sketches
+│   ├── arduino_leonardo_sensors.ino     🔧 Leonardo (sensors & control)
+│   └── arduino_esp32_gateway.ino        🔧 ESP32 (GSM/WiFi gateway)
 │
 ├── 📁 robot_api/                        🌐 Web API backend
 │   ├── index.php                        🔀 Main router & dispatcher
@@ -46,26 +47,26 @@ smart-medi-box/
 │   ├── user.php                         👤 User profiles & stats
 │   ├── device.php                       📱 Device management
 │   ├── db_config.php                    🗄️ Database configuration
-│   ├── database_schema.sql              📋 Complete DB schema
-│   ├── index.html                       🖥️ Basic interface
-│   ├── style.css                        🎨 Styling
-│   ├── script.js                        ✨ Client-side logic
-│   │
-│   └── [Legacy Files - May be deprecated]
-│       ├── add_medicine.php
-│       ├── get_medicine.php
-│       ├── update_status.php
-│       └── claim.php
+│   ├── database_schema_postgresql.sql   📋 Complete DB schema
+│   ├── composer.json                    📦 PHP dependencies
+│   └── Dockerfile                       🐳 Docker configuration
 │
-├── 📁 .venv/                            🐍 Python virtual environment (for PDF generation)
-├── 📁 .git/                             📦 Git version control
+├── 📁 dashboard/                        🎨 Web dashboard (React/Vite)
+│   ├── src/
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
 │
 ├── 🌐 medibox-wiring-proposal.html      📖 Hardware guide (interactive)
 ├── 📄 medibox-wiring-proposal.pdf       📖 Hardware guide (printable)
 ├── 📄 medibox-wiring-proposal-lite.pdf  📖 Quick guide (condensed)
 │
-├── 🐍 generate_pdfs.py                  🔧 PDF generation script
-├── 📦 robot_api.rar                     📦 Backup archive
+├── 📁 .git/                             📦 Git version control
+│
+├── 🔧 render.yaml                       ☁️ Render deployment config
+├── 📄 ARCHITECTURE.md                   📐 System architecture
+├── 📄 DASHBOARD_SETUP.md                🎨 Dashboard configuration
+├── 📄 TESTING_GUIDE.md                  🧪 Testing procedures
 │
 └── 📋 PROJECT_INDEX.md                  🗂️ This navigation file
 ```
@@ -76,24 +77,24 @@ smart-medi-box/
 
 | Category | File | Lines | Purpose |
 |----------|------|-------|---------|
-| **Firmware** | `smart_medi_box_main.ino` | ~700 | Arduino embedded system |
+| **Documentation** | `SETUP_INSTRUCTIONS.md` | ~950 | Complete consolidated setup guide |
+| **Firmware** | `arduino/arduino_leonardo_sensors.ino` | ~950 | Leonardo sensor controller |
+| **Firmware** | `arduino/arduino_esp32_gateway.ino` | ~850 | ESP32 GSM/WiFi gateway |
 | **API** | `robot_api/index.php` | ~150 | HTTP router |
 | **API** | `robot_api/auth.php` | ~250 | User authentication |
 | **API** | `robot_api/schedule.php` | ~350 | Schedule CRUD |
 | **API** | `robot_api/temperature.php` | ~300 | Temperature control |
 | **API** | `robot_api/user.php` | ~250 | User management |
 | **API** | `robot_api/device.php` | ~250 | Device management |
-| **Database** | `robot_api/database_schema.sql` | ~400 | 13 tables + triggers |
+| **Database** | `robot_api/database_schema_postgresql.sql` | ~400 | 13 tables + triggers |
 | **Docs** | `SYSTEM_DOCUMENTATION.md` | ~450 | Complete reference |
-| **Docs** | `ARDUINO_SETUP_GUIDE.md` | ~400 | Arduino deployment |
 | **Docs** | `API_DEPLOYMENT_GUIDE.md` | ~450 | Server deployment |
-| **Docs** | `QUICK_START_GUIDE.md` | ~300 | Fast setup |
 | **Docs** | `WIRING_MASTER_SHEET.md` | ~300+ | Hardware specs |
 | **Docs** | `README.md` | ~450 | Project overview |
 | **Hardware** | `medibox-wiring-proposal.html` | ~1000 | Interactive guide |
 | **Hardware** | `medibox-wiring-proposal.pdf` | - | Wiring PDF |
-| **Utilities** | `generate_pdfs.py` | ~50 | PDF generator |
-| | **TOTAL** | **~6,000+** | Complete system |
+| **Dashboard** | `dashboard/src/App.jsx` | ~200 | React app |
+| | **TOTAL** | **~7,200+** | Complete system |
 
 ---
 
