@@ -6,6 +6,11 @@ import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
 
+// Debug: Log API URL on startup
+if (typeof window !== 'undefined') {
+  console.log('🌐 API URL:', API_URL);
+}
+
 // ==================== Login Screen ====================
 const LoginScreen = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
