@@ -24,9 +24,32 @@ header('Content-Type: application/json');
 $method = $_SERVER['REQUEST_METHOD'];
 $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
 $action = $request_uri[0] ?? '';
+$subaction = $request_uri[1] ?? '';
 
 // Route to appropriate handler
 switch ($action) {
+    case 'login':
+        handleLogin($method);
+        break;
+    
+    case 'patient':
+        if ($subaction === 'signup') {
+            handlePatientSignup($method);
+        } else {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
+        }
+        break;
+    
+    case 'doctor':
+        if ($subaction === 'signup') {
+            handleDoctorSignup($method);
+        } else {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
+        }
+        break;
+    
     case 'verify':
         handleVerifyUser($method);
         break;
@@ -47,6 +70,329 @@ switch ($action) {
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
         break;
+}
+
+// ============================================================================
+// LOGIN USER (Email + Password)
+// ============================================================================
+function handleLogin($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    // Get JSON input
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    
+    $email = $input['email'] ?? null;
+    $password = $input['password'] ?? null;
+    
+    if (!$email || !$password) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Email and password required']);
+        return;
+    }
+    
+    try {
+        // Check if user exists (PostgreSQL)
+        $query = "SELECT id, user_id, name, email, password_hash, role, status FROM users 
+                  WHERE email = $1 AND status = 'ACTIVE'";
+        
+        $result = pg_query_params($conn, $query, array($email));
+        
+        if (pg_num_rows($result) === 0) {
+            http_response_code(401);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Invalid email or password']);
+            logAuthentication(null, 'EMAIL:' . $email, 'FAILED');
+            return;
+        }
+        
+        $user = pg_fetch_assoc($result);
+        
+        // Verify password
+        if (!password_verify($password, $user['password_hash'])) {
+            http_response_code(401);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Invalid email or password']);
+            logAuthentication($user['id'], 'EMAIL:' . $email, 'FAILED');
+            return;
+        }
+        
+        // Generate token (7-day expiry)
+        $token = generateAuthToken();
+        $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
+        
+        // Store token in database
+        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) 
+                     VALUES ($1, $2, $3)";
+        pg_query_params($conn, $tokenQuery, array($user['id'], $token, $expires_at));
+        
+        // Log successful authentication
+        logAuthentication($user['id'], 'EMAIL:' . $email, 'SUCCESS');
+        
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Login successful',
+            'token' => $token,
+            'user_id' => $user['user_id'],
+            'role' => $user['role'],
+            'profile' => [
+                'id' => $user['id'],
+                'user_id' => $user['user_id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role']
+            ]
+        ]);
+    } catch (Exception $e) {
+        error_log("Login Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Login failed']);
+    }
+}
+
+// ============================================================================
+// PATIENT SIGNUP
+// ============================================================================
+function handlePatientSignup($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    // Get JSON input
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    
+    $name = $input['name'] ?? null;
+    $email = $input['email'] ?? null;
+    $password = $input['password'] ?? null;
+    $nic = $input['nic'] ?? null;
+    $dob = $input['dob'] ?? null;
+    $phone = $input['phone'] ?? null;
+    
+    if (!$name || !$email || !$password || !$nic) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Name, email, password, and NIC required']);
+        return;
+    }
+    
+    try {
+        // Check if email exists
+        $checkQuery = "SELECT id FROM users WHERE email = $1";
+        $checkResult = pg_query_params($conn, $checkQuery, array($email));
+        
+        if (pg_num_rows($checkResult) > 0) {
+            http_response_code(409);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Email already registered']);
+            return;
+        }
+        
+        // Check if NIC exists
+        $nicQuery = "SELECT id FROM users WHERE nic = $1";
+        $nicResult = pg_query_params($conn, $nicQuery, array($nic));
+        
+        if (pg_num_rows($nicResult) > 0) {
+            http_response_code(409);
+            echo json_encode(['status' => 'ERROR', 'message' => 'NIC already registered']);
+            return;
+        }
+        
+        // Validate phone if provided
+        if ($phone) {
+            $phone = validatePhoneNumber($phone);
+            if (!$phone) {
+                http_response_code(400);
+                echo json_encode(['status' => 'ERROR', 'message' => 'Invalid phone number']);
+                return;
+            }
+        }
+        
+        // Generate user ID
+        $user_id = generateUserID();
+        $password_hash = password_hash($password, PASSWORD_BCRYPT);
+        
+        // Calculate age if DOB provided
+        $age = null;
+        if ($dob) {
+            $age = date_diff(date_create($dob), date_create('today'))->y;
+        }
+        
+        // Insert patient user (PostgreSQL)
+        $query = "INSERT INTO users (user_id, name, email, password_hash, nic, dob, age, phone, role, status) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PATIENT', 'ACTIVE')";
+        
+        $result = pg_query_params($conn, $query, 
+            array($user_id, $name, $email, $password_hash, $nic, $dob, $age, $phone));
+        
+        if (!$result) {
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to create account']);
+            return;
+        }
+        
+        // Get created user
+        $userQuery = "SELECT id FROM users WHERE user_id = $1";
+        $userResult = pg_query_params($conn, $userQuery, array($user_id));
+        $userData = pg_fetch_assoc($userResult);
+        
+        // Generate token
+        $token = generateAuthToken();
+        $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
+        
+        // Store token
+        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) 
+                     VALUES ($1, $2, $3)";
+        pg_query_params($conn, $tokenQuery, array($userData['id'], $token, $expires_at));
+        
+        // Log registration
+        logAuthentication($userData['id'], 'EMAIL:' . $email, 'REGISTERED');
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Patient account created',
+            'token' => $token,
+            'user_id' => $user_id,
+            'role' => 'PATIENT',
+            'profile' => [
+                'id' => $userData['id'],
+                'user_id' => $user_id,
+                'name' => $name,
+                'email' => $email,
+                'nic' => $nic,
+                'role' => 'PATIENT'
+            ]
+        ]);
+    } catch (Exception $e) {
+        error_log("Patient Signup Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Signup failed']);
+    }
+}
+
+// ============================================================================
+// DOCTOR SIGNUP
+// ============================================================================
+function handleDoctorSignup($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    // Get JSON input
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    
+    $name = $input['name'] ?? null;
+    $email = $input['email'] ?? null;
+    $password = $input['password'] ?? null;
+    $nic = $input['nic'] ?? null;
+    $license_number = $input['license_number'] ?? null;
+    $specialty = $input['specialty'] ?? null;
+    $phone = $input['phone'] ?? null;
+    
+    if (!$name || !$email || !$password || !$nic || !$license_number) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Name, email, password, NIC, and license number required']);
+        return;
+    }
+    
+    try {
+        // Check if email exists
+        $checkQuery = "SELECT id FROM users WHERE email = $1";
+        $checkResult = pg_query_params($conn, $checkQuery, array($email));
+        
+        if (pg_num_rows($checkResult) > 0) {
+            http_response_code(409);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Email already registered']);
+            return;
+        }
+        
+        // Check if NIC exists
+        $nicQuery = "SELECT id FROM users WHERE nic = $1";
+        $nicResult = pg_query_params($conn, $nicQuery, array($nic));
+        
+        if (pg_num_rows($nicResult) > 0) {
+            http_response_code(409);
+            echo json_encode(['status' => 'ERROR', 'message' => 'NIC already registered']);
+            return;
+        }
+        
+        // Validate phone if provided
+        if ($phone) {
+            $phone = validatePhoneNumber($phone);
+            if (!$phone) {
+                http_response_code(400);
+                echo json_encode(['status' => 'ERROR', 'message' => 'Invalid phone number']);
+                return;
+            }
+        }
+        
+        // Generate user ID
+        $user_id = generateUserID();
+        $password_hash = password_hash($password, PASSWORD_BCRYPT);
+        
+        // Insert doctor user (PostgreSQL)
+        $query = "INSERT INTO users (user_id, name, email, password_hash, nic, license_number, specialty, phone, role, status) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DOCTOR', 'ACTIVE')";
+        
+        $result = pg_query_params($conn, $query, 
+            array($user_id, $name, $email, $password_hash, $nic, $license_number, $specialty, $phone));
+        
+        if (!$result) {
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to create account']);
+            return;
+        }
+        
+        // Get created user
+        $userQuery = "SELECT id FROM users WHERE user_id = $1";
+        $userResult = pg_query_params($conn, $userQuery, array($user_id));
+        $userData = pg_fetch_assoc($userResult);
+        
+        // Generate token
+        $token = generateAuthToken();
+        $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
+        
+        // Store token
+        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) 
+                     VALUES ($1, $2, $3)";
+        pg_query_params($conn, $tokenQuery, array($userData['id'], $token, $expires_at));
+        
+        // Log registration
+        logAuthentication($userData['id'], 'EMAIL:' . $email, 'REGISTERED');
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Doctor account created',
+            'token' => $token,
+            'user_id' => $user_id,
+            'role' => 'DOCTOR',
+            'profile' => [
+                'id' => $userData['id'],
+                'user_id' => $user_id,
+                'name' => $name,
+                'email' => $email,
+                'nic' => $nic,
+                'license_number' => $license_number,
+                'specialty' => $specialty,
+                'role' => 'DOCTOR'
+            ]
+        ]);
+    } catch (Exception $e) {
+        error_log("Doctor Signup Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Signup failed']);
+    }
 }
 
 // ============================================================================
@@ -301,6 +647,11 @@ function generateUserID() {
     $date = date('Ymd');
     $random = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
     return 'USER_' . $date . '_' . $random;
+}
+
+function generateAuthToken() {
+    // Generate 64-character random token
+    return bin2hex(random_bytes(32));
 }
 
 function validatePhoneNumber($phone) {
