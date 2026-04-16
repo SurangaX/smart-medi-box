@@ -160,12 +160,14 @@ function handleMyArticles($method) {
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
         
-        if ($token_result && pg_num_rows($token_result) > 0) {
+        if ($token_result === false) {
+            error_log("MY ARTICLES - Query error: " . pg_last_error($conn));
+        } elseif (pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
             error_log("MY ARTICLES - Token lookup successful, user_id: " . $user_id);
         } else {
-            error_log("MY ARTICLES - Token lookup failed, rows: " . (pg_num_rows($token_result) ?? 'error'));
+            error_log("MY ARTICLES - Token lookup returned no rows");
             // Try without expiry check
             $token_query_noexpiry = "SELECT user_id, expires_at FROM session_tokens WHERE token = $1";
             $token_result_noexpiry = pg_query_params($conn, $token_query_noexpiry, array($token));
@@ -265,12 +267,23 @@ function handleCreateArticle($method) {
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
         
-        if ($token_result && pg_num_rows($token_result) > 0) {
+        if ($token_result === false) {
+            error_log("CREATE ARTICLE - Query error: " . pg_last_error($conn));
+        } elseif (pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
             error_log("CREATE ARTICLE - Token lookup successful, user_id: " . $user_id);
         } else {
-            error_log("CREATE ARTICLE - Token lookup failed, rows: " . (pg_num_rows($token_result) ?? 'error'));
+            error_log("CREATE ARTICLE - Token lookup returned no rows");
+            // Try without expiry check
+            $token_query_noexpiry = "SELECT user_id, expires_at FROM session_tokens WHERE token = $1";
+            $token_result_noexpiry = pg_query_params($conn, $token_query_noexpiry, array($token));
+            if ($token_result_noexpiry && pg_num_rows($token_result_noexpiry) > 0) {
+                $token_row_noexpiry = pg_fetch_assoc($token_result_noexpiry);
+                error_log("CREATE ARTICLE - Token found but expired, expires_at: " . $token_row_noexpiry['expires_at']);
+            } else {
+                error_log("CREATE ARTICLE - Token not found in session_tokens table");
+            }
         }
     }
     
