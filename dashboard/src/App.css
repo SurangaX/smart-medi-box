@@ -118,6 +118,8 @@ body {
   font-weight: 600;
   margin-bottom: 8px;
   color: var(--text-primary);
+  user-select: none;
+  cursor: default;
 }
 
 .form-group input,
@@ -372,6 +374,7 @@ body {
   border-bottom: 2px solid transparent;
   transition: all 0.3s;
   white-space: nowrap;
+  user-select: none;
 }
 
 .tab-btn:hover {
@@ -406,10 +409,12 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  user-select: none;
 }
 
 .section-header h2 {
   margin: 0;
+  user-select: none;
 }
 
 /* ==================== Cards ==================== */
@@ -621,6 +626,8 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 4px;
+  user-select: none;
+  cursor: default;
 }
 
 .info-card .value {
