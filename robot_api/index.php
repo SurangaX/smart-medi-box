@@ -62,18 +62,26 @@ header('Content-Type: application/json');
 // PATH_INFO = /api/auth/patient/signup (without the /index.php part)
 $request_path = $_SERVER['PATH_INFO'] ?? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
+error_log("INDEX.PHP - REQUEST_URI: " . $_SERVER['REQUEST_URI']);
+error_log("INDEX.PHP - PATH_INFO: " . ($_SERVER['PATH_INFO'] ?? 'NOT SET'));
+error_log("INDEX.PHP - request_path: " . $request_path);
+
 // Remove leading/trailing slashes and split
 $request_path = trim($request_path, '/');
 $request_parts = explode('/', $request_path);
 
+error_log("INDEX.PHP - request_parts: " . json_encode($request_parts));
+
 // Remove 'index.php' if it's the first part (shouldn't be with PATH_INFO, but be safe)
 if (isset($request_parts[0]) && $request_parts[0] === 'index.php') {
+    error_log("INDEX.PHP - Removing index.php from request_parts");
     array_shift($request_parts);
 }
 
 // Expected format: /api/{module}/{action}
 // Example: /api/auth/verify
 if (count($request_parts) < 3 || $request_parts[0] !== 'api') {
+    error_log("INDEX.PHP - Invalid API request. Count: " . count($request_parts) . ", First part: " . ($request_parts[0] ?? 'EMPTY'));
     http_response_code(400);
     echo json_encode([
         'status' => 'ERROR',
@@ -85,11 +93,14 @@ if (count($request_parts) < 3 || $request_parts[0] !== 'api') {
     exit();
 }
 
+error_log("INDEX.PHP - Valid API request");
 $module = $request_parts[1];
 $action = isset($request_parts[2]) ? $request_parts[2] : '';
 $subaction = isset($request_parts[3]) ? $request_parts[3] : '';
+error_log("INDEX.PHP - module: " . $module . ", action: " . $action . ", subaction: " . $subaction);
 
 // Route to appropriate module
+error_log("INDEX.PHP - Starting switch for module: " . $module);
 switch ($module) {
     case 'auth':
         // All auth endpoints (login, signup, QR-based verify, pairing, etc.)
@@ -121,9 +132,11 @@ switch ($module) {
         break;
     
     case 'schedule':
+        error_log("INDEX.PHP - Routing to SCHEDULE module, action: " . $action);
         // Include schedule module
         $_GET['action'] = $action;
         $_GET['module'] = 'schedule';
+        error_log("INDEX.PHP - Set GET[action] to: " . $_GET['action']);
         require 'schedule.php';
         break;
     
@@ -160,6 +173,7 @@ switch ($module) {
         break;
     
     default:
+        error_log("INDEX.PHP - Unknown module: " . $module);
         http_response_code(404);
         echo json_encode([
             'status' => 'ERROR',

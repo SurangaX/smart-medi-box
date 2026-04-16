@@ -11,6 +11,11 @@ header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Debug logging
+error_log("SCHEDULE MODULE - PATH_INFO: " . ($_SERVER['PATH_INFO'] ?? 'NOT SET'));
+error_log("SCHEDULE MODULE - REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'NOT SET'));
+error_log("SCHEDULE MODULE - GET action: " . ($_GET['action'] ?? 'NOT SET'));
+
 // Get action from $_GET (set by index.php router) or parse from PATH_INFO
 $action = $_GET['action'] ?? '';
 
@@ -19,6 +24,10 @@ if (!$action) {
     $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
     // PATH_INFO format: /api/schedule/action, so action is at index 2
     $action = $request_uri[2] ?? '';
+    error_log("SCHEDULE MODULE - Parsed action from PATH_INFO: " . $action);
+}
+
+error_log("SCHEDULE MODULE - Final action: " . $action);
 }
 
 switch ($action) {
