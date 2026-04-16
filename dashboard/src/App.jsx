@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
@@ -445,9 +445,12 @@ const SignupScreen = ({ onSignupSuccess }) => {
 
 // ==================== Patient Dashboard ====================
 const PatientDashboard = ({ profile, token, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('devices');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [devices, setDevices] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [tempHistory, setTempHistory] = useState([]);
+  const [stats, setStats] = useState(null);
   const [pairingToken, setPairingToken] = useState('');
   const [showPairingCode, setShowPairingCode] = useState(false);
   const [scannedMac, setScannedMac] = useState('');
@@ -457,6 +460,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const [scannerStarted, setScannerStarted] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({ type: 'MEDICINE', hour: 9, minute: 0, description: '' });
   const qrScannerRef = useRef(null);
   const qrInstanceRef = useRef(null);
 
@@ -465,6 +469,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       fetchDoctors();
     } else if (activeTab === 'devices') {
       fetchDevices();
+    } else if (activeTab === 'dashboard') {
+      fetchSchedules();
+      fetchTemperature();
+      fetchStats();
+    } else if (activeTab === 'schedules') {
+      fetchSchedules();
+    } else if (activeTab === 'temperature') {
+      fetchTempHistory();
+    } else if (activeTab === 'stats') {
+      fetchStats();
     }
   }, [activeTab]);
 
@@ -507,6 +521,115 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       console.error('Failed to fetch doctors');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSchedules = async () => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/schedule/today`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setSchedules(data.schedules || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch schedules:', err);
+    }
+  };
+
+  const fetchTemperature = async () => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/temperature/current`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setTemperature(data.temperature);
+      }
+    } catch (err) {
+      console.error('Failed to fetch temperature:', err);
+    }
+  };
+
+  const fetchTempHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/temperature/history?days=7`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setTempHistory(data.history || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch temperature history:', err);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/schedule/stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  };
+
+  const handleCreateSchedule = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/schedule/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          type: newSchedule.type,
+          hour: parseInt(newSchedule.hour),
+          minute: parseInt(newSchedule.minute),
+          description: newSchedule.description
+        })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        alert('✅ Schedule created successfully!');
+        setNewSchedule({ type: 'MEDICINE', hour: 9, minute: 0, description: '' });
+        fetchSchedules();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (err) {
+      console.error('Failed to create schedule:', err);
+      alert('Failed to create schedule');
+    }
+  };
+
+  const handleCompleteSchedule = async (scheduleId) => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/schedule/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, schedule_id: scheduleId })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        alert('✅ Schedule marked as complete!');
+        fetchSchedules();
+      }
+    } catch (err) {
+      console.error('Failed to complete schedule:', err);
     }
   };
 
@@ -723,10 +846,28 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           👨‍⚕️ My Doctors
         </button>
         <button
-          className={`tab-btn ${activeTab === 'health' ? 'active' : ''}`}
-          onClick={() => setActiveTab('health')}
+          className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
         >
-          ❤️ Health Data
+          📊 Dashboard
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'schedules' ? 'active' : ''}`}
+          onClick={() => setActiveTab('schedules')}
+        >
+          ⏰ Schedules
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'temperature' ? 'active' : ''}`}
+          onClick={() => setActiveTab('temperature')}
+        >
+          🌡️ Temperature
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stats')}
+        >
+          📈 Stats
         </button>
       </div>
 
@@ -856,25 +997,437 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           </div>
         )}
 
-        {activeTab === 'health' && (
+        {activeTab === 'dashboard' && (
           <div className="section">
-            <h2>Health Data</h2>
-            <div className="health-info">
-              <div className="info-card">
-                <span className="label">Blood Type:</span>
-                <span className="value">{profile.blood_type}</span>
+            <div className="dashboard-grid">
+              <div className="card">
+                <div className="card-header">
+                  <Thermometer size={24} />
+                  <h3>Current Temperature</h3>
+                </div>
+                {temperature ? (
+                  <div className="card-content">
+                    <div className="temp-display">
+                      <div className="temp-main">{temperature.internal_temp}°C</div>
+                      <div className="temp-sub">Target: {temperature.target_temp}°C</div>
+                      <div className="temp-info">
+                        Humidity: {temperature.external_humidity}%<br/>
+                        Status: {temperature.cooling_status ? '🟢 Cooling ON' : '⚪ Cooling OFF'}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="placeholder">⏳ Loading temperature...</p>
+                )}
               </div>
-              <div className="info-card">
-                <span className="label">Transplanted Organ:</span>
-                <span className="value">{profile.transplanted_organ || 'None'}</span>
+
+              <div className="card">
+                <div className="card-header">
+                  <Clock size={24} />
+                  <h3>Today's Schedules</h3>
+                </div>
+                <div className="card-content">
+                  {schedules.length > 0 ? (
+                    <div className="schedule-list">
+                      {schedules.slice(0, 5).map((sched) => (
+                        <div key={sched.schedule_id} className="schedule-item">
+                          <div className="schedule-time">
+                            {String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}
+                          </div>
+                          <div className="schedule-details">
+                            <div className="schedule-type">{sched.type}</div>
+                            <div className="schedule-status">
+                              {sched.is_completed ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                              {sched.is_completed ? 'Completed' : 'Pending'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="placeholder">No schedules for today</p>
+                  )}
+                </div>
               </div>
-              {profile.transplantation_date && (
-                <div className="info-card">
-                  <span className="label">Transplantation Date:</span>
-                  <span className="value">{new Date(profile.transplantation_date).toLocaleDateString()}</span>
+
+              <div className="card">
+                <div className="card-header">
+                  <Users size={24} />
+                  <h3>User Profile</h3>
+                </div>
+                <div className="card-content">
+                  <div className="user-info">
+                    <p><strong>Name:</strong> {profile.name}</p>
+                    <p><strong>Email:</strong> {profile.email}</p>
+                    {profile.blood_type && <p><strong>Blood Type:</strong> {profile.blood_type}</p>}
+                    {profile.transplanted_organ && <p><strong>Organ:</strong> {profile.transplanted_organ}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {stats && (
+                <div className="card">
+                  <div className="card-header">
+                    <CheckCircle2 size={24} />
+                    <h3>Quick Stats</h3>
+                  </div>
+                  <div className="card-content">
+                    <div className="stats-quick">
+                      <div className="stat-item">
+                        <div className="stat-value">{stats.adherence_rate?.toFixed(1) || 0}%</div>
+                        <div className="stat-label">Adherence Rate</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-value">{stats.completed_today || 0}</div>
+                        <div className="stat-label">Completed Today</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'schedules' && (
+          <div className="section">
+            <div className="schedules-container">
+              <div className="card">
+                <div className="card-header">
+                  <Clock size={24} />
+                  <h3>Create New Schedule</h3>
+                </div>
+                <form onSubmit={handleCreateSchedule} className="form">
+                  <div className="form-group">
+                    <label>Type</label>
+                    <select 
+                      value={newSchedule.type}
+                      onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
+                    >
+                      <option>MEDICINE</option>
+                      <option>FOOD</option>
+                      <option>BLOOD_CHECK</option>
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Hour (0-23)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="23"
+                        value={newSchedule.hour}
+                        onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Minute (0-59)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="59"
+                        value={newSchedule.minute}
+                        onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Description (optional)</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g., Morning medication"
+                      value={newSchedule.description}
+                      onChange={(e) => setNewSchedule({...newSchedule, description: e.target.value})}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary">Create Schedule</button>
+                </form>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <Clock size={24} />
+                  <h3>Today's Schedules</h3>
+                </div>
+                <div className="schedule-table">
+                  {schedules.length > 0 ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>Type</th>
+                          <th>Description</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedules.map((sched) => (
+                          <tr key={sched.schedule_id} className={sched.is_completed ? 'completed' : ''}>
+                            <td>{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</td>
+                            <td><span className="badge">{sched.type}</span></td>
+                            <td>{sched.description || '-'}</td>
+                            <td>{sched.is_completed ? '✅ Done' : '⏳ Pending'}</td>
+                            <td>
+                              {!sched.is_completed && (
+                                <button 
+                                  className="btn-small"
+                                  onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                                >
+                                  Mark Done
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="placeholder">No schedules created yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'temperature' && (
+          <div className="section">
+            <div className="card card-wide">
+              <div className="card-header">
+                <Thermometer size={24} />
+                <h3>Temperature Graph (Last 7 Days)</h3>
+              </div>
+              {tempHistory.length > 0 ? (
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={tempHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[0, 10]} />
+                      <Tooltip />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avg_temp" 
+                        stroke="#3b82f6" 
+                        name="Avg Temp (°C)"
+                        dot={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="target_temp" 
+                        stroke="#10b981" 
+                        name="Target Temp (°C)"
+                        strokeDasharray="5 5"
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="placeholder">⏳ Loading temperature data...</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'stats' && (
+          <div className="section">
+            {stats && stats.trend ? (
+              <div className="card card-wide">
+                <div className="card-header">
+                  <Activity size={24} />
+                  <h3>7-Day Adherence Trend</h3>
+                </div>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.trend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="completed" fill="#10b981" name="Completed" />
+                      <Bar dataKey="total" fill="#3b82f6" name="Total" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <p className="placeholder">No statistics available yet</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'schedules' && (
+          <div className="section">
+            <div className="schedules-container">
+              <div className="card">
+                <div className="card-header">
+                  <Clock size={24} />
+                  <h3>Create New Schedule</h3>
+                </div>
+                <form onSubmit={handleCreateSchedule} className="form">
+                  <div className="form-group">
+                    <label>Type</label>
+                    <select 
+                      value={newSchedule.type}
+                      onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
+                    >
+                      <option>MEDICINE</option>
+                      <option>FOOD</option>
+                      <option>BLOOD_CHECK</option>
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Hour (0-23)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="23"
+                        value={newSchedule.hour}
+                        onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Minute (0-59)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="59"
+                        value={newSchedule.minute}
+                        onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Description (optional)</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g., Morning medication"
+                      value={newSchedule.description}
+                      onChange={(e) => setNewSchedule({...newSchedule, description: e.target.value})}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary">Create Schedule</button>
+                </form>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <Clock size={24} />
+                  <h3>Today's Schedules</h3>
+                </div>
+                <div className="schedule-table">
+                  {schedules.length > 0 ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>Type</th>
+                          <th>Description</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedules.map((sched) => (
+                          <tr key={sched.schedule_id} className={sched.is_completed ? 'completed' : ''}>
+                            <td>{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</td>
+                            <td><span className="badge">{sched.type}</span></td>
+                            <td>{sched.description || '-'}</td>
+                            <td>{sched.is_completed ? '✅ Done' : '⏳ Pending'}</td>
+                            <td>
+                              {!sched.is_completed && (
+                                <button 
+                                  className="btn-small"
+                                  onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                                >
+                                  Mark Done
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="placeholder">No schedules created yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'temperature' && (
+          <div className="section">
+            <div className="card card-wide">
+              <div className="card-header">
+                <Thermometer size={24} />
+                <h3>Temperature Graph (Last 7 Days)</h3>
+              </div>
+              {tempHistory.length > 0 ? (
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={tempHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[0, 10]} />
+                      <Tooltip />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avg_temp" 
+                        stroke="#3b82f6" 
+                        name="Avg Temp (°C)"
+                        dot={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="target_temp" 
+                        stroke="#10b981" 
+                        name="Target Temp (°C)"
+                        strokeDasharray="5 5"
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="placeholder">⏳ Loading temperature data...</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'stats' && (
+          <div className="section">
+            {stats && stats.trend ? (
+              <div className="card card-wide">
+                <div className="card-header">
+                  <Activity size={24} />
+                  <h3>7-Day Adherence Trend</h3>
+                </div>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.trend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="completed" fill="#10b981" name="Completed" />
+                      <Bar dataKey="total" fill="#3b82f6" name="Total" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <p className="placeholder">No statistics available yet</p>
+            )}
           </div>
         )}
       </div>
