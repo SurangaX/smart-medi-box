@@ -191,7 +191,16 @@ function handlePatientSignup($method) {
     
     if (!empty($missing)) {
         error_log("PATIENT SIGNUP FAILED: Missing fields - " . implode(', ', $missing));
-        return errorResponse(400, 'Missing required fields: ' . implode(', ', $missing));
+        error_log("PATIENT SIGNUP - Received data: " . json_encode($input));
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'ERROR',
+            'message' => 'Missing required fields: ' . implode(', ', $missing),
+            'missing_fields' => $missing,
+            'received_fields' => array_keys($input),
+            'debug' => true
+        ]);
+        return;
     }
     
     try {
@@ -231,7 +240,14 @@ function handlePatientSignup($method) {
         if (!$result) {
             $msg = pg_last_error($conn);
             error_log("PATIENT SIGNUP INSERT FAILED: $msg");
-            return errorResponse(400, 'Failed to create account: ' . $msg);
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'ERROR',
+                'message' => 'Failed to create account',
+                'error_details' => $msg,
+                'debug' => true
+            ]);
+            return;
         }
         
         $row = pg_fetch_assoc($result);

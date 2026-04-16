@@ -180,7 +180,16 @@ const SignupScreen = ({ onSignupSuccess }) => {
         localStorage.setItem('profile', JSON.stringify(data.profile));
         onSignupSuccess(data);
       } else {
-        setError(data.message || 'Signup failed');
+        // Show detailed error message
+        let errorMsg = data.message || 'Signup failed';
+        if (data.missing_fields) {
+          errorMsg += '\nMissing: ' + data.missing_fields.join(', ');
+        }
+        if (data.error_details) {
+          errorMsg += '\n' + data.error_details;
+        }
+        setError(errorMsg);
+        console.error('Signup error:', data);
       }
     } catch (err) {
       setError('Network error: ' + err.message);
