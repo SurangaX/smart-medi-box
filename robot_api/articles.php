@@ -209,6 +209,26 @@ function handleMyArticles($method) {
     }
     
     try {
+        // Look up the doctor_id for this user_id
+        error_log("MY ARTICLES - Looking up doctor_id for user_id: " . $user_id);
+        $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
+        $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
+        
+        if ($doctor_lookup_result === false) {
+            throw new Exception("Doctor lookup failed: " . pg_last_error($conn));
+        }
+        
+        if (pg_num_rows($doctor_lookup_result) === 0) {
+            error_log("MY ARTICLES - No doctor record found for user_id: " . $user_id);
+            http_response_code(200);
+            echo json_encode(['status' => 'SUCCESS', 'articles' => []]);
+            return;
+        }
+        
+        $doctor_row = pg_fetch_assoc($doctor_lookup_result);
+        $doctor_id = $doctor_row['id'];
+        error_log("MY ARTICLES - Found doctor_id: " . $doctor_id);
+        
         $query = "SELECT 
                     id,
                     id as article_id,
@@ -224,11 +244,12 @@ function handleMyArticles($method) {
                   WHERE doctor_id = $1
                   ORDER BY created_at DESC";
         
-        $result = pg_query_params($conn, $query, array($user_id));
+        error_log("MY ARTICLES - Executing query with doctor_id: " . $doctor_id);
+        $result = pg_query_params($conn, $query, array($doctor_id));
         
         if ($result === false) {
             http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed: ' . pg_last_error($conn)]);
             return;
         }
         
@@ -320,53 +341,60 @@ function handleCreateArticle($method) {
     try {
         error_log("CREATE ARTICLE - Starting article creation for user_id: " . $user_id);
         
-        // Step 1: Check if doctor record exists
-        $doctor_check_query = "SELECT id FROM doctors WHERE id = $1";
-        $doctor_check_result = pg_query_params($conn, $doctor_check_query, array($user_id));
+        // Step 1: Look up the doctor.id for this user_id
+        $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
+        $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
         
-        if ($doctor_check_result === false) {
-            throw new Exception("Doctor check query failed: " . pg_last_error($conn));
+        if ($doctor_lookup_result === false) {
+            throw new Exception("Doctor lookup query failed: " . pg_last_error($conn));
         }
         
-        $doctor_exists = (pg_num_rows($doctor_check_result) > 0);
-        error_log("CREATE ARTICLE - Doctor exists: " . ($doctor_exists ? 'YES' : 'NO'));
-        
-        // Step 2: If doctor doesn't exist, create one
-        if (!$doctor_exists) {
-            error_log("CREATE ARTICLE - Creating doctor record for user_id: " . $user_id);
+        $doctor_id = null;
+        if (pg_num_rows($doctor_lookup_result) > 0) {
+            $doctor_row = pg_fetch_assoc($doctor_lookup_result);
+            $doctor_id = $doctor_row['id'];
+            error_log("CREATE ARTICLE - Found doctor record: doctor_id=" . $doctor_id . " for user_id=" . $user_id);
+        } else {
+            error_log("CREATE ARTICLE - No doctor record found for user_id=" . $user_id . ", creating one");
             
-            // First, get user info to populate doctor fields
-            $user_query = "SELECT name, email FROM users WHERE id = $1";
+            // Get user info
+            $user_query = "SELECT name FROM users WHERE id = $1";
             $user_result = pg_query_params($conn, $user_query, array($user_id));
             
             $doctor_name = 'Doctor ' . $user_id;
-            $doctor_nic = 'DOC_' . $user_id . '_' . time();
-            
             if ($user_result && pg_num_rows($user_result) > 0) {
                 $user = pg_fetch_assoc($user_result);
                 $doctor_name = $user['name'] ?? $doctor_name;
             }
             
+            // Create doctor record
             $doctor_create_query = "INSERT INTO doctors (user_id, nic, name, date_of_birth, specialization, hospital) 
                                    VALUES ($1, $2, $3, $4, $5, $6) 
-                                   ON CONFLICT (user_id) DO NOTHING";
+                                   RETURNING id";
             $doctor_create_result = pg_query_params($conn, $doctor_create_query, 
-                array($user_id, $doctor_nic, $doctor_name, '1990-01-01', 'General', 'Smart Medi Box'));
+                array($user_id, 'DOC_' . $user_id . '_' . time(), $doctor_name, '1990-01-01', 'General', 'Smart Medi Box'));
             
             if ($doctor_create_result === false) {
                 throw new Exception("Failed to create doctor record: " . pg_last_error($conn));
             }
-            error_log("CREATE ARTICLE - Doctor record created");
+            
+            $new_doctor = pg_fetch_assoc($doctor_create_result);
+            $doctor_id = $new_doctor['id'];
+            error_log("CREATE ARTICLE - Created new doctor record: doctor_id=" . $doctor_id);
         }
         
-        // Step 3: Insert the article
-        error_log("CREATE ARTICLE - Inserting article for doctor_id: " . $user_id);
+        if (!$doctor_id) {
+            throw new Exception("Failed to get or create doctor_id for user_id=" . $user_id);
+        }
+        
+        // Step 2: Insert the article with the correct doctor_id
+        error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
         $query = "INSERT INTO articles (doctor_id, title, content, is_published)
                   VALUES ($1, $2, $3, true)
                   RETURNING id";
         
         $result = pg_query_params($conn, $query, 
-            array($user_id, $title, $content));
+            array($doctor_id, $title, $content));
         
         if ($result === false) {
             throw new Exception("Failed to insert article: " . pg_last_error($conn));
@@ -427,18 +455,31 @@ function handleUpdateArticle($method) {
     }
     
     try {
+        // Look up the doctor_id for this user_id
+        $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
+        $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
+        
+        if ($doctor_lookup_result === false || pg_num_rows($doctor_lookup_result) === 0) {
+            http_response_code(403);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor']);
+            return;
+        }
+        
+        $doctor_row = pg_fetch_assoc($doctor_lookup_result);
+        $doctor_id = $doctor_row['id'];
+        
         $query = "UPDATE articles SET title = $1, content = $2, updated_at = NOW()
                   WHERE id = $3 AND doctor_id = $4";
         
         $result = pg_query_params($conn, $query, 
-            array($title, $content, $article_id, $user_id));
+            array($title, $content, $article_id, $doctor_id));
         
         if ($result) {
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Article updated']);
         } else {
             http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update article']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update article: ' . pg_last_error($conn)]);
         }
     } catch (Exception $e) {
         error_log("Update Article Error: " . $e->getMessage());
@@ -482,15 +523,28 @@ function handleDeleteArticle($method) {
     }
     
     try {
+        // Look up the doctor_id for this user_id
+        $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
+        $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
+        
+        if ($doctor_lookup_result === false || pg_num_rows($doctor_lookup_result) === 0) {
+            http_response_code(403);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor']);
+            return;
+        }
+        
+        $doctor_row = pg_fetch_assoc($doctor_lookup_result);
+        $doctor_id = $doctor_row['id'];
+        
         $query = "UPDATE articles SET is_published = false WHERE id = $1 AND doctor_id = $2";
-        $result = pg_query_params($conn, $query, array($article_id, $user_id));
+        $result = pg_query_params($conn, $query, array($article_id, $doctor_id));
         
         if ($result) {
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Article deleted']);
         } else {
             http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete article']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete article: ' . pg_last_error($conn)]);
         }
     } catch (Exception $e) {
         error_log("Delete Article Error: " . $e->getMessage());
