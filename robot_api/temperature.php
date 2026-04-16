@@ -35,18 +35,32 @@ switch ($action) {
 function handleGetCurrentTemp($method) {
     global $conn;
     
-    if ($method !== 'GET') {
+    if ($method !== 'GET' && $method !== 'POST') {
         http_response_code(405);
         echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
     
-    $user_id = $_GET['user_id'] ?? null;
-    $device_id = $_GET['device_id'] ?? null;
+    // Support both POST (with token) and GET (with user_id or device_id)
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
+    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $device_id = $input['device_id'] ?? $_POST['device_id'] ?? $_GET['device_id'] ?? null;
+    
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id && !$device_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
     
     if (!$user_id && !$device_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id or device_id required']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id or device_id required (via token or direct parameter)']);
         return;
     }
     
@@ -73,11 +87,13 @@ function handleGetCurrentTemp($method) {
             http_response_code(200);
             echo json_encode([
                 'status' => 'SUCCESS',
-                'internal_temp' => floatval($row['internal_temp']),
-                'humidity' => floatval($row['external_humidity']),
-                'target_temp' => floatval($row['target_temp']),
-                'cooling_active' => $row['cooling_status'] === 'ON',
-                'timestamp' => $row['timestamp']
+                'temperature' => [
+                    'internal_temp' => floatval($row['internal_temp']),
+                    'external_humidity' => floatval($row['external_humidity']),
+                    'target_temp' => floatval($row['target_temp']),
+                    'cooling_status' => $row['cooling_status'] === 'ON',
+                    'timestamp' => $row['timestamp']
+                ]
             ]);
         } else {
             http_response_code(404);
@@ -161,18 +177,32 @@ function handleSetTargetTemp($method) {
 function handleGetTempHistory($method) {
     global $conn;
     
-    if ($method !== 'GET') {
+    if ($method !== 'GET' && $method !== 'POST') {
         http_response_code(405);
         echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
     
-    $user_id = $_GET['user_id'] ?? null;
-    $days = $_GET['days'] ?? 7;
+    // Support both POST (with token) and GET (with user_id)
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
+    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $days = $input['days'] ?? $_POST['days'] ?? $_GET['days'] ?? 7;
+    
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
     
     if (!$user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required (via token or direct parameter)']);
         return;
     }
     
@@ -208,10 +238,12 @@ function handleGetTempHistory($method) {
         
         while ($row = pg_fetch_assoc($result)) {
             $history[] = [
+                'date' => date('Y-m-d', strtotime($row['timestamp'])),
                 'timestamp' => $row['timestamp'],
-                'temp' => floatval($row['internal_temp']),
-                'humidity' => floatval($row['external_humidity']),
-                'cooling' => $row['cooling_status']
+                'avg_temp' => floatval($row['internal_temp']),
+                'target_temp' => floatval($row['target_temp']),
+                'external_humidity' => floatval($row['external_humidity']),
+                'cooling_status' => $row['cooling_status'] === 'ON'
             ];
             $avgTemp += floatval($row['internal_temp']);
             $count++;

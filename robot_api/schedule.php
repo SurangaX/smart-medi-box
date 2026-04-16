@@ -32,6 +32,9 @@ switch ($action) {
     case 'delete':
         handleDeleteSchedule($method);
         break;
+    case 'stats':
+        handleGetStats($method);
+        break;
     default:
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
@@ -102,15 +105,27 @@ function handleCreateSchedule($method) {
     }
     
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? $_POST['token'] ?? null;
     $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
     $type = $input['type'] ?? $_POST['type'] ?? null;
     $hour = $input['hour'] ?? $_POST['hour'] ?? null;
     $minute = $input['minute'] ?? $_POST['minute'] ?? null;
     $description = $input['description'] ?? $_POST['description'] ?? '';
     
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
+    
     if (!$user_id || !$type || $hour === null || $minute === null) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: user_id (via token or direct), type, hour, minute']);
         return;
     }
     
@@ -250,12 +265,25 @@ function handleCompleteSchedule($method) {
         return;
     }
     
-    $schedule_id = $_POST['schedule_id'] ?? $_GET['schedule_id'] ?? null;
-    $user_id = $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $schedule_id = $input['schedule_id'] ?? $_POST['schedule_id'] ?? $_GET['schedule_id'] ?? null;
+    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
+    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
     
     if (!$schedule_id || !$user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: schedule_id and (user_id or token)']);
         return;
     }
     
@@ -298,17 +326,31 @@ function handleCompleteSchedule($method) {
 function handleGetTodaySchedules($method) {
     global $conn;
     
-    if ($method !== 'GET') {
+    if ($method !== 'POST' && $method !== 'GET') {
         http_response_code(405);
         echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
     
-    $user_id = $_GET['user_id'] ?? null;
+    // Support both POST (with token) and GET (with user_id)
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
+    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
     
     if (!$user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required (via token or direct parameter)']);
         return;
     }
     
@@ -329,9 +371,10 @@ function handleGetTodaySchedules($method) {
             $schedules[] = [
                 'schedule_id' => $row['id'],
                 'type' => $row['type'],
-                'time' => sprintf("%02d:%02d", $row['hour'], $row['minute']),
+                'hour' => intval($row['hour']),
+                'minute' => intval($row['minute']),
                 'description' => $row['description'],
-                'is_completed' => $row['is_completed']
+                'is_completed' => $row['is_completed'] === 't' || $row['is_completed'] === true
             ];
         }
         
@@ -398,6 +441,122 @@ function handleDeleteSchedule($method) {
         }
     } catch (Exception $e) {
         error_log("Delete Schedule Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+    }
+}
+
+// ============================================================================
+// GET STATISTICS
+// ============================================================================
+function handleGetStats($method) {
+    global $conn;
+    
+    if ($method !== 'POST' && $method !== 'GET') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    // Support both POST (with token) and GET (with user_id)
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
+    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
+    
+    if (!$user_id) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required (via token or direct parameter)']);
+        return;
+    }
+    
+    try {
+        // Get user's database ID
+        $user_query = "SELECT id FROM users WHERE user_id = $1";
+        $user_result = pg_query_params($conn, $user_query, array($user_id));
+        
+        if (pg_num_rows($user_result) === 0) {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
+            return;
+        }
+        
+        $user_data = pg_fetch_assoc($user_result);
+        $db_user_id = $user_data['id'];
+        
+        // Get today's stats
+        $today = date('Y-m-d');
+        $today_query = "SELECT 
+                        COUNT(*) as total_today,
+                        SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed_today
+                        FROM schedules 
+                        WHERE user_id = $1 AND status = 'ACTIVE' AND DATE(created_at) = $2";
+        
+        $today_result = pg_query_params($conn, $today_query, array($db_user_id, $today));
+        $today_data = pg_fetch_assoc($today_result);
+        
+        $total_today = intval($today_data['total_today']) ?? 0;
+        $completed_today = intval($today_data['completed_today']) ?? 0;
+        
+        // Calculate adherence rate (last 7 days)
+        $adherence_query = "SELECT 
+                            COUNT(*) as total,
+                            SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed
+                            FROM schedules 
+                            WHERE user_id = $1 AND status = 'ACTIVE' 
+                            AND created_at >= NOW() - INTERVAL '7 days'";
+        
+        $adherence_result = pg_query_params($conn, $adherence_query, array($db_user_id));
+        $adherence_data = pg_fetch_assoc($adherence_result);
+        
+        $total_7days = intval($adherence_data['total']) ?? 0;
+        $completed_7days = intval($adherence_data['completed']) ?? 0;
+        $adherence_rate = $total_7days > 0 ? round(($completed_7days / $total_7days) * 100, 1) : 0;
+        
+        // Get 7-day trend
+        $trend_query = "SELECT 
+                        DATE(created_at) as date,
+                        COUNT(*) as total,
+                        SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed
+                        FROM schedules 
+                        WHERE user_id = $1 AND status = 'ACTIVE'
+                        AND created_at >= NOW() - INTERVAL '7 days'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date ASC";
+        
+        $trend_result = pg_query_params($conn, $trend_query, array($db_user_id));
+        
+        $trend = [];
+        while ($row = pg_fetch_assoc($trend_result)) {
+            $trend[] = [
+                'date' => $row['date'],
+                'total' => intval($row['total']),
+                'completed' => intval($row['completed'])
+            ];
+        }
+        
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'adherence_rate' => $adherence_rate,
+            'completed_today' => $completed_today,
+            'total_today' => $total_today,
+            'completed_7days' => $completed_7days,
+            'total_7days' => $total_7days,
+            'trend' => $trend
+        ]);
+    } catch (Exception $e) {
+        error_log("Get Stats Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }
