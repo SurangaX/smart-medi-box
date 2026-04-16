@@ -334,9 +334,24 @@ function handleCreateArticle($method) {
         // Step 2: If doctor doesn't exist, create one
         if (!$doctor_exists) {
             error_log("CREATE ARTICLE - Creating doctor record for user_id: " . $user_id);
-            $doctor_create_query = "INSERT INTO doctors (id, name, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING";
+            
+            // First, get user info to populate doctor fields
+            $user_query = "SELECT name, email FROM users WHERE id = $1";
+            $user_result = pg_query_params($conn, $user_query, array($user_id));
+            
+            $doctor_name = 'Doctor ' . $user_id;
+            $doctor_nic = 'DOC_' . $user_id . '_' . time();
+            
+            if ($user_result && pg_num_rows($user_result) > 0) {
+                $user = pg_fetch_assoc($user_result);
+                $doctor_name = $user['name'] ?? $doctor_name;
+            }
+            
+            $doctor_create_query = "INSERT INTO doctors (user_id, nic, name, date_of_birth, specialization, hospital) 
+                                   VALUES ($1, $2, $3, $4, $5, $6) 
+                                   ON CONFLICT (user_id) DO NOTHING";
             $doctor_create_result = pg_query_params($conn, $doctor_create_query, 
-                array($user_id, 'Doctor ' . $user_id, 'doctor' . $user_id . '@smartmedibox.local'));
+                array($user_id, $doctor_nic, $doctor_name, '1990-01-01', 'General', 'Smart Medi Box'));
             
             if ($doctor_create_result === false) {
                 throw new Exception("Failed to create doctor record: " . pg_last_error($conn));
