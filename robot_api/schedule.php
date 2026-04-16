@@ -190,17 +190,9 @@ function handleCreateSchedule($method) {
     try {
         $schedule_id = generateScheduleID();
         
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
+        // Note: $user_id from token lookup is already users.id (the database primary key)
+        // No need to query for it again
+        $db_user_id = $user_id;
         
         $query = "INSERT INTO schedules 
                   (schedule_id, user_id, type, schedule_date, hour, minute, description, status, is_completed) 
@@ -415,9 +407,10 @@ function handleGetTodaySchedules($method) {
     }
     
     try {
+        // Note: $user_id from token lookup is already users.id (the database primary key)
         $query = "SELECT id, type, schedule_date, hour, minute, description, is_completed 
                   FROM schedules 
-                  WHERE user_id = (SELECT id FROM users WHERE user_id = $1) 
+                  WHERE user_id = $1 
                   AND status = 'ACTIVE'
                   AND schedule_date >= $2
                   AND schedule_date <= $3
@@ -543,18 +536,9 @@ function handleGetStats($method) {
     }
     
     try {
-        // Get user's database ID
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
+        // Note: $user_id from token lookup is already users.id (the database primary key)
+        // No need to query for it again
+        $db_user_id = $user_id;
         
         // Get today's stats
         $today = date('Y-m-d');
