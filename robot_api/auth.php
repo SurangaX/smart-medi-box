@@ -643,14 +643,16 @@ function handleGeneratePairingToken($method) {
                 // Create patient record if it doesn't exist
                 error_log("PAIRING TOKEN: No patient record found, creating one");
                 $default_dob = '1990-01-01';
+                // Generate unique NIC based on user_id to avoid UNIQUE constraint violation
+                $unique_nic = 'PAT_' . $user_id . '_' . time();
                 $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
                           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
-                $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient', $default_dob, 'OTHER', 'UNKNOWN']);
+                $result = pg_query_params($conn, $query, [$user_id, $unique_nic, 'Patient', $default_dob, 'OTHER', 'UNKNOWN']);
                 
                 if ($result) {
                     $patient = pg_fetch_assoc($result);
                     $patient_id = $patient['id'];
-                    error_log("PAIRING TOKEN: Created new patient_id=$patient_id");
+                    error_log("PAIRING TOKEN: Created new patient_id=$patient_id with nic=$unique_nic");
                 } else {
                     throw new Exception("Failed to create patient record: " . pg_last_error($conn));
                 }
@@ -677,9 +679,11 @@ function handleGeneratePairingToken($method) {
             
             // Create patient record
             $default_dob = '1990-01-01';
+            // Generate unique NIC for Arduino device
+            $unique_nic = 'DEV_' . $user_id . '_' . time();
             $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
                       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
-            $result = pg_query_params($conn, $query, [$user_id, 'ARDUINO_DEVICE', 'Smart Medi Box', $default_dob, 'OTHER', 'UNKNOWN']);
+            $result = pg_query_params($conn, $query, [$user_id, $unique_nic, 'Smart Medi Box', $default_dob, 'OTHER', 'UNKNOWN']);
             
             if (!$result) {
                 throw new Exception("Failed to create patient: " . pg_last_error($conn));
