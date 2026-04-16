@@ -146,7 +146,9 @@ function handleLogin($method) {
         $token = bin2hex(random_bytes(32));
         $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
         
-        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
+        error_log("LOGIN - Creating token for user_id: {$user['id']}, expires_at: $expires_at");
+        
+        $tokenQuery = "INSERT INTO session_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user['id'], $token, $expires_at]);
         
         if (!$tokenResult) {

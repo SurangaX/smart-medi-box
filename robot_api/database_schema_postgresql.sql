@@ -109,6 +109,15 @@ CREATE TABLE device_registry (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Session Tokens Table (for web authentication)
+CREATE TABLE session_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- QR Tokens Table
 CREATE TABLE qr_tokens (
     id SERIAL PRIMARY KEY,
@@ -177,6 +186,8 @@ CREATE TABLE system_logs (
 -- CREATE INDEXES
 CREATE INDEX idx_users_mac_address ON users(mac_address);
 CREATE INDEX idx_users_user_id ON users(user_id);
+CREATE INDEX idx_session_tokens_user_id ON session_tokens(user_id);
+CREATE INDEX idx_session_tokens_token ON session_tokens(token);
 CREATE INDEX idx_schedules_user_id ON schedules(user_id);
 CREATE INDEX idx_schedules_created_at ON schedules(created_at);
 CREATE INDEX idx_temperature_logs_user_id ON temperature_logs(user_id);
