@@ -607,65 +607,93 @@ function handleGeneratePairingToken($method) {
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $token = $input['token'] ?? null;
     
-    if (!$token) {
-        return errorResponse(400, 'User token required');
-    }
+    $user_id = null;
+    $patient_id = null;
     
     try {
-        // Get user_id from auth token
-        $query = "SELECT user_id FROM auth_tokens 
-                  WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
-        $result = pg_query_params($conn, $query, [$token]);
-        
-        if (!$result) {
-            throw new Exception(pg_last_error($conn));
-        }
-        
-        if (pg_num_rows($result) === 0) {
-            error_log("PAIRING TOKEN: Invalid or expired token");
-            return errorResponse(401, 'Invalid or expired token');
-        }
-        
-        $token_row = pg_fetch_assoc($result);
-        $user_id = $token_row['user_id'];
-        
-        error_log("PAIRING TOKEN: user_id=$user_id from auth token");
-        
-        // Try to get patient_id, or create one if needed
-        $query = "SELECT id FROM patients WHERE user_id = $1";
-        $result = pg_query_params($conn, $query, [$user_id]);
-        
-        if (!$result) {
-            throw new Exception(pg_last_error($conn));
-        }
-        
-        $patient_id = null;
-        if (pg_num_rows($result) > 0) {
-            $patient = pg_fetch_assoc($result);
-            $patient_id = $patient['id'];
-            error_log("PAIRING TOKEN: Found existing patient_id=$patient_id");
-        } else {
-            // Create patient record if it doesn't exist
-            error_log("PAIRING TOKEN: No patient record found, creating one");
-            $default_dob = '1990-01-01'; // Default date of birth
-            $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
-                      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
-            $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient', $default_dob, 'OTHER', 'UNKNOWN']);
+        // Mode 1: Authenticated (user already logged in)
+        if ($token) {
+            $query = "SELECT user_id FROM auth_tokens 
+                      WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+            $result = pg_query_params($conn, $query, [$token]);
             
-            if ($result) {
+            if (!$result) {
+                throw new Exception(pg_last_error($conn));
+            }
+            
+            if (pg_num_rows($result) === 0) {
+                error_log("PAIRING TOKEN: Invalid or expired token");
+                return errorResponse(401, 'Invalid or expired token');
+            }
+            
+            $token_row = pg_fetch_assoc($result);
+            $user_id = $token_row['user_id'];
+            
+            error_log("PAIRING TOKEN: user_id=$user_id from auth token");
+            
+            // Get patient_id
+            $query = "SELECT id FROM patients WHERE user_id = $1";
+            $result = pg_query_params($conn, $query, [$user_id]);
+            
+            if ($result && pg_num_rows($result) > 0) {
                 $patient = pg_fetch_assoc($result);
                 $patient_id = $patient['id'];
-                error_log("PAIRING TOKEN: Created new patient_id=$patient_id");
+                error_log("PAIRING TOKEN: Found existing patient_id=$patient_id");
             } else {
-                throw new Exception("Failed to create patient record: " . pg_last_error($conn));
+                // Create patient record if it doesn't exist
+                error_log("PAIRING TOKEN: No patient record found, creating one");
+                $default_dob = '1990-01-01';
+                $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
+                          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+                $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient', $default_dob, 'OTHER', 'UNKNOWN']);
+                
+                if ($result) {
+                    $patient = pg_fetch_assoc($result);
+                    $patient_id = $patient['id'];
+                    error_log("PAIRING TOKEN: Created new patient_id=$patient_id");
+                } else {
+                    throw new Exception("Failed to create patient record: " . pg_last_error($conn));
+                }
             }
+        } 
+        // Mode 2: Unauthenticated (Arduino/new device)
+        else {
+            error_log("PAIRING TOKEN: Unauthenticated mode (Arduino device)");
+            
+            // Create temporary user record for device
+            $unique_email = "device_" . time() . "_" . rand(1000, 9999) . "@arduino.local";
+            
+            $query = "INSERT INTO users (email, password_hash, role) 
+                      VALUES ($1, $2, $3) RETURNING id";
+            $result = pg_query_params($conn, $query, [$unique_email, password_hash('ARDUINO_DEVICE', PASSWORD_BCRYPT), 'PATIENT']);
+            
+            if (!$result) {
+                throw new Exception("Failed to create user: " . pg_last_error($conn));
+            }
+            
+            $user = pg_fetch_assoc($result);
+            $user_id = $user['id'];
+            error_log("PAIRING TOKEN: Created temporary user_id=$user_id");
+            
+            // Create patient record
+            $default_dob = '1990-01-01';
+            $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
+                      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+            $result = pg_query_params($conn, $query, [$user_id, 'ARDUINO_DEVICE', 'Smart Medi Box', $default_dob, 'OTHER', 'UNKNOWN']);
+            
+            if (!$result) {
+                throw new Exception("Failed to create patient: " . pg_last_error($conn));
+            }
+            
+            $patient = pg_fetch_assoc($result);
+            $patient_id = $patient['id'];
+            error_log("PAIRING TOKEN: Created patient_id=$patient_id for Arduino");
         }
         
-        // Generate pairing token
+        // Generate pairing token (same for both modes)
         $pairing_token = bin2hex(random_bytes(32));
         $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
         
-        // Create pairing token record
         $query = "INSERT INTO pairing_tokens (patient_id, token, expires_at, is_used) 
                   VALUES ($1, $2, $3, false)
                   RETURNING token";
@@ -676,13 +704,14 @@ function handleGeneratePairingToken($method) {
             throw new Exception(pg_last_error($conn));
         }
         
-        error_log("PAIRING TOKEN GENERATED: patient_id=$patient_id, user_id=$user_id");
+        error_log("PAIRING TOKEN GENERATED: patient_id=$patient_id, pairing_token=$pairing_token");
         
         http_response_code(201);
         echo json_encode([
             'status' => 'SUCCESS',
             'pairing_token' => $pairing_token,
-            'expires_in' => 3600
+            'expires_in' => 3600,
+            'qr_data' => $pairing_token  // QR code contains just the token
         ]);
     } catch (Exception $e) {
         error_log("Pairing Token Generation Error: " . $e->getMessage());
