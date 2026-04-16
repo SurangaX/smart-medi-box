@@ -47,7 +47,6 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role user_role NOT NULL DEFAULT 'PATIENT',
-    status user_status DEFAULT 'ACTIVE',
     last_login TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,7 +60,7 @@ CREATE TABLE patients (
     nic VARCHAR(50) UNIQUE NOT NULL,  -- Primary identifier (National ID)
     name VARCHAR(100) NOT NULL,
     date_of_birth DATE NOT NULL,
-    age INT GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(date_of_birth))::INT) STORED,
+    age INT DEFAULT 0,  -- Will be updated by trigger
     gender gender_type,
     blood_type blood_type,
     transplanted_organ organ_type DEFAULT 'NONE',
@@ -80,7 +79,7 @@ CREATE TABLE doctors (
     nic VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     date_of_birth DATE NOT NULL,
-    age INT GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(date_of_birth))::INT) STORED,
+    age INT DEFAULT 0,  -- Will be updated by trigger
     specialization VARCHAR(100) NOT NULL,
     hospital VARCHAR(100) NOT NULL,
     license_number VARCHAR(50) UNIQUE,
@@ -187,6 +186,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to calculate age from date of birth
+CREATE OR REPLACE FUNCTION calculate_age_from_dob()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.age = EXTRACT(YEAR FROM AGE(NEW.date_of_birth))::INT;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER users_update_timestamp
 BEFORE UPDATE ON users
 FOR EACH ROW
@@ -197,10 +205,20 @@ BEFORE UPDATE ON patients
 FOR EACH ROW
 EXECUTE FUNCTION update_user_timestamp();
 
+CREATE TRIGGER patients_calculate_age
+BEFORE INSERT OR UPDATE ON patients
+FOR EACH ROW
+EXECUTE FUNCTION calculate_age_from_dob();
+
 CREATE TRIGGER doctors_update_timestamp
 BEFORE UPDATE ON doctors
 FOR EACH ROW
 EXECUTE FUNCTION update_user_timestamp();
+
+CREATE TRIGGER doctors_calculate_age
+BEFORE INSERT OR UPDATE ON doctors
+FOR EACH ROW
+EXECUTE FUNCTION calculate_age_from_dob();
 
 CREATE TRIGGER articles_update_timestamp
 BEFORE UPDATE ON articles
