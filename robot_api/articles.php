@@ -85,17 +85,17 @@ function handleListArticles($method) {
         
         $query = "SELECT 
                     a.id,
-                    a.article_id,
+                    a.id as article_id,
                     a.title,
                     a.content,
-                    a.cover_image,
-                    a.views,
+                    a.summary,
+                    a.category,
+                    a.view_count as views,
                     a.created_at,
-                    u.name as doctor_name,
-                    u.profile_photo as doctor_photo
+                    d.name as doctor_name
                   FROM articles a
-                  JOIN users u ON a.doctor_id = u.id
-                  WHERE a.status = 'PUBLISHED' AND a.deleted_at IS NULL
+                  JOIN doctors d ON a.doctor_id = d.id
+                  WHERE a.is_published = true
                   ORDER BY a.created_at DESC
                   LIMIT 50";
         
@@ -123,11 +123,11 @@ function handleListArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
-                'cover_image' => $row['cover_image'],
+                'cover_image' => null,
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
-                'doctor_photo' => $row['doctor_photo']
+                'doctor_photo' => null
             ];
         }
         
@@ -200,16 +200,17 @@ function handleMyArticles($method) {
     try {
         $query = "SELECT 
                     id,
-                    article_id,
+                    id as article_id,
                     title,
                     content,
-                    cover_image,
-                    status,
-                    views,
+                    summary,
+                    category,
+                    is_published,
+                    view_count as views,
                     created_at,
                     updated_at
                   FROM articles
-                  WHERE doctor_id = $1 AND deleted_at IS NULL
+                  WHERE doctor_id = $1
                   ORDER BY created_at DESC";
         
         $result = pg_query_params($conn, $query, array($user_id));
@@ -227,8 +228,9 @@ function handleMyArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'content' => $row['content'],
-                'cover_image' => $row['cover_image'],
-                'status' => $row['status'],
+                'summary' => $row['summary'],
+                'category' => $row['category'],
+                'is_published' => $row['is_published'],
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at']
@@ -307,11 +309,11 @@ function handleCreateArticle($method) {
     try {
         $article_id = 'ART_' . time() . '_' . bin2hex(random_bytes(4));
         
-        $query = "INSERT INTO articles (article_id, doctor_id, title, content, cover_image, status)
-                  VALUES ($1, $2, $3, $4, $5, 'PUBLISHED')";
+        $query = "INSERT INTO articles (doctor_id, title, content, is_published)
+                  VALUES ($1, $2, $3, true)";
         
         $result = pg_query_params($conn, $query, 
-            array($article_id, $user_id, $title, $content, $cover_image));
+            array($user_id, $title, $content));
         
         if ($result) {
             http_response_code(201);
@@ -349,7 +351,6 @@ function handleUpdateArticle($method) {
     $article_id = $input['article_id'] ?? null;
     $title = $input['title'] ?? null;
     $content = $input['content'] ?? null;
-    $cover_image = $input['cover_image'] ?? null;
     
     // If token is provided, look up user_id from it
     if ($token && !$user_id) {
@@ -369,11 +370,11 @@ function handleUpdateArticle($method) {
     }
     
     try {
-        $query = "UPDATE articles SET title = $1, content = $2, cover_image = $3, updated_at = NOW()
-                  WHERE article_id = $4 AND doctor_id = $5";
+        $query = "UPDATE articles SET title = $1, content = $2, updated_at = NOW()
+                  WHERE id = $3 AND doctor_id = $4";
         
         $result = pg_query_params($conn, $query, 
-            array($title, $content, $cover_image, $article_id, $user_id));
+            array($title, $content, $article_id, $user_id));
         
         if ($result) {
             http_response_code(200);
@@ -424,7 +425,7 @@ function handleDeleteArticle($method) {
     }
     
     try {
-        $query = "UPDATE articles SET deleted_at = NOW() WHERE article_id = $1 AND doctor_id = $2";
+        $query = "UPDATE articles SET is_published = false WHERE id = $1 AND doctor_id = $2";
         $result = pg_query_params($conn, $query, array($article_id, $user_id));
         
         if ($result) {
@@ -463,7 +464,7 @@ function handleViewArticle($method) {
     }
     
     try {
-        $query = "UPDATE articles SET views = views + 1 WHERE article_id = $1";
+        $query = "UPDATE articles SET view_count = view_count + 1 WHERE id = $1";
         pg_query_params($conn, $query, array($article_id));
         
         http_response_code(200);
