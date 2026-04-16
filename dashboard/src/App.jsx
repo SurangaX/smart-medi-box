@@ -556,12 +556,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       console.log('📅 Fetching schedules for date:', filterDate);
       console.log('🔑 Token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
       
-      const response = await fetch(`${API_URL}/index.php/api/schedule/list`, {
+      const response = await fetch(`${API_URL}/index.php/api/schedule/today`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           token,
-          date: filterDate
+          start_date: filterDate,
+          end_date: filterDate
         })
       });
       
@@ -616,17 +617,23 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const fetchStats = async () => {
     try {
+      console.log('📊 Fetching schedule stats...');
       const response = await fetch(`${API_URL}/index.php/api/schedule/stats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
       });
+      console.log('📡 Stats API Response Status:', response.status);
       const data = await response.json();
+      console.log('📊 Stats API Response Data:', data);
       if (data.status === 'SUCCESS') {
+        console.log('✅ Stats fetched successfully');
         setStats(data);
+      } else {
+        console.error('❌ Stats fetch failed:', data.message);
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      console.error('🚨 Stats fetch exception:', err);
     }
   };
 
