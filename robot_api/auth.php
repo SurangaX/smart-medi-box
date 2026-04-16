@@ -230,9 +230,9 @@ function handlePatientSignup($method) {
         
         error_log("PATIENT SIGNUP - Inserting: email=$email, nic=$nic, dob=$dob, phone=$phone");
         
-        // Insert patient user
-        $query = "INSERT INTO users (email, password_hash, nic, dob, role, status) 
-                  VALUES ($1, $2, $3, $4, 'PATIENT', 'ACTIVE')
+        // Insert patient user - only use columns that actually exist
+        $query = "INSERT INTO users (email, password_hash, nic, dob, role) 
+                  VALUES ($1, $2, $3, $4, 'PATIENT')
                   RETURNING id";
         
         $result = pg_query_params($conn, $query, [$email, $password_hash, $nic, $dob]);
@@ -346,9 +346,9 @@ function handleDoctorSignup($method) {
         
         error_log("DOCTOR SIGNUP - Inserting: email=$email, nic=$nic, license=$license_number, specialty=$specialty");
         
-        // Insert doctor user
-        $query = "INSERT INTO users (email, password_hash, nic, license_number, specialty, role, status) 
-                  VALUES ($1, $2, $3, $4, $5, 'DOCTOR', 'ACTIVE')
+        // Insert doctor user - only use columns that actually exist
+        $query = "INSERT INTO users (email, password_hash, nic, license_number, specialty, role) 
+                  VALUES ($1, $2, $3, $4, $5, 'DOCTOR')
                   RETURNING id";
         
         $result = pg_query_params($conn, $query, [$email, $password_hash, $nic, $license_number, $specialty]);
@@ -466,8 +466,8 @@ function handleRegisterUser($method) {
         
         $user_id = 'USER_' . date('Ymd') . '_' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
         
-        $query = "INSERT INTO users (user_id, name, mac_address, role, status) 
-                  VALUES ($1, $2, $3, 'PATIENT', 'ACTIVE')
+        $query = "INSERT INTO users (user_id, name, mac_address, role) 
+                  VALUES ($1, $2, $3, 'PATIENT')
                   RETURNING id";
         
         $result = pg_query_params($conn, $query, [$user_id, $name, $mac_address]);
