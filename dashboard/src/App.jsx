@@ -545,15 +545,27 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     setScannerError('');
     
     try {
-      // Create the qr-reader div inside the container
+      // Check if the container exists
       if (!qrScannerRef.current) {
-        setScannerError('Scanner container not found');
+        setScannerError('Scanner container not found. Please try refreshing the page.');
+        console.error('qrScannerRef.current is null');
         return;
       }
 
-      // Clear any existing content
+      // Clear any existing content and create the qr-reader div
       qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
       
+      // Small delay to ensure DOM is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify the qr-reader div was created
+      const qrReaderDiv = document.getElementById('qr-reader');
+      if (!qrReaderDiv) {
+        setScannerError('Failed to create scanner element. Please try again.');
+        console.error('qr-reader div not found after creation');
+        return;
+      }
+
       const qrScanner = new Html5QrcodeScanner(
         'qr-reader',
         {
@@ -590,11 +602,21 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   };
 
   const stopQRScanner = () => {
-    if (qrInstanceRef.current) {
-      qrInstanceRef.current.pause();
-      // Clear the scanner element
-      const qrReader = document.getElementById('qr-reader');
-      if (qrReader) qrReader.innerHTML = '';
+    try {
+      if (qrInstanceRef.current) {
+        // Stop the scanner properly
+        qrInstanceRef.current.pause();
+        qrInstanceRef.current.stop().catch(err => console.log('Scanner already stopped:', err));
+        qrInstanceRef.current = null;
+        
+        // Clear the scanner element
+        if (qrScannerRef.current) {
+          qrScannerRef.current.innerHTML = '';
+        }
+      }
+      setScannerStarted(false);
+    } catch (error) {
+      console.error('Error stopping scanner:', error);
       setScannerStarted(false);
     }
   };
@@ -732,19 +754,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       <Camera size={18} /> Start Camera
                     </button>
                   </div>
-                ) : (
-                  <div className="scanner-active-section">
-                    <div ref={qrScannerRef} className="qr-scanner-container"></div>
-                    <button 
-                      className="btn-secondary"
-                      onClick={() => {
-                        stopQRScanner();
-                        setShowQRScanner(false);
-                      }}
-                    >
-                      Stop Scanning
-                    </button>
-                  </div>
+                ) : null}
+
+                <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: scannerStarted ? 'block' : 'none' }}></div>
+
+                {scannerStarted && (
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => {
+                      stopQRScanner();
+                      setShowQRScanner(false);
+                    }}
+                  >
+                    Stop Scanning
+                  </button>
                 )}
 
                 {scannerError && (
