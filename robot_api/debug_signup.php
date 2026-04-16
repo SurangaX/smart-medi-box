@@ -140,20 +140,23 @@ try {
     
     // Step 6: Test INSERT query
     echo "Step 6: Testing INSERT query...\n";
-    $insertQuery = "INSERT INTO users (email, password_hash, nic, dob, role) 
-                    VALUES ($1, $2, $3, $4, 'PATIENT')
-                    RETURNING id";
+    $insertQuery = "INSERT INTO users (user_id, name, email, password_hash, nic, dob, age, phone, role, status) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PATIENT', 'ACTIVE')";
     
     echo "  Query: " . str_replace('$1', '\$1', $insertQuery) . "\n";
     echo "  Parameters:\n";
-    echo "    [1] email: $email\n";
-    echo "    [2] password_hash: " . substr($password_hash, 0, 40) . "...\n";
-    echo "    [3] nic: $nic\n";
-    echo "    [4] dob: $dob\n";
+    echo "    [1] user_id: $user_id\n";
+    echo "    [2] name: $name\n";
+    echo "    [3] email: $email\n";
+    echo "    [4] password_hash: " . substr($password_hash, 0, 40) . "...\n";
+    echo "    [5] nic: $nic\n";
+    echo "    [6] dob: $dob\n";
+    echo "    [7] age: " . ($age ?? 'NULL') . "\n";
+    echo "    [8] phone: " . ($phone ?? 'NULL') . "\n";
     echo "\n";
     
     $result = pg_query_params($conn, $insertQuery, 
-        array($email, $password_hash, $nic, $dob));
+        array($user_id, $name, $email, $password_hash, $nic, $dob, $age, $phone));
     
     if (!$result) {
         echo "  ✗ INSERT FAILED!\n";
@@ -163,10 +166,7 @@ try {
         
         // Step 7: Retrieve the user
         echo "\nStep 7: Retrieving created user...\n";
-        $row = pg_fetch_assoc($result);
-        $user_id = $row['id'];
-        
-        $userQuery = "SELECT id, email, role FROM users WHERE id = $1";
+        $userQuery = "SELECT id, user_id, name, email, role FROM users WHERE user_id = $1";
         $userResult = pg_query_params($conn, $userQuery, array($user_id));
         if (!$userResult || pg_num_rows($userResult) === 0) {
             echo "  ✗ Could not retrieve user\n";
@@ -174,6 +174,8 @@ try {
             $userData = pg_fetch_assoc($userResult);
             echo "  ✓ User found!\n";
             echo "    ID: " . $userData['id'] . "\n";
+            echo "    User ID: " . $userData['user_id'] . "\n";
+            echo "    Name: " . $userData['name'] . "\n";
             echo "    Email: " . $userData['email'] . "\n";
             echo "    Role: " . $userData['role'] . "\n";
         }
