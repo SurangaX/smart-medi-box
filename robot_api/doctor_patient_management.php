@@ -586,8 +586,8 @@ try {
     if ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        $dpm = new DoctorPatientManager($db);
-        $am = new ArticleManager($db);
+        $dpm = new DoctorPatientManager($conn);
+        $am = new ArticleManager($conn);
         
         switch ($action) {
         case 'doctor/assign-patient':
@@ -648,7 +648,7 @@ try {
             echo json_encode(['status' => 'ERROR', 'message' => 'Unknown action']);
     }
 } else if ($method === 'GET') {
-    $am = new ArticleManager($db);
+    $am = new ArticleManager($conn);
     
     switch ($action) {
         case 'articles':
