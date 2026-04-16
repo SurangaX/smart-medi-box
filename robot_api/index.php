@@ -7,11 +7,22 @@
  * Main entry point for all API requests
  * Routes requests to appropriate handlers
  * 
- * Usage:
- * - /api/auth/verify - User authentication
- * - /api/auth/register - New user registration
+ * NEW Authentication Endpoints:
+ * - POST /api/auth/login - Login with email/password
+ * - POST /api/auth/patient/signup - Patient registration
+ * - POST /api/auth/doctor/signup - Doctor registration
+ * 
+ * Legacy Endpoints (QR-based):
+ * - POST /api/auth/verify - User authentication via MAC
+ * - POST /api/auth/register - New user registration via MAC
+ * - POST /api/auth/qr-generate - Generate QR token
+ * - GET /api/auth/mac-lookup - Find user by MAC address
+ * 
+ * Schedule Endpoints:
  * - /api/schedule/get - Fetch schedules
  * - /api/schedule/create - Create new schedule
+ * 
+ * Temperature Endpoints:
  * - /api/temp/current - Get current temperature
  * - /api/temp/set-target - Set target temperature
  * - /api/temp/control - Cooling system control
@@ -57,18 +68,11 @@ $subaction = isset($request_parts[3]) ? $request_parts[3] : '';
 // Route to appropriate module
 switch ($module) {
     case 'auth':
-        // Include authentication module
-        if ($action === 'patient' || $action === 'doctor') {
-            // New auth system
-            $_GET['action'] = $action . '/' . $subaction;
-            $_GET['module'] = 'auth';
-            require 'auth_new.php';
-        } else {
-            // Old auth system
-            $_GET['action'] = $action;
-            $_GET['module'] = 'auth';
-            require 'auth.php';
-        }
+        // All auth endpoints (login, signup, QR-based verify, etc.)
+        // The auth.php module handles routing to specific handlers
+        $_GET['action'] = $action;
+        $_GET['module'] = 'auth';
+        require 'auth.php';
         break;
     
     case 'doctor':

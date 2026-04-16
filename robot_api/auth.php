@@ -23,17 +23,34 @@ header('Content-Type: application/json');
 // Get request method
 $method = $_SERVER['REQUEST_METHOD'];
 $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
-$action = $request_uri[0] ?? '';
-$subaction = $request_uri[1] ?? '';
+
+// Skip the 'api' prefix if present
+$start_index = (isset($request_uri[0]) && $request_uri[0] === 'api') ? 1 : 0;
+
+// Get action and subaction from the path
+// Path format: /api/auth/login or /api/auth/patient/signup
+$action = $request_uri[$start_index + 1] ?? '';  // 'auth' or 'login' 
+$subaction = $request_uri[$start_index + 2] ?? '';
+
+// Determine which handler to call
+// If first segment is 'auth', the actual action is in the next segment
+if ($action === 'auth') {
+    $actual_action = $subaction;
+    $actual_subaction = $request_uri[$start_index + 3] ?? '';
+} else {
+    // Direct action path (shouldn't happen with current routing)
+    $actual_action = $action;
+    $actual_subaction = $subaction;
+}
 
 // Route to appropriate handler
-switch ($action) {
+switch ($actual_action) {
     case 'login':
         handleLogin($method);
         break;
     
     case 'patient':
-        if ($subaction === 'signup') {
+        if ($actual_subaction === 'signup') {
             handlePatientSignup($method);
         } else {
             http_response_code(404);
@@ -42,7 +59,7 @@ switch ($action) {
         break;
     
     case 'doctor':
-        if ($subaction === 'signup') {
+        if ($actual_subaction === 'signup') {
             handleDoctorSignup($method);
         } else {
             http_response_code(404);
