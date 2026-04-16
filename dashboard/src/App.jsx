@@ -474,6 +474,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     description: '' 
   });
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [articles, setArticles] = useState([]);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [articlesLoading, setArticlesLoading] = useState(false);
   const qrScannerRef = useRef(null);
   const qrInstanceRef = useRef(null);
 
@@ -510,6 +513,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       fetchTempHistory();
     } else if (activeTab === 'stats') {
       fetchStats();
+    } else if (activeTab === 'articles') {
+      fetchArticles();
     }
   }, [activeTab]);
 
@@ -639,6 +644,38 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       }
     } catch (err) {
       console.error('🚨 Stats fetch exception:', err);
+    }
+  };
+
+  const fetchArticles = async () => {
+    try {
+      setArticlesLoading(true);
+      const response = await fetch(`${API_URL}/index.php/api/articles/list`);
+      const data = await response.json();
+      
+      if (data.status === 'SUCCESS') {
+        setArticles(data.articles || []);
+      } else {
+        console.error('Failed to fetch articles:', data.message);
+        setArticles([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch articles:', err);
+      setArticles([]);
+    } finally {
+      setArticlesLoading(false);
+    }
+  };
+
+  const handleViewArticle = async (articleId) => {
+    try {
+      await fetch(`${API_URL}/index.php/api/articles/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_id: articleId })
+      });
+    } catch (err) {
+      console.error('Failed to track view:', err);
     }
   };
 
@@ -940,6 +977,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           onClick={() => setActiveTab('stats')}
         >
           📈 Stats
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'articles' ? 'active' : ''}`}
+          onClick={() => setActiveTab('articles')}
+        >
+          📰 Articles
         </button>
       </div>
 
@@ -1375,7 +1418,76 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             )}
           </div>
         )}
+
+        {activeTab === 'articles' && (
+          <div className="section">
+            <h2 style={{ marginBottom: '20px' }}>📰 Latest Articles</h2>
+            
+            {articlesLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading articles...</p>
+            ) : articles.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>No articles available yet</p>
+            ) : (
+              <div className="articles-grid">
+                {articles.map(article => (
+                  <div
+                    key={article.id}
+                    className="article-card"
+                    onClick={() => {
+                      setSelectedArticle(article);
+                      handleViewArticle(article.article_id);
+                    }}
+                  >
+                    <div className="article-cover">
+                      {article.cover_image ? (
+                        <img src={article.cover_image} alt={article.title} />
+                      ) : (
+                        <span style={{ fontSize: '48px' }}>📄</span>
+                      )}
+                    </div>
+                    <div className="article-content">
+                      <h3 className="article-title">{article.title}</h3>
+                      <p className="article-excerpt">{article.excerpt || article.content.substring(0, 100)}</p>
+                      <div className="article-meta">
+                        <div className="article-author">
+                          {article.doctor_name || 'Anonymous'}
+                        </div>
+                        <div className="article-views">
+                          👁️ {article.views || 0}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Article Detail Modal */}
+      {selectedArticle && (
+        <div className="modal-overlay" onClick={() => setSelectedArticle(null)}>
+          <div className="modal-content" style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <button
+              style={{ float: 'right', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '24px', padding: '0' }}
+              onClick={() => setSelectedArticle(null)}
+            >
+              ✕
+            </button>
+            <h2 style={{ marginBottom: '12px' }}>{selectedArticle.title}</h2>
+            {selectedArticle.cover_image && (
+              <img src={selectedArticle.cover_image} alt={selectedArticle.title} style={{ width: '100%', borderRadius: '8px', marginBottom: '16px', maxHeight: '300px', objectFit: 'cover' }} />
+            )}
+            <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+              By <strong>{selectedArticle.doctor_name || 'Anonymous'}</strong> • {new Date(selectedArticle.created_at).toLocaleDateString()} • 👁️ {selectedArticle.views || 0} views
+            </p>
+            <div style={{ color: 'var(--text-primary)', lineHeight: '1.8', fontSize: '15px', whiteSpace: 'pre-wrap' }}>
+              {selectedArticle.content}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
@@ -1404,7 +1516,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [patients, setPatients] = useState([]);
   const [articles, setArticles] = useState([]);
   const [showNewArticle, setShowNewArticle] = useState(false);
-  const [newArticle, setNewArticle] = useState({ title: '', content: '', summary: '', category: '' });
+  const [newArticle, setNewArticle] = useState({ title: '', content: '', cover_image: '' });
   const [assignPatient, setAssignPatient] = useState({ patient_nic: '', notes: '' });
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1456,13 +1568,21 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const fetchArticles = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/index.php/api/articles?limit=10`);
+      const response = await fetch(`${API_URL}/index.php/api/articles/my`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         setArticles(data.articles || []);
+      } else {
+        console.error('Failed to fetch articles:', data.message);
+        setArticles([]);
       }
     } catch (err) {
-      console.error('Failed to fetch articles');
+      console.error('Failed to fetch articles:', err);
+      setArticles([]);
     } finally {
       setLoading(false);
     }
@@ -1490,19 +1610,49 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const handleCreateArticle = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_URL}/index.php/api/doctor/article/create`, {
+      const response = await fetch(`${API_URL}/index.php/api/articles/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, ...newArticle })
+        body: JSON.stringify({
+          token,
+          title: newArticle.title,
+          content: newArticle.content,
+          cover_image: newArticle.cover_image || null
+        })
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
-        setNewArticle({ title: '', content: '', summary: '', category: '' });
+        alert('✅ Article published successfully!');
+        setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '' });
         setShowNewArticle(false);
         fetchArticles();
+      } else {
+        alert('Error: ' + (data.message || 'Failed to create article'));
       }
     } catch (err) {
-      console.error('Failed to create article');
+      alert('Error creating article: ' + err.message);
+    }
+  };
+
+  const handleDeleteArticle = async (articleId) => {
+    if (!confirm('Are you sure you want to delete this article?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/articles/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, article_id: articleId })
+      });
+      const data = await response.json();
+      
+      if (data.status === 'SUCCESS') {
+        alert('✅ Article deleted successfully!');
+        fetchArticles();
+      } else {
+        alert('Error: ' + (data.message || 'Failed to delete article'));
+      }
+    } catch (err) {
+      alert('Error deleting article: ' + err.message);
     }
   };
 
@@ -1601,8 +1751,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             </div>
 
             {showNewArticle && (
-              <form onSubmit={handleCreateArticle} className="form-card">
-                <div className="form-group">
+              <form onSubmit={handleCreateArticle} className="article-form">
+                <div className="article-form-group">
                   <label>Title *</label>
                   <input
                     type="text"
@@ -1612,36 +1762,26 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <label>Summary</label>
+                <div className="article-form-group">
+                  <label>Cover Image URL (optional)</label>
                   <input
-                    type="text"
-                    value={newArticle.summary}
-                    onChange={(e) => setNewArticle({ ...newArticle, summary: e.target.value })}
-                    placeholder="Brief summary"
+                    type="url"
+                    value={newArticle.cover_image}
+                    onChange={(e) => setNewArticle({ ...newArticle, cover_image: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
                   />
                 </div>
-                <div className="form-group">
-                  <label>Category</label>
-                  <input
-                    type="text"
-                    value={newArticle.category}
-                    onChange={(e) => setNewArticle({ ...newArticle, category: e.target.value })}
-                    placeholder="e.g., Cardiology, Nephrology"
-                  />
-                </div>
-                <div className="form-group">
+                <div className="article-form-group">
                   <label>Content *</label>
                   <textarea
                     value={newArticle.content}
                     onChange={(e) => setNewArticle({ ...newArticle, content: e.target.value })}
-                    placeholder="Article content"
-                    rows="8"
+                    placeholder="Write your article content here..."
                     required
                   />
                 </div>
-                <div className="form-buttons">
-                  <button type="submit" className="btn-primary">Publish</button>
+                <div className="article-button-group">
+                  <button type="submit" className="btn-primary">Publish Article</button>
                   <button type="button" className="btn-secondary" onClick={() => setShowNewArticle(false)}>Cancel</button>
                 </div>
               </form>
@@ -1650,15 +1790,45 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             {articles.length === 0 ? (
               <p className="empty-state">No articles published yet.</p>
             ) : (
-              <div className="articles-list">
+              <div className="articles-grid">
                 {articles.map(article => (
                   <div key={article.id} className="article-card">
-                    <h3>{article.title}</h3>
-                    <p className="article-meta">By Dr. {article.doctor_name} • {article.specialization}</p>
-                    {article.summary && <p className="article-summary">{article.summary}</p>}
-                    <div className="article-footer">
-                      <span className="category">{article.category}</span>
-                      <span className="views">👁 {article.view_count} views</span>
+                    <div className="article-cover">
+                      {article.cover_image ? (
+                        <img src={article.cover_image} alt={article.title} />
+                      ) : (
+                        <span style={{ fontSize: '48px' }}>📄</span>
+                      )}
+                    </div>
+                    <div className="article-content">
+                      <h3 className="article-title">{article.title}</h3>
+                      <p className="article-excerpt">{article.content.substring(0, 100)}...</p>
+                      <div className="article-meta">
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {new Date(article.created_at).toLocaleDateString()}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          👁️ {article.views}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        <button
+                          className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
+                          onClick={() => {
+                            alert('Edit functionality coming soon');
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn-danger"
+                          style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
+                          onClick={() => handleDeleteArticle(article.article_id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
