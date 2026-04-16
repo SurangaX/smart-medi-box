@@ -449,8 +449,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [doctors, setDoctors] = useState([]);
   const [pairingToken, setPairingToken] = useState('');
   const [showPairingCode, setShowPairingCode] = useState(false);
+  const [scannedMac, setScannedMac] = useState('');
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [manualMacInput, setManualMacInput] = useState('');
   const [temperature, setTemperature] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [scannerError, setScannerError] = useState('');
 
   useEffect(() => {
     if (activeTab === 'doctors') {
@@ -515,6 +519,68 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  const handleQRScan = (decodedText) => {
+    // decodedText should be the device MAC address from the QR code
+    console.log('QR Code Scanned:', decodedText);
+    setScannedMac(decodedText.trim());
+    setScannerError('');
+  };
+
+  const completePairingWithMac = async (macAddress) => {
+    if (!macAddress) {
+      setScannerError('Please enter or scan a valid device MAC address');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // First, generate a pairing token for authorization
+      const tokenResponse = await fetch(`${API_URL}/index.php/api/auth/generate-pairing-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.status !== 'SUCCESS') {
+        setScannerError('Failed to generate pairing token');
+        setLoading(false);
+        return;
+      }
+
+      // Now complete pairing with the token and MAC address
+      const response = await fetch(`${API_URL}/index.php/api/auth/complete-pairing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pairing_token: tokenData.pairing_token,
+          mac_address: macAddress.toUpperCase().trim(),
+          device_name: `Smart Medi Box - ${macAddress}`,
+          token
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.status === 'SUCCESS') {
+        setShowQRScanner(false);
+        setScannedMac('');
+        setManualMacInput('');
+        setScannerError('');
+        fetchDevices(); // Refresh device list
+        alert('✅ Device paired successfully!');
+      } else {
+        setScannerError(data.message || 'Failed to pair device');
+      }
+    } catch (err) {
+      console.error('Pairing error:', err);
+      setScannerError('Network error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="dashboard patient-dashboard">
       <div className="dashboard-header">
@@ -553,29 +619,69 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className="section">
             <div className="section-header">
               <h2>Paired Devices</h2>
-              <button className="btn-primary" onClick={generatePairingToken}>
-                <Plus size={18} /> Add Device
+              <button className="btn-primary" onClick={() => setShowQRScanner(!showQRScanner)}>
+                <Plus size={18} /> {showQRScanner ? 'Cancel Scan' : 'Scan Device QR'}
               </button>
             </div>
 
+            {showQRScanner && (
+              <div className="qr-scanner-box">
+                <p>Scan the QR code on your Smart Medi Box device, or enter the MAC address manually:</p>
+                
+                <div className="qr-input-group">
+                  <label>Device MAC Address:</label>
+                  <input
+                    type="text"
+                    placeholder="Enter MAC address (e.g., AA:BB:CC:DD:EE:FF) or paste scanned QR"
+                    value={manualMacInput || scannedMac}
+                    onChange={(e) => {
+                      setManualMacInput(e.target.value);
+                      if (e.target.value) setScannerError('');
+                    }}
+                    className="mac-input"
+                  />
+                </div>
+
+                {scannerError && (
+                  <div className="error-message">
+                    <AlertCircle size={16} />
+                    {scannerError}
+                  </div>
+                )}
+
+                <div className="qr-actions">
+                  <button 
+                    className="btn-primary"
+                    onClick={() => completePairingWithMac(manualMacInput || scannedMac)}
+                    disabled={loading || (!manualMacInput && !scannedMac)}
+                  >
+                    {loading ? 'Pairing...' : 'Pair Device'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {showPairingCode && (
               <div className="pairing-code-box">
-                <p>Share this code with your device to pair:</p>
+                <h3>Share this code with your device:</h3>
                 <div className="code-display">{pairingToken}</div>
+                <p className="hint">Your device can scan this code for pairing</p>
                 <button className="btn-secondary" onClick={() => setShowPairingCode(false)}>Close</button>
               </div>
             )}
 
             {devices.length === 0 ? (
-              <p className="empty-state">No devices paired yet. Generate a pairing code to add your first device.</p>
+              <p className="empty-state">No devices paired yet. Click "Scan Device QR" to add your first device.</p>
             ) : (
               <div className="devices-list">
                 {devices.map(device => (
                   <div key={device.device_id} className="device-card">
                     <div className="device-info">
-                      <h3>{device.device_name}</h3>
+                      <h3>{device.device_name || 'Smart Medi Box'}</h3>
                       <p>MAC: {device.mac_address}</p>
-                      <p className={`status ${device.status.toLowerCase()}`}>Status: {device.status}</p>
+                      <p className={`status ${device.status ? device.status.toLowerCase() : 'active'}`}>
+                        Status: {device.status || 'Active'}
+                      </p>
                     </div>
                   </div>
                 ))}

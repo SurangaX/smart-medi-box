@@ -24,6 +24,7 @@
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <esp_mac.h>  // For MAC address retrieval
 
 // GSM Libraries
 #define TINY_GSM_MODEM_SIM800
@@ -51,8 +52,9 @@ const char* GSM_USER = "";
 const char* GSM_PASS = "";
 
 // Device Configuration
-const char* DEVICE_ID = "LEONARDO-001";
-const char* DEVICE_TYPE = "ARDUINO_LEONARDO";
+const char* DEVICE_TYPE = "SMART_MEDI_BOX";
+String DEVICE_MAC = "";  // Will be set from ESP32 MAC address
+String DEVICE_ID = "";   // Will be generated from MAC
 
 // Timing
 const unsigned long SYNC_INTERVAL = 60000;      // 1 minute
@@ -94,6 +96,51 @@ SensorData sensorData;
 DeviceStatus status;
 String lastCommand = "";
 
+// ==================== DEVICE IDENTIFICATION ====================
+void getDeviceMACAddress() {
+  // Get ESP32's built-in MAC address
+  uint8_t baseMac[6];
+  esp_read_mac(baseMac, ESP_MAC_WIFI_STA);
+  
+  // Convert to string format: AA:BB:CC:DD:EE:FF
+  char macStr[18] = {0};
+  sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", 
+    baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+  
+  DEVICE_MAC = String(macStr);
+  
+  // Device ID is the MAC address without colons for QR encoding
+  DEVICE_ID = String((char*)baseMac);
+  for (int i = 0; i < 6; i++) {
+    char hex[3];
+    sprintf(hex, "%02X", baseMac[i]);
+    DEVICE_ID.replace(String((char*)baseMac[i]), String(hex));
+  }
+  
+  debugPrint("Device MAC: " + DEVICE_MAC);
+  debugPrint("Device ID: " + DEVICE_ID);
+}
+
+String getQRCodeData() {
+  // QR code contains: DEVICE_ID|MAC_ADDRESS
+  // This allows both static device ID and human-readable MAC
+  String qrData = DEVICE_MAC;  // Just the MAC for simplicity
+  return qrData;
+}
+
+void printDeviceIdentifiers() {
+  // Print device info for reference/QR code generation
+  debugPrint("========================================");
+  debugPrint("SMART MEDI BOX - DEVICE IDENTIFICATION");
+  debugPrint("========================================");
+  debugPrint("MAC Address: " + DEVICE_MAC);
+  debugPrint("QR Code Data: " + getQRCodeData());
+  debugPrint("========================================");
+  debugPrint("To pair: Scan the QR code with mobile app");
+  debugPrint("or manually enter: " + DEVICE_MAC);
+  debugPrint("========================================");
+}
+
 // ==================== SETUP ====================
 void setup() {
   // Initialize Serial for debugging (USB)
@@ -109,6 +156,10 @@ void setup() {
   delay(2000);
   
   debugPrint("ESP32 Starting...");
+  
+  // Get device MAC address (for QR code pairing)
+  getDeviceMACAddress();
+  printDeviceIdentifiers();
   
   // Initialize GSM
   initGSM();

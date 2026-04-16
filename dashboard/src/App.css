@@ -635,6 +635,69 @@ body {
   margin-bottom: 12px;
 }
 
+/* ==================== QR Scanner ==================== */
+.qr-scanner-box {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.qr-scanner-box p {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.qr-input-group {
+  margin-bottom: 16px;
+}
+
+.qr-input-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.mac-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.mac-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.qr-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.qr-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.qr-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ==================== Health Info ==================== */
 .health-info {
   display: grid;
