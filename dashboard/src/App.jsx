@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff } from 'lucide-react';
 import './App.css';
 
-const API_URL = 'https://smart-medi-box-api.onrender.com';
+const API_URL = 'https://smart-medi-box.onrender.com';
 
 // ==================== Login Screen ====================
 const LoginScreen = ({ onLoginSuccess }) => {
