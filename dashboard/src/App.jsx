@@ -878,8 +878,29 @@ export default function App() {
         profile: JSON.parse(profile)
       });
       setCurrentPage(role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
+    } else {
+      // Handle hash routing for auth pages
+      const hash = window.location.hash.slice(1) || 'login';
+      if (hash === 'signup' || hash === 'login') {
+        setCurrentPage(hash);
+      }
     }
   }, []);
+
+  // Handle hash changes for navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (!currentUser) {
+        const hash = window.location.hash.slice(1) || 'login';
+        if (hash === 'signup' || hash === 'login') {
+          setCurrentPage(hash);
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [currentUser]);
 
   const handleLoginSuccess = (data) => {
     setCurrentUser(data);
