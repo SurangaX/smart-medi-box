@@ -225,6 +225,53 @@ class DoctorPatientManager {
     }
     
     /**
+     * Get patient's devices
+     */
+    public function getPatientDevices($token) {
+        try {
+            // Authenticate patient
+            $auth = $this->authenticateUser($token);
+            if ($auth['status'] !== 'SUCCESS') {
+                return $auth;
+            }
+            
+            $user_id = $auth['user_id'];
+            
+            // Get patient devices from device_sessions
+            $query = "
+                SELECT 
+                    ds.device_mac as device_id,
+                    ds.device_mac,
+                    'ACTIVE' as status,
+                    ds.created_at as registered_at
+                FROM device_sessions ds
+                WHERE ds.user_id = $1
+                ORDER BY ds.created_at DESC
+            ";
+            
+            $result = pg_query_params($this->db, $query, [$user_id]);
+            $devices = [];
+            
+            while ($row = pg_fetch_assoc($result)) {
+                $devices[] = [
+                    'device_id' => $row['device_id'],
+                    'device_mac' => $row['device_mac'],
+                    'status' => $row['status'],
+                    'registered_at' => $row['registered_at']
+                ];
+            }
+            
+            return [
+                'status' => 'SUCCESS',
+                'devices' => $devices,
+                'count' => count($devices)
+            ];
+        } catch (Exception $e) {
+            return ['status' => 'ERROR', 'message' => 'Failed to fetch devices: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
      * Get patient details (for doctor)
      */
     public function getPatientDetails($token, $patient_id) {
@@ -546,6 +593,11 @@ if ($method === 'POST') {
         case 'patient/doctors':
             $token = $input['token'] ?? '';
             echo json_encode($dpm->getPatientDoctors($token));
+            break;
+            
+        case 'patient/devices':
+            $token = $input['token'] ?? '';
+            echo json_encode($dpm->getPatientDevices($token));
             break;
             
         case 'article/create':

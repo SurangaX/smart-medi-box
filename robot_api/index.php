@@ -87,14 +87,14 @@ switch ($module) {
     
     case 'doctor':
         // Doctor management
-        $_GET['action'] = $action . '/' . $subaction;
+        $_GET['action'] = 'doctor/' . $action . ($subaction ? '/' . $subaction : '');
         $_GET['module'] = 'doctor';
         require 'doctor_patient_management.php';
         break;
     
     case 'patient':
         // Patient management
-        $_GET['action'] = $action . '/' . $subaction;
+        $_GET['action'] = 'patient/' . $action . ($subaction ? '/' . $subaction : '');
         $_GET['module'] = 'patient';
         require 'doctor_patient_management.php';
         break;
