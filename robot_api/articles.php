@@ -151,14 +151,30 @@ function handleMyArticles($method) {
     $token = $input['token'] ?? null;
     $user_id = $input['user_id'] ?? null;
     
+    error_log("MY ARTICLES - Token received: " . ($token ? substr($token, 0, 10) . '...' : 'NULL'));
+    error_log("MY ARTICLES - User ID received: " . ($user_id ?? 'NULL'));
+    
     // If token is provided, look up user_id from it
     if ($token && !$user_id) {
+        error_log("MY ARTICLES - Looking up token: " . substr($token, 0, 10) . '...');
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
         
-        if (pg_num_rows($token_result) > 0) {
+        if ($token_result && pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
+            error_log("MY ARTICLES - Token lookup successful, user_id: " . $user_id);
+        } else {
+            error_log("MY ARTICLES - Token lookup failed, rows: " . (pg_num_rows($token_result) ?? 'error'));
+            // Try without expiry check
+            $token_query_noexpiry = "SELECT user_id, expires_at FROM session_tokens WHERE token = $1";
+            $token_result_noexpiry = pg_query_params($conn, $token_query_noexpiry, array($token));
+            if ($token_result_noexpiry && pg_num_rows($token_result_noexpiry) > 0) {
+                $token_row_noexpiry = pg_fetch_assoc($token_result_noexpiry);
+                error_log("MY ARTICLES - Token found but expired, expires_at: " . $token_row_noexpiry['expires_at']);
+            } else {
+                error_log("MY ARTICLES - Token not found in session_tokens table");
+            }
         }
     }
     
@@ -238,14 +254,23 @@ function handleCreateArticle($method) {
     $content = $input['content'] ?? null;
     $cover_image = $input['cover_image'] ?? null;
     
+    error_log("CREATE ARTICLE - Token received: " . ($token ? substr($token, 0, 10) . '...' : 'NULL'));
+    error_log("CREATE ARTICLE - User ID received: " . ($user_id ?? 'NULL'));
+    error_log("CREATE ARTICLE - Title: " . ($title ?? 'NULL'));
+    error_log("CREATE ARTICLE - Content length: " . (strlen($content ?? '') ?? 0));
+    
     // If token is provided, look up user_id from it
     if ($token && !$user_id) {
+        error_log("CREATE ARTICLE - Looking up token: " . substr($token, 0, 10) . '...');
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
         
-        if (pg_num_rows($token_result) > 0) {
+        if ($token_result && pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
+            error_log("CREATE ARTICLE - Token lookup successful, user_id: " . $user_id);
+        } else {
+            error_log("CREATE ARTICLE - Token lookup failed, rows: " . (pg_num_rows($token_result) ?? 'error'));
         }
     }
     
