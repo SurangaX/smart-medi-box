@@ -19,9 +19,13 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
-    age INT NOT NULL,
+    email VARCHAR(100),
+    password_hash VARCHAR(255),
+    role VARCHAR(20) DEFAULT 'patient',
+    age INT,
     phone VARCHAR(20) UNIQUE,
     mac_address VARCHAR(20) UNIQUE NOT NULL,
+    profile_photo TEXT,
     status user_status DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,6 +45,21 @@ CREATE TABLE schedules (
     is_completed BOOLEAN DEFAULT FALSE,
     completed_at TIMESTAMP NULL,
     status schedule_status DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+);
+
+-- Articles Table (For doctors to share health tips, news, etc.)
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    article_id VARCHAR(60) UNIQUE NOT NULL,
+    doctor_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    cover_image TEXT,
+    status VARCHAR(20) DEFAULT 'PUBLISHED',
+    views INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -190,6 +209,9 @@ CREATE INDEX idx_session_tokens_user_id ON session_tokens(user_id);
 CREATE INDEX idx_session_tokens_token ON session_tokens(token);
 CREATE INDEX idx_schedules_user_id ON schedules(user_id);
 CREATE INDEX idx_schedules_created_at ON schedules(created_at);
+CREATE INDEX idx_articles_doctor_id ON articles(doctor_id);
+CREATE INDEX idx_articles_created_at ON articles(created_at);
+CREATE INDEX idx_articles_status ON articles(status);
 CREATE INDEX idx_temperature_logs_user_id ON temperature_logs(user_id);
 CREATE INDEX idx_temperature_logs_timestamp ON temperature_logs(timestamp);
 CREATE INDEX idx_alarm_logs_user_id ON alarm_logs(user_id);

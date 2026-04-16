@@ -167,6 +167,15 @@ switch ($module) {
         handleSystemStatus();
         break;
     
+    case 'articles':
+        // Articles module for sharing health articles
+        $_GET['action'] = $action;
+        $_GET['module'] = 'articles';
+        error_log("INDEX.PHP - Routing to ARTICLES module, action: " . $action);
+        error_log("INDEX.PHP - Set GET[action] to: " . $action);
+        require 'articles.php';
+        break;
+    
     case 'docs':
         // API documentation
         handleAPIDocs();
@@ -178,7 +187,7 @@ switch ($module) {
         echo json_encode([
             'status' => 'ERROR',
             'message' => 'Unknown API module: ' . $module,
-            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'status']
+            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status']
         ]);
         break;
 }
