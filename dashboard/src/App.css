@@ -66,6 +66,7 @@ body {
 .auth-header {
   text-align: center;
   margin-bottom: 30px;
+  user-select: none;
 }
 
 .app-logo {
@@ -73,6 +74,7 @@ body {
   margin-bottom: 16px;
   display: inline-block;
   animation: pulse 2s infinite;
+  user-select: none;
 }
 
 @keyframes pulse {
@@ -84,11 +86,13 @@ body {
   font-size: 28px;
   margin-bottom: 8px;
   color: var(--text-primary);
+  user-select: none;
 }
 
 .auth-header p {
   color: var(--text-secondary);
   font-size: 14px;
+  user-select: none;
 }
 
 /* ==================== Form Styles ==================== */
@@ -186,6 +190,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 24px;
+  user-select: none;
 }
 
 .role-btn {
@@ -198,6 +203,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  user-select: none;
 }
 
 .role-btn:hover {
@@ -297,12 +303,19 @@ body {
   color: var(--text-secondary);
   font-size: 14px;
   margin-top: 20px;
+  user-select: none;
+}
+
+.auth-footer p {
+  user-select: none;
 }
 
 .auth-footer a {
   color: var(--primary);
   text-decoration: none;
   font-weight: 600;
+  user-select: text;
+  cursor: pointer;
 }
 
 .auth-footer a:hover {

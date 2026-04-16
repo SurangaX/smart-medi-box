@@ -927,13 +927,6 @@ export default function App() {
         <>
           {currentPage === 'login' && <LoginScreen onLoginSuccess={handleLoginSuccess} />}
           {currentPage === 'signup' && <SignupScreen onSignupSuccess={handleSignupSuccess} />}
-          {currentPage === 'login' && (
-            <div className="auth-switch">
-              <button onClick={() => setCurrentPage('signup')} className="link-btn">
-                Don't have an account? Sign up
-              </button>
-            </div>
-          )}
         </>
       ) : currentUser.role === 'PATIENT' ? (
         <PatientDashboard
