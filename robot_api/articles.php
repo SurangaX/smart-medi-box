@@ -318,65 +318,60 @@ function handleCreateArticle($method) {
     }
     
     try {
-        $article_id = 'ART_' . time() . '_' . bin2hex(random_bytes(4));
+        error_log("CREATE ARTICLE - Starting article creation for user_id: " . $user_id);
         
-        // Check if doctor record exists for this user_id
-        // If not, create one
+        // Step 1: Check if doctor record exists
         $doctor_check_query = "SELECT id FROM doctors WHERE id = $1";
         $doctor_check_result = pg_query_params($conn, $doctor_check_query, array($user_id));
         
-        if (!$doctor_check_result) {
-            error_log("CREATE ARTICLE - Doctor check query failed: " . pg_last_error($conn));
-            // Try to create a doctor record for this user
-            error_log("CREATE ARTICLE - Creating doctor record for user_id: " . $user_id);
-            $doctor_create_query = "INSERT INTO doctors (id, name, email) VALUES ($1, $2, $3)";
-            $doctor_create_result = pg_query_params($conn, $doctor_create_query, 
-                array($user_id, 'Doctor ' . $user_id, 'doctor' . $user_id . '@smartmedibox.local'));
-            
-            if (!$doctor_create_result) {
-                error_log("CREATE ARTICLE - Failed to create doctor record: " . pg_last_error($conn));
-            } else {
-                error_log("CREATE ARTICLE - Doctor record created successfully");
-            }
-        } elseif (pg_num_rows($doctor_check_result) === 0) {
-            error_log("CREATE ARTICLE - Doctor with id $user_id not found, creating one");
-            $doctor_create_query = "INSERT INTO doctors (id, name, email) VALUES ($1, $2, $3)";
-            $doctor_create_result = pg_query_params($conn, $doctor_create_query, 
-                array($user_id, 'Doctor ' . $user_id, 'doctor' . $user_id . '@smartmedibox.local'));
-            
-            if (!$doctor_create_result) {
-                error_log("CREATE ARTICLE - Failed to create doctor record: " . pg_last_error($conn));
-            } else {
-                error_log("CREATE ARTICLE - Doctor record created successfully");
-            }
+        if ($doctor_check_result === false) {
+            throw new Exception("Doctor check query failed: " . pg_last_error($conn));
         }
         
-        // Now insert the article
-        $query = "INSERT INTO articles (doctor_id, title, content, is_published)
-                  VALUES ($1, $2, $3, true)";
+        $doctor_exists = (pg_num_rows($doctor_check_result) > 0);
+        error_log("CREATE ARTICLE - Doctor exists: " . ($doctor_exists ? 'YES' : 'NO'));
         
-        error_log("CREATE ARTICLE - Executing insert with doctor_id: $user_id, title: $title");
+        // Step 2: If doctor doesn't exist, create one
+        if (!$doctor_exists) {
+            error_log("CREATE ARTICLE - Creating doctor record for user_id: " . $user_id);
+            $doctor_create_query = "INSERT INTO doctors (id, name, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING";
+            $doctor_create_result = pg_query_params($conn, $doctor_create_query, 
+                array($user_id, 'Doctor ' . $user_id, 'doctor' . $user_id . '@smartmedibox.local'));
+            
+            if ($doctor_create_result === false) {
+                throw new Exception("Failed to create doctor record: " . pg_last_error($conn));
+            }
+            error_log("CREATE ARTICLE - Doctor record created");
+        }
+        
+        // Step 3: Insert the article
+        error_log("CREATE ARTICLE - Inserting article for doctor_id: " . $user_id);
+        $query = "INSERT INTO articles (doctor_id, title, content, is_published)
+                  VALUES ($1, $2, $3, true)
+                  RETURNING id";
+        
         $result = pg_query_params($conn, $query, 
             array($user_id, $title, $content));
         
-        if ($result) {
-            error_log("CREATE ARTICLE - Insert successful");
-            http_response_code(201);
-            echo json_encode([
-                'status' => 'SUCCESS',
-                'message' => 'Article created',
-                'article_id' => $article_id
-            ]);
-        } else {
-            $error_msg = pg_last_error($conn);
-            error_log("CREATE ARTICLE - Insert failed: " . $error_msg);
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to create article: ' . $error_msg]);
+        if ($result === false) {
+            throw new Exception("Failed to insert article: " . pg_last_error($conn));
         }
+        
+        $article = pg_fetch_assoc($result);
+        $article_id = $article['id'] ?? null;
+        
+        error_log("CREATE ARTICLE - Article created successfully with id: " . $article_id);
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Article created',
+            'article_id' => $article_id
+        ]);
     } catch (Exception $e) {
         error_log("Create Article Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Failed to create article: ' . $e->getMessage()]);
     }
 }
 
