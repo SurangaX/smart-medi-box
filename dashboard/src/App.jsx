@@ -473,15 +473,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const qrInstanceRef = useRef(null);
 
   const handleLogoutClick = () => {
+    console.log('🚪 Logout button clicked');
+    console.log('Current showLogoutConfirm state:', showLogoutConfirm);
     setShowLogoutConfirm(true);
+    console.log('Set showLogoutConfirm to true');
   };
 
   const handleConfirmLogout = () => {
+    console.log('🔓 Confirming logout');
     setShowLogoutConfirm(false);
     onLogout();
   };
 
   const handleCancelLogout = () => {
+    console.log('❌ Logout cancelled');
     setShowLogoutConfirm(false);
   };
 
@@ -548,21 +553,32 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const fetchSchedules = async (dateFilter = null) => {
     try {
       const filterDate = dateFilter || scheduleFilterDate || new Date().toISOString().split('T')[0];
-      const response = await fetch(`${API_URL}/index.php/api/schedule/today`, {
+      console.log('📅 Fetching schedules for date:', filterDate);
+      console.log('🔑 Token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      
+      const response = await fetch(`${API_URL}/index.php/api/schedule/list`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           token,
-          start_date: filterDate,
-          end_date: filterDate
+          date: filterDate
         })
       });
+      
+      console.log('📡 Schedule API Response Status:', response.status);
       const data = await response.json();
+      console.log('📊 Schedule API Response Data:', data);
+      
       if (data.status === 'SUCCESS') {
+        console.log('✅ Schedules fetched successfully:', data.schedules?.length || 0, 'items');
         setSchedules(data.schedules || []);
+      } else {
+        console.error('❌ Schedule fetch failed:', data.message || 'Unknown error');
+        setSchedules([]);
       }
     } catch (err) {
-      console.error('Failed to fetch schedules:', err);
+      console.error('🚨 Schedule fetch exception:', err);
+      setSchedules([]);
     }
   };
 
@@ -617,6 +633,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const handleCreateSchedule = async (e) => {
     e.preventDefault();
     try {
+      console.log('💊 Creating new schedule:', newSchedule);
       const response = await fetch(`${API_URL}/index.php/api/schedule/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -629,35 +646,50 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           description: newSchedule.description
         })
       });
+      console.log('📡 Create Schedule API Response Status:', response.status);
       const data = await response.json();
+      console.log('📊 Create Schedule API Response:', data);
+      
       if (data.status === 'SUCCESS') {
+        console.log('✅ Schedule created successfully!');
         alert('✅ Schedule created successfully!');
         const today = new Date().toISOString().split('T')[0];
         setNewSchedule({ type: 'MEDICINE', schedule_date: today, hour: 9, minute: 0, description: '' });
+        // Refresh schedules from the newly created schedule's date
         fetchSchedules(newSchedule.schedule_date);
       } else {
-        alert('Error: ' + data.message);
+        console.error('❌ Schedule creation failed:', data.message);
+        alert('Error: ' + (data.message || 'Failed to create schedule'));
       }
     } catch (err) {
-      console.error('Failed to create schedule:', err);
-      alert('Failed to create schedule');
+      console.error('🚨 Schedule creation exception:', err);
+      alert('Failed to create schedule: ' + err.message);
     }
   };
 
   const handleCompleteSchedule = async (scheduleId) => {
     try {
+      console.log('✓ Marking schedule as complete:', scheduleId);
       const response = await fetch(`${API_URL}/index.php/api/schedule/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, schedule_id: scheduleId })
       });
+      console.log('📡 Complete Schedule API Response Status:', response.status);
       const data = await response.json();
+      console.log('📊 Complete Schedule API Response:', data);
+      
       if (data.status === 'SUCCESS') {
+        console.log('✅ Schedule marked as complete!');
         alert('✅ Schedule marked as complete!');
         fetchSchedules();
+      } else {
+        console.error('❌ Failed to mark schedule complete:', data.message);
+        alert('Error: ' + (data.message || 'Failed to mark schedule complete'));
       }
     } catch (err) {
-      console.error('Failed to complete schedule:', err);
+      console.error('🚨 Complete schedule exception:', err);
+      alert('Failed to mark schedule complete: ' + err.message);
     }
   };
 
@@ -1332,6 +1364,24 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Confirm Logout</h2>
+            <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
+            <div className="modal-buttons">
+              <button className="btn-secondary" onClick={handleCancelLogout}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={handleConfirmLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1346,6 +1396,23 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [assignPatient, setAssignPatient] = useState({ patient_nic: '', notes: '' });
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogoutClick = () => {
+    console.log('🚪 Logout button clicked');
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    console.log('🔑 Confirming logout');
+    setShowLogoutConfirm(false);
+    onLogout();
+  };
+
+  const handleCancelLogout = () => {
+    console.log('❌ Logout cancelled');
+    setShowLogoutConfirm(false);
+  };
 
   useEffect(() => {
     if (activeTab === 'patients') {
@@ -1434,7 +1501,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
           <h1>👨‍⚕️ Welcome, Dr. {profile.name}</h1>
           <p>Specialization: {profile.specialization} | Hospital: {profile.hospital}</p>
         </div>
-        <button className="btn-secondary" onClick={onLogout}>
+        <button className="btn-secondary" onClick={handleLogoutClick}>
           <LogOut size={18} /> Logout
         </button>
       </div>
