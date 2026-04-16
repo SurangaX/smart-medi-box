@@ -11,6 +11,8 @@
  * - POST /api/auth/verify - MAC-based verification (legacy)
  * - POST /api/auth/register - MAC-based registration (legacy)
  * - POST /api/auth/qr-generate - Generate QR token (legacy)
+ * - POST /api/auth/generate-pairing-token - Generate device pairing token
+ * - POST /api/auth/complete-pairing - Complete device pairing
  * 
  * ============================================================================
  */
@@ -594,7 +596,10 @@ function handleMACLookup($method) {
 function handleGeneratePairingToken($method) {
     global $conn;
     
+    error_log("PAIRING TOKEN HANDLER CALLED: method=$method");
+    
     if ($method !== 'POST') {
+        error_log("PAIRING TOKEN: Wrong method, returning 405");
         return errorResponse(405, 'Method not allowed');
     }
     
