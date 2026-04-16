@@ -616,23 +616,47 @@ function handleGeneratePairingToken($method) {
                   WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $result = pg_query_params($conn, $query, [$token]);
         
-        if (!$result || pg_num_rows($result) === 0) {
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
+        }
+        
+        if (pg_num_rows($result) === 0) {
+            error_log("PAIRING TOKEN: Invalid or expired token");
             return errorResponse(401, 'Invalid or expired token');
         }
         
         $token_row = pg_fetch_assoc($result);
         $user_id = $token_row['user_id'];
         
-        // Get patient_id from user_id
+        error_log("PAIRING TOKEN: user_id=$user_id from auth token");
+        
+        // Try to get patient_id, or create one if needed
         $query = "SELECT id FROM patients WHERE user_id = $1";
         $result = pg_query_params($conn, $query, [$user_id]);
         
-        if (!$result || pg_num_rows($result) === 0) {
-            return errorResponse(404, 'Patient profile not found');
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
         }
         
-        $patient = pg_fetch_assoc($result);
-        $patient_id = $patient['id'];
+        $patient_id = null;
+        if (pg_num_rows($result) > 0) {
+            $patient = pg_fetch_assoc($result);
+            $patient_id = $patient['id'];
+            error_log("PAIRING TOKEN: Found existing patient_id=$patient_id");
+        } else {
+            // Create patient record if it doesn't exist
+            error_log("PAIRING TOKEN: No patient record found, creating one");
+            $query = "INSERT INTO patients (user_id, nic, name) VALUES ($1, $2, $3) RETURNING id";
+            $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient']);
+            
+            if ($result) {
+                $patient = pg_fetch_assoc($result);
+                $patient_id = $patient['id'];
+                error_log("PAIRING TOKEN: Created new patient_id=$patient_id");
+            } else {
+                throw new Exception("Failed to create patient record: " . pg_last_error($conn));
+            }
+        }
         
         // Generate pairing token
         $pairing_token = bin2hex(random_bytes(32));
@@ -659,7 +683,7 @@ function handleGeneratePairingToken($method) {
         ]);
     } catch (Exception $e) {
         error_log("Pairing Token Generation Error: " . $e->getMessage());
-        return errorResponse(500, 'Failed to generate pairing token');
+        return errorResponse(500, 'Failed to generate pairing token: ' . $e->getMessage());
     }
 }
 
@@ -688,29 +712,46 @@ function handleCompletePairing($method) {
                   WHERE token = $1 AND is_used = false AND expires_at > CURRENT_TIMESTAMP";
         $result = pg_query_params($conn, $query, [$pairing_token]);
         
-        if (!$result || pg_num_rows($result) === 0) {
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
+        }
+        
+        if (pg_num_rows($result) === 0) {
+            error_log("COMPLETE PAIRING: Invalid or expired pairing token");
             return errorResponse(401, 'Invalid or expired pairing token');
         }
         
         $token_row = pg_fetch_assoc($result);
         $patient_id = $token_row['patient_id'];
         
+        error_log("COMPLETE PAIRING: patient_id=$patient_id from pairing token");
+        
         // Get user_id from patient_id
         $query = "SELECT user_id FROM patients WHERE id = $1";
         $result = pg_query_params($conn, $query, [$patient_id]);
         
-        if (!$result || pg_num_rows($result) === 0) {
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
+        }
+        
+        if (pg_num_rows($result) === 0) {
+            error_log("COMPLETE PAIRING: Patient not found for patient_id=$patient_id");
             return errorResponse(404, 'Patient not found');
         }
         
         $patient = pg_fetch_assoc($result);
         $user_id = $patient['user_id'];
         
+        error_log("COMPLETE PAIRING: user_id=$user_id");
+        
         // Check if device already exists
         $check = pg_query_params($conn, "SELECT id FROM device_registry WHERE mac_address = $1", [$mac_address]);
-        if (!$check) throw new Exception(pg_last_error($conn));
+        if (!$check) {
+            throw new Exception(pg_last_error($conn));
+        }
         
         if (pg_num_rows($check) > 0) {
+            error_log("COMPLETE PAIRING: Device already paired: $mac_address");
             return errorResponse(409, 'Device already paired');
         }
         
