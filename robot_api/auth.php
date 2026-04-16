@@ -646,8 +646,10 @@ function handleGeneratePairingToken($method) {
         } else {
             // Create patient record if it doesn't exist
             error_log("PAIRING TOKEN: No patient record found, creating one");
-            $query = "INSERT INTO patients (user_id, nic, name) VALUES ($1, $2, $3) RETURNING id";
-            $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient']);
+            $default_dob = '1990-01-01'; // Default date of birth
+            $query = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type) 
+                      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+            $result = pg_query_params($conn, $query, [$user_id, 'UNKNOWN', 'Patient', $default_dob, 'OTHER', 'UNKNOWN']);
             
             if ($result) {
                 $patient = pg_fetch_assoc($result);
