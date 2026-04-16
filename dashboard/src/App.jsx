@@ -258,7 +258,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
                 />
               </div>
               <div className="form-group">
-                <label>NIC/ID Number *</label>
+                <label>NIC Number *</label>
                 <input
                   type="text"
                   name="nic"
@@ -300,13 +300,13 @@ const SignupScreen = ({ onSignupSuccess }) => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Phone Number</label>
+                <label>Phone Number *</label>
                 <input
                   type="tel"
                   name="phone_number"
                   value={formData.phone_number}
                   onChange={handleInputChange}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+94 7XX XXX XXX"
                 />
               </div>
             </div>

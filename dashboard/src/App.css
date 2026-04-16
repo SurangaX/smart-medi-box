@@ -96,6 +96,10 @@ body {
   margin-bottom: 20px;
 }
 
+.auth-form .btn-primary {
+  margin-top: 12px;
+}
+
 .signup-form {
   display: flex;
   flex-direction: column;
