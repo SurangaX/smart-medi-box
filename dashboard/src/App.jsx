@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
@@ -455,6 +456,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [temperature, setTemperature] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
+  const [scannerStarted, setScannerStarted] = useState(false);
+  const qrScannerRef = useRef(null);
+  const qrInstanceRef = useRef(null);
 
   useEffect(() => {
     if (activeTab === 'doctors') {
@@ -524,7 +528,61 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     console.log('QR Code Scanned:', decodedText);
     setScannedMac(decodedText.trim());
     setScannerError('');
+    // Auto-stop scanner after successful scan
+    if (qrInstanceRef.current) {
+      qrInstanceRef.current.pause();
+      setScannerStarted(false);
+    }
   };
+
+  const startQRScanner = () => {
+    if (scannerStarted) return;
+    
+    setScannerError('');
+    const qrScanner = new Html5QrcodeScanner(
+      'qr-reader',
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        aspectRatio: 1.0,
+      },
+      false
+    );
+
+    qrScanner.render(
+      (decodedText) => {
+        console.log('QR Scanned:', decodedText);
+        setScannedMac(decodedText.trim());
+        setScannerError('');
+        qrScanner.pause();
+        setScannerStarted(false);
+      },
+      (errorMessage) => {
+        // Suppress logging for performance
+      }
+    );
+
+    qrInstanceRef.current = qrScanner;
+    setScannerStarted(true);
+  };
+
+  const stopQRScanner = () => {
+    if (qrInstanceRef.current) {
+      qrInstanceRef.current.pause();
+      // Clear the scanner element
+      const qrReader = document.getElementById('qr-reader');
+      if (qrReader) qrReader.innerHTML = '';
+      setScannerStarted(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: stop scanner when component unmounts
+      stopQRScanner();
+    };
+  }, []);
 
   const completePairingWithMac = async (macAddress) => {
     if (!macAddress) {
@@ -626,37 +684,80 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
             {showQRScanner && (
               <div className="qr-scanner-box">
-                <p>Scan the QR code on your Smart Medi Box device, or enter the MAC address manually:</p>
-                
-                <div className="qr-input-group">
-                  <label>Device MAC Address:</label>
-                  <input
-                    type="text"
-                    placeholder="Enter MAC address (e.g., AA:BB:CC:DD:EE:FF) or paste scanned QR"
-                    value={manualMacInput || scannedMac}
-                    onChange={(e) => {
-                      setManualMacInput(e.target.value);
-                      if (e.target.value) setScannerError('');
+                <div className="qr-scanner-header">
+                  <h3>Scan Device QR Code</h3>
+                  <button 
+                    className="close-btn"
+                    onClick={() => {
+                      setShowQRScanner(false);
+                      stopQRScanner();
                     }}
-                    className="mac-input"
-                  />
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
 
-                {scannerError && (
-                  <div className="error-message">
-                    <AlertCircle size={16} />
-                    {scannerError}
+                {!scannerStarted ? (
+                  <div className="scanner-start-section">
+                    <p>Click the button below to start scanning your device's QR code</p>
+                    <button 
+                      className="btn-primary"
+                      onClick={() => {
+                        setScannerError('');
+                        startQRScanner();
+                      }}
+                    >
+                      <Camera size={18} /> Start Camera
+                    </button>
+                  </div>
+                ) : (
+                  <div className="scanner-active-section">
+                    <div id="qr-reader" ref={qrScannerRef} className="qr-reader"></div>
+                    <button 
+                      className="btn-secondary"
+                      onClick={() => {
+                        stopQRScanner();
+                        setShowQRScanner(false);
+                      }}
+                    >
+                      Stop Scanning
+                    </button>
                   </div>
                 )}
 
-                <div className="qr-actions">
-                  <button 
-                    className="btn-primary"
-                    onClick={() => completePairingWithMac(manualMacInput || scannedMac)}
-                    disabled={loading || (!manualMacInput && !scannedMac)}
-                  >
-                    {loading ? 'Pairing...' : 'Pair Device'}
-                  </button>
+                <div className="qr-manual-section">
+                  <p className="divider">OR enter MAC address manually:</p>
+                  <div className="qr-input-group">
+                    <label>Device MAC Address:</label>
+                    <input
+                      type="text"
+                      placeholder="Enter MAC address (e.g., AA:BB:CC:DD:EE:FF)"
+                      value={manualMacInput || scannedMac}
+                      onChange={(e) => {
+                        setManualMacInput(e.target.value);
+                        if (e.target.value) setScannerError('');
+                      }}
+                      className="mac-input"
+                      autoFocus
+                    />
+                  </div>
+
+                  {scannerError && (
+                    <div className="error-message">
+                      <AlertCircle size={16} />
+                      {scannerError}
+                    </div>
+                  )}
+
+                  <div className="qr-actions">
+                    <button 
+                      className="btn-primary"
+                      onClick={() => completePairingWithMac(manualMacInput || scannedMac)}
+                      disabled={loading || (!manualMacInput && !scannedMac)}
+                    >
+                      {loading ? 'Pairing...' : 'Pair Device'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

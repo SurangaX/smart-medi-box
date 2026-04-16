@@ -644,9 +644,89 @@ body {
   margin-bottom: 20px;
 }
 
-.qr-scanner-box p {
+.qr-scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.qr-scanner-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.scanner-start-section {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.scanner-start-section p {
   color: var(--text-secondary);
   margin-bottom: 16px;
+}
+
+.scanner-active-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.qr-reader {
+  width: 100%;
+  max-width: 400px;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.qr-reader video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.qr-reader canvas {
+  display: none;
+}
+
+.qr-manual-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.qr-manual-section p {
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 16px 0;
+}
+
+.divider {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .qr-input-group {
@@ -658,6 +738,7 @@ body {
   margin-bottom: 8px;
   color: var(--text-primary);
   font-weight: 500;
+  font-size: 14px;
 }
 
 .mac-input {
@@ -669,6 +750,7 @@ body {
   color: var(--text-primary);
   font-family: 'Courier New', monospace;
   font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .mac-input:focus {
@@ -691,11 +773,34 @@ body {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .qr-actions button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Responsive QR Scanner */
+@media (max-width: 768px) {
+  .qr-reader {
+    max-width: 100%;
+  }
+
+  .qr-scanner-box {
+    padding: 16px;
+  }
+
+  .qr-actions {
+    flex-direction: column;
+  }
+
+  .qr-actions button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ==================== Health Info ==================== */
