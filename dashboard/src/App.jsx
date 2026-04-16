@@ -634,8 +634,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       return;
     }
 
+    if (!token) {
+      setScannerError('User authentication token not found. Please refresh and login again.');
+      console.error('Token not available:', { currentUserToken: token, localStorage: localStorage.getItem('token') });
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Starting pairing with MAC:', macAddress, 'Token:', token.substring(0, 20) + '...');
+
       // First, generate a pairing token for authorization
       const tokenResponse = await fetch(`${API_URL}/index.php/api/auth/generate-pairing-token`, {
         method: 'POST',
@@ -645,8 +653,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       const tokenData = await tokenResponse.json();
       
+      console.log('Pairing token response:', tokenData);
+      
       if (tokenData.status !== 'SUCCESS') {
-        setScannerError('Failed to generate pairing token');
+        setScannerError(`Failed to generate pairing token: ${tokenData.message || 'Unknown error'}`);
+        console.error('Token generation failed:', tokenData);
         setLoading(false);
         return;
       }
@@ -665,6 +676,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       const data = await response.json();
       
+      console.log('Complete pairing response:', data);
+      
       if (data.status === 'SUCCESS') {
         setShowQRScanner(false);
         setScannedMac('');
@@ -673,7 +686,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         fetchDevices(); // Refresh device list
         alert('✅ Device paired successfully!');
       } else {
-        setScannerError(data.message || 'Failed to pair device');
+        setScannerError(`Failed to pair device: ${data.message || 'Unknown error'}`);
+        console.error('Pairing failed:', data);
       }
     } catch (err) {
       console.error('Pairing error:', err);

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Medi Box - Test QR Code</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        #qrCode {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #eee;
+        }
+
+        .device-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+            border-left: 4px solid #667eea;
+        }
+
+        .device-info h3 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .device-info p {
+            color: #666;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin-top: 30px;
+        }
+
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .instructions ol {
+            color: #666;
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            #qrCode {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">💊</div>
+            <h1>Smart Medi Box</h1>
+            <p class="subtitle">Test QR Code for Device Pairing</p>
+        </div>
+
+        <div class="qr-section">
+            <div id="qrCode"></div>
+
+            <div class="device-info">
+                <h3>Dummy Device MAC Address</h3>
+                <p id="macAddress">AA:BB:CC:DD:EE:FF</p>
+            </div>
+
+            <div class="instructions">
+                <h3>📱 How to Test:</h3>
+                <ol>
+                    <li>Open the Smart Medi Box Dashboard</li>
+                    <li>Go to the "Paired Devices" tab</li>
+                    <li>Click "Scan Device QR" button</li>
+                    <li>Click "Start Camera"</li>
+                    <li>Point your camera at this QR code</li>
+                    <li>The MAC address will be detected automatically</li>
+                    <li>Click "Pair Device" to complete the pairing</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🔒 This is a test device. Use it to verify the QR pairing flow works correctly.</p>
+        </div>
+    </div>
+
+    <script>
+        // Generate QR code with the MAC address
+        const macAddress = 'AA:BB:CC:DD:EE:FF';
+        
+        // QR code will contain just the MAC address
+        new QRCode(document.getElementById('qrCode'), {
+            text: macAddress,
+            width: 300,
+            height: 300,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        console.log('QR Code generated for MAC: ' + macAddress);
+    </script>
+</body>
+</html>
