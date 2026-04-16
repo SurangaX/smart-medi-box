@@ -539,13 +539,19 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  const startQRScanner = () => {
+  const startQRScanner = async () => {
     if (scannerStarted) return;
     
     setScannerError('');
     
-    // Create the qr-reader div inside the container
-    if (qrScannerRef.current) {
+    try {
+      // Create the qr-reader div inside the container
+      if (!qrScannerRef.current) {
+        setScannerError('Scanner container not found');
+        return;
+      }
+
+      // Clear any existing content
       qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
       
       const qrScanner = new Html5QrcodeScanner(
@@ -559,7 +565,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         false
       );
 
-      qrScanner.render(
+      // Render returns a promise
+      await qrScanner.render(
         (decodedText) => {
           console.log('QR Scanned:', decodedText);
           setScannedMac(decodedText.trim());
@@ -574,6 +581,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       qrInstanceRef.current = qrScanner;
       setScannerStarted(true);
+      console.log('QR Scanner started successfully');
+    } catch (error) {
+      console.error('Failed to start QR scanner:', error);
+      setScannerError('Camera access denied or not available. Please check permissions: ' + error.message);
+      setScannerStarted(false);
     }
   };
 
@@ -712,9 +724,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                     <p>Click the button below to start scanning your device's QR code</p>
                     <button 
                       className="btn-primary"
-                      onClick={() => {
+                      onClick={async () => {
                         setScannerError('');
-                        startQRScanner();
+                        await startQRScanner();
                       }}
                     >
                       <Camera size={18} /> Start Camera
