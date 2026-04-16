@@ -129,16 +129,34 @@ function handleCreateSchedule($method) {
     $minute = $input['minute'] ?? $_POST['minute'] ?? null;
     $description = $input['description'] ?? $_POST['description'] ?? '';
     
+    error_log("CREATE SCHEDULE - Received token: " . ($token ? substr($token, 0, 20) . '...' : 'NULL'));
+    error_log("CREATE SCHEDULE - Received user_id: " . ($user_id ?? 'NULL'));
+    error_log("CREATE SCHEDULE - Received type: " . ($type ?? 'NULL'));
+    error_log("CREATE SCHEDULE - Received hour: " . ($hour ?? 'NULL'));
+    error_log("CREATE SCHEDULE - Received minute: " . ($minute ?? 'NULL'));
+    
     // If token is provided, look up the user_id from it
     if ($token && !$user_id) {
+        error_log("CREATE SCHEDULE - Looking up user_id from token");
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if ($token_result === false) {
+            error_log("CREATE SCHEDULE - Token query failed: " . pg_last_error($conn));
+        } else {
+            error_log("CREATE SCHEDULE - Token query returned " . pg_num_rows($token_result) . " rows");
+        }
         
         if (pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
+            error_log("CREATE SCHEDULE - Found user_id from token: " . $user_id);
+        } else {
+            error_log("CREATE SCHEDULE - No token found in session_tokens");
         }
     }
+    
+    error_log("CREATE SCHEDULE - Final user_id: " . ($user_id ?? 'NULL'));
     
     if (!$user_id || !$type || !$schedule_date || $hour === null || $minute === null) {
         http_response_code(400);
@@ -363,16 +381,32 @@ function handleGetTodaySchedules($method) {
     $start_date = $input['start_date'] ?? $_POST['start_date'] ?? $_GET['start_date'] ?? date('Y-m-d');
     $end_date = $input['end_date'] ?? $_POST['end_date'] ?? $_GET['end_date'] ?? date('Y-m-d');
     
+    error_log("GET TODAY SCHEDULES - Received token: " . ($token ? substr($token, 0, 20) . '...' : 'NULL'));
+    error_log("GET TODAY SCHEDULES - Received user_id: " . ($user_id ?? 'NULL'));
+    error_log("GET TODAY SCHEDULES - Start date: " . $start_date . ", End date: " . $end_date);
+    
     // If token is provided, look up the user_id from it
     if ($token && !$user_id) {
+        error_log("GET TODAY SCHEDULES - Looking up user_id from token");
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if ($token_result === false) {
+            error_log("GET TODAY SCHEDULES - Token query failed: " . pg_last_error($conn));
+        } else {
+            error_log("GET TODAY SCHEDULES - Token query returned " . pg_num_rows($token_result) . " rows");
+        }
         
         if (pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
+            error_log("GET TODAY SCHEDULES - Found user_id from token: " . $user_id);
+        } else {
+            error_log("GET TODAY SCHEDULES - No token found in session_tokens");
         }
     }
+    
+    error_log("GET TODAY SCHEDULES - Final user_id: " . ($user_id ?? 'NULL'));
     
     if (!$user_id) {
         http_response_code(400);
