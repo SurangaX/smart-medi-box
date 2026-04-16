@@ -615,7 +615,7 @@ function handleGeneratePairingToken($method) {
     try {
         // Mode 1: Authenticated (user already logged in)
         if ($token) {
-            $query = "SELECT user_id FROM auth_tokens 
+            $query = "SELECT user_id FROM session_tokens 
                       WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
             $result = pg_query_params($conn, $query, [$token]);
             
