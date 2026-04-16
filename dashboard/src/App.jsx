@@ -479,9 +479,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         setDevices(data.devices || []);
+      } else {
+        console.error('Fetch devices error:', data.message || 'Unknown error');
+        setDevices([]);
       }
     } catch (err) {
-      console.error('Failed to fetch devices');
+      console.error('Failed to fetch devices:', err);
+      setDevices([]);
     } finally {
       setLoading(false);
     }
@@ -539,32 +543,38 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     if (scannerStarted) return;
     
     setScannerError('');
-    const qrScanner = new Html5QrcodeScanner(
-      'qr-reader',
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        rememberLastUsedCamera: true,
-        aspectRatio: 1.0,
-      },
-      false
-    );
+    
+    // Create the qr-reader div inside the container
+    if (qrScannerRef.current) {
+      qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
+      
+      const qrScanner = new Html5QrcodeScanner(
+        'qr-reader',
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          rememberLastUsedCamera: true,
+          aspectRatio: 1.0,
+        },
+        false
+      );
 
-    qrScanner.render(
-      (decodedText) => {
-        console.log('QR Scanned:', decodedText);
-        setScannedMac(decodedText.trim());
-        setScannerError('');
-        qrScanner.pause();
-        setScannerStarted(false);
-      },
-      (errorMessage) => {
-        // Suppress logging for performance
-      }
-    );
+      qrScanner.render(
+        (decodedText) => {
+          console.log('QR Scanned:', decodedText);
+          setScannedMac(decodedText.trim());
+          setScannerError('');
+          qrScanner.pause();
+          setScannerStarted(false);
+        },
+        (errorMessage) => {
+          // Suppress logging for performance
+        }
+      );
 
-    qrInstanceRef.current = qrScanner;
-    setScannerStarted(true);
+      qrInstanceRef.current = qrScanner;
+      setScannerStarted(true);
+    }
   };
 
   const stopQRScanner = () => {
@@ -712,7 +722,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   </div>
                 ) : (
                   <div className="scanner-active-section">
-                    <div id="qr-reader" ref={qrScannerRef} className="qr-reader"></div>
+                    <div ref={qrScannerRef} className="qr-scanner-container"></div>
                     <button 
                       className="btn-secondary"
                       onClick={() => {
@@ -725,40 +735,25 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   </div>
                 )}
 
-                <div className="qr-manual-section">
-                  <p className="divider">OR enter MAC address manually:</p>
-                  <div className="qr-input-group">
-                    <label>Device MAC Address:</label>
-                    <input
-                      type="text"
-                      placeholder="Enter MAC address (e.g., AA:BB:CC:DD:EE:FF)"
-                      value={manualMacInput || scannedMac}
-                      onChange={(e) => {
-                        setManualMacInput(e.target.value);
-                        if (e.target.value) setScannerError('');
-                      }}
-                      className="mac-input"
-                      autoFocus
-                    />
+                {scannerError && (
+                  <div className="error-message">
+                    <AlertCircle size={16} />
+                    {scannerError}
                   </div>
+                )}
 
-                  {scannerError && (
-                    <div className="error-message">
-                      <AlertCircle size={16} />
-                      {scannerError}
-                    </div>
-                  )}
-
-                  <div className="qr-actions">
+                {scannedMac && (
+                  <div className="scanned-result">
+                    <p>MAC Address detected: <strong>{scannedMac}</strong></p>
                     <button 
                       className="btn-primary"
-                      onClick={() => completePairingWithMac(manualMacInput || scannedMac)}
-                      disabled={loading || (!manualMacInput && !scannedMac)}
+                      onClick={() => completePairingWithMac(scannedMac)}
+                      disabled={loading}
                     >
                       {loading ? 'Pairing...' : 'Pair Device'}
                     </button>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
