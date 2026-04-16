@@ -81,6 +81,8 @@ function handleListArticles($method) {
     }
     
     try {
+        error_log("LIST ARTICLES - Starting query");
+        
         $query = "SELECT 
                     a.id,
                     a.article_id,
@@ -97,13 +99,19 @@ function handleListArticles($method) {
                   ORDER BY a.created_at DESC
                   LIMIT 50";
         
+        error_log("LIST ARTICLES - Query: " . $query);
+        
         $result = pg_query($conn, $query);
         
         if ($result === false) {
+            $error_msg = pg_last_error($conn);
+            error_log("LIST ARTICLES - Query failed: " . $error_msg);
             http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed: ' . pg_last_error($conn)]);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed: ' . $error_msg]);
             return;
         }
+        
+        error_log("LIST ARTICLES - Query successful, rows: " . pg_num_rows($result));
         
         $articles = [];
         while ($row = pg_fetch_assoc($result)) {
@@ -111,6 +119,7 @@ function handleListArticles($method) {
             $excerpt = substr(strip_tags($row['content']), 0, 200) . '...';
             
             $articles[] = [
+                'id' => intval($row['id']),
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
@@ -121,6 +130,8 @@ function handleListArticles($method) {
                 'doctor_photo' => $row['doctor_photo']
             ];
         }
+        
+        error_log("LIST ARTICLES - Returning " . count($articles) . " articles");
         
         http_response_code(200);
         echo json_encode([
