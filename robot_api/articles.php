@@ -18,6 +18,10 @@
 
 require_once 'db_config.php';
 
+error_log("ARTICLES.PHP - File included successfully");
+error_log("ARTICLES.PHP - GET array: " . json_encode($_GET));
+error_log("ARTICLES.PHP - REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+
 // Enable CORS for all requests
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -40,30 +44,37 @@ error_log("ARTICLES API - Action: $action, Method: $method");
 // Route to handler
 switch ($action) {
     case 'list':
+        error_log("ARTICLES API - Matched case: list");
         handleListArticles($method);
         break;
     
     case 'my':
+        error_log("ARTICLES API - Matched case: my");
         handleMyArticles($method);
         break;
     
     case 'create':
+        error_log("ARTICLES API - Matched case: create");
         handleCreateArticle($method);
         break;
     
     case 'update':
+        error_log("ARTICLES API - Matched case: update");
         handleUpdateArticle($method);
         break;
     
     case 'delete':
+        error_log("ARTICLES API - Matched case: delete");
         handleDeleteArticle($method);
         break;
     
     case 'view':
+        error_log("ARTICLES API - Matched case: view");
         handleViewArticle($method);
         break;
     
     default:
+        error_log("ARTICLES API - No matching case for action: '$action'");
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
 }
