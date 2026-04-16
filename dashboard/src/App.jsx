@@ -1647,7 +1647,10 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       
       if (data.status === 'SUCCESS') {
         alert('✅ Article deleted successfully!');
-        fetchArticles();
+        // Immediately remove from UI
+        setArticles(articles.filter(article => article.id !== articleId && article.article_id !== articleId));
+        // Also refresh to be sure
+        await fetchArticles();
       } else {
         alert('Error: ' + (data.message || 'Failed to delete article'));
       }

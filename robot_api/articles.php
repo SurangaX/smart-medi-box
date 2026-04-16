@@ -265,7 +265,8 @@ function handleMyArticles($method) {
                 'is_published' => $row['is_published'],
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
-                'updated_at' => $row['updated_at']
+                'updated_at' => $row['updated_at'],
+                'cover_image' => null
             ];
         }
         
