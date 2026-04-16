@@ -146,11 +146,29 @@ const SignupScreen = ({ onSignupSuccess }) => {
     setError('');
 
     try {
+      // Map frontend field names to backend API field names
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        nic: formData.nic,
+        dob: formData.date_of_birth,  // Map date_of_birth to dob
+        phone: formData.phone_number,  // Map phone_number to phone
+      };
+
+      // Add role-specific fields
+      if (role === 'PATIENT') {
+        // Patient doesn't need extra fields for basic signup
+      } else if (role === 'DOCTOR') {
+        payload.specialty = formData.specialization;  // Map specialization to specialty
+        payload.license_number = formData.license_number;
+      }
+
       const endpoint = role === 'PATIENT' ? 'patient/signup' : 'doctor/signup';
       const response = await fetch(`${API_URL}/index.php/api/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
