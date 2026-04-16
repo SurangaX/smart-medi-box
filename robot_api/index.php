@@ -30,6 +30,13 @@
  * ============================================================================
  */
 
+// Suppress all error output to prevent HTML from being sent
+ini_set('display_errors', 0);
+error_reporting(0);
+
+// Start output buffering to catch any accidental output
+ob_start();
+
 // Enable CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
@@ -268,4 +275,7 @@ function handleAPIDocs() {
     
     echo json_encode($docs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
+
+// Ensure all output is flushed cleanly
+ob_end_flush();
 ?>

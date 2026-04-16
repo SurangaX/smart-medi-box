@@ -39,16 +39,14 @@ class DoctorPatientManager {
      * Authenticate user from token
      */
     private function authenticateUser($token) {
-        $stmt = $this->db->prepare(
-            "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP"
-        );
-        $result = pg_execute($this->db, $stmt, [$token]);
+        $query = "SELECT user_id FROM auth_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $result = pg_query_params($this->db, $query, [$token]);
         
-        if (pg_num_rows($result) === 0) {
+        if (!$result || pg_num_rows($result) === 0) {
             return ['status' => 'ERROR', 'message' => 'Unauthorized'];
         }
         
-        $row = pg_fetch_array($result);
+        $row = pg_fetch_assoc($result);
         return ['status' => 'SUCCESS', 'user_id' => $row['user_id']];
     }
     
@@ -229,6 +227,10 @@ class DoctorPatientManager {
      */
     public function getPatientDevices($token) {
         try {
+            if (empty($token)) {
+                return ['status' => 'ERROR', 'message' => 'Token required'];
+            }
+            
             // Authenticate patient
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') {
@@ -237,27 +239,35 @@ class DoctorPatientManager {
             
             $user_id = $auth['user_id'];
             
-            // Get patient devices from device_sessions
+            // Get patient devices from device_registry
             $query = "
                 SELECT 
-                    ds.device_mac as device_id,
-                    ds.device_mac,
-                    'ACTIVE' as status,
-                    ds.created_at as registered_at
-                FROM device_sessions ds
-                WHERE ds.user_id = $1
-                ORDER BY ds.created_at DESC
+                    device_id,
+                    device_name,
+                    mac_address,
+                    device_type,
+                    status,
+                    created_at
+                FROM device_registry
+                WHERE user_id = $1
+                ORDER BY created_at DESC
             ";
             
             $result = pg_query_params($this->db, $query, [$user_id]);
-            $devices = [];
+            if (!$result) {
+                error_log("Device query error: " . pg_last_error($this->db));
+                return ['status' => 'ERROR', 'message' => 'Database query failed'];
+            }
             
+            $devices = [];
             while ($row = pg_fetch_assoc($result)) {
                 $devices[] = [
                     'device_id' => $row['device_id'],
-                    'device_mac' => $row['device_mac'],
-                    'status' => $row['status'],
-                    'registered_at' => $row['registered_at']
+                    'device_name' => $row['device_name'] ?? 'Smart Medi Box',
+                    'mac_address' => $row['mac_address'],
+                    'device_type' => $row['device_type'],
+                    'status' => $row['status'] ?? 'ACTIVE',
+                    'created_at' => $row['created_at']
                 ];
             }
             
@@ -267,7 +277,8 @@ class DoctorPatientManager {
                 'count' => count($devices)
             ];
         } catch (Exception $e) {
-            return ['status' => 'ERROR', 'message' => 'Failed to fetch devices: ' . $e->getMessage()];
+            error_log("getPatientDevices exception: " . $e->getMessage());
+            return ['status' => 'ERROR', 'message' => 'Failed to fetch devices'];
         }
     }
     
