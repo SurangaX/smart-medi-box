@@ -739,7 +739,7 @@ body {
 
 /* Responsive QR Scanner */
 @media (max-width: 768px) {
-  .qr-reader {
+  .qr-scanner-container {
     max-width: 100%;
   }
 
@@ -747,13 +747,16 @@ body {
     padding: 16px;
   }
 
-  .qr-actions {
-    flex-direction: column;
+  .scanner-start-section {
+    padding: 20px 16px;
   }
 
-  .qr-actions button {
+  .scanned-result {
+    padding: 12px;
+  }
+
+  .scanned-result button {
     width: 100%;
-    justify-content: center;
   }
 }
 
