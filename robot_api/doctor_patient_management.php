@@ -582,13 +582,14 @@ class ArticleManager {
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    $dpm = new DoctorPatientManager($db);
-    $am = new ArticleManager($db);
-    
-    switch ($action) {
+try {
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        $dpm = new DoctorPatientManager($db);
+        $am = new ArticleManager($db);
+        
+        switch ($action) {
         case 'doctor/assign-patient':
             $token = $input['token'] ?? '';
             $patient_nic = $input['patient_nic'] ?? '';
@@ -668,4 +669,8 @@ if ($method === 'POST') {
 } else {
     http_response_code(400);
     echo json_encode(['status' => 'ERROR', 'message' => 'Invalid method']);
+}
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'ERROR', 'message' => 'Server error', 'error' => $e->getMessage()]);
 }

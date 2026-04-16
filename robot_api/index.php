@@ -34,6 +34,16 @@
 ini_set('display_errors', 0);
 error_reporting(0);
 
+// Global exception handler
+set_exception_handler(function ($e) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'ERROR',
+        'message' => 'Server error: ' . $e->getMessage()
+    ]);
+    exit();
+});
+
 // Enable CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
