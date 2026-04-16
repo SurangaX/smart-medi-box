@@ -51,15 +51,45 @@ if (count($request_parts) < 3 || $request_parts[0] !== 'api') {
 }
 
 $module = $request_parts[1];
-$action = $request_parts[2];
+$action = isset($request_parts[2]) ? $request_parts[2] : '';
+$subaction = isset($request_parts[3]) ? $request_parts[3] : '';
 
 // Route to appropriate module
 switch ($module) {
     case 'auth':
         // Include authentication module
+        if ($action === 'patient' || $action === 'doctor') {
+            // New auth system
+            $_GET['action'] = $action . '/' . $subaction;
+            $_GET['module'] = 'auth';
+            require 'auth_new.php';
+        } else {
+            // Old auth system
+            $_GET['action'] = $action;
+            $_GET['module'] = 'auth';
+            require 'auth.php';
+        }
+        break;
+    
+    case 'doctor':
+        // Doctor management
+        $_GET['action'] = $action . '/' . $subaction;
+        $_GET['module'] = 'doctor';
+        require 'doctor_patient_management.php';
+        break;
+    
+    case 'patient':
+        // Patient management
+        $_GET['action'] = $action . '/' . $subaction;
+        $_GET['module'] = 'patient';
+        require 'doctor_patient_management.php';
+        break;
+    
+    case 'articles':
+        // Article management
         $_GET['action'] = $action;
-        $_GET['module'] = 'auth';
-        require 'auth.php';
+        if (isset($_GET['id'])) $_GET['id'] = $_GET['id'];
+        require 'doctor_patient_management.php';
         break;
     
     case 'schedule':

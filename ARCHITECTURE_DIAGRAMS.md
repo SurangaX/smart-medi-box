@@ -1,0 +1,502 @@
+# System Architecture & User Flows
+
+## 🏗️ High-Level Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                      USER LAYER                               │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌──────────────────┐              ┌──────────────────┐     │
+│  │   PATIENT USER   │              │   DOCTOR USER    │     │
+│  │ - Create Account │              │ - Create Account │     │
+│  │ - Login          │              │ - Login          │     │
+│  │ - Pair Devices   │              │ - Assign Patient │     │
+│  │ - View Health    │              │ - Manage Patients│     │
+│  │ - View Doctors   │              │ - Publish Article│     │
+│  └──────────────────┘              └──────────────────┘     │
+│                                                                │
+└────────────────────┬───────────────────────────────────────────┘
+                     │
+                     │ HTTP/HTTPS (JSON)
+                     │
+┌────────────────────▼───────────────────────────────────────────┐
+│                      API LAYER                                 │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              API ROUTER (index.php)                     │ │
+│  │  Routes /api/auth/* → auth_new.php                     │ │
+│  │  Routes /api/doctor/* → doctor_patient_management.php  │ │
+│  │  Routes /api/patient/* → doctor_patient_management.php │ │
+│  └──────┬──────────────────────────────────────────────────┘ │
+│         │                                                    │
+│    ┌────┴────┬────────────────────┬──────────────┐         │
+│    │          │                    │              │         │
+│    ▼          ▼                    ▼              ▼         │
+│  ┌─────────┐ ┌──────────┐  ┌────────────────┐ ┌──────────┐ │
+│  │   AUTH  │ │ DOCTOR/  │  │   SCHEDULE   │ │ TEMP/   │ │
+│  │ SYSTEM  │ │ PATIENT  │  │   MANAGEMENT │ │ DEVICE  │ │
+│  │         │ │ MGMT     │  │              │ │         │ │
+│  └─────────┘ └──────────┘  └────────────────┘ └──────────┘ │
+│                                                                │
+└────────────────────┬───────────────────────────────────────────┘
+                     │
+                     │ JDBC/PDO
+                     │
+┌────────────────────▼───────────────────────────────────────────┐
+│                   DATABASE LAYER                               │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  PostgreSQL (Neon)                                            │
+│  ├── AUTHENTICATION                                           │
+│  │   ├── users                                               │
+│  │   ├── session_tokens                                      │
+│  │   └── pairing_tokens                                      │
+│  │                                                           │
+│  ├── USER MANAGEMENT                                         │
+│  │   ├── patients (with health data)                         │
+│  │   ├── doctors (with credentials)                          │
+│  │   └── patient_doctor_assignments                          │
+│  │                                                           │
+│  ├── CONTENT                                                 │
+│  │   └── articles (doctor published)                         │
+│  │                                                           │
+│  └── EXISTING FEATURES                                       │
+│      ├── schedules                                           │
+│      ├── temperature_logs                                    │
+│      ├── device_registry                                     │
+│      ├── alarm_logs                                          │
+│      └── ... (other existing tables)                         │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+## 👥 User Registration Flow
+
+### PATIENT REGISTRATION
+```
+┌──────────────┐
+│   Homepage   │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Signup Page         │
+│ [Toggle] Patient     │
+│ Selected: PATIENT    │
+└──────┬───────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│  Fill Patient Form         │
+│ - Email                    │
+│ - Password                 │
+│ - Name                     │
+│ - NIC (Primary ID)         │
+│ - Date of Birth            │
+│ - Gender                   │
+│ - Blood Type               │
+│ - Phone Number             │
+│ - (Optional) Organ Info    │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│  POST /api/auth/patient/signup
+│  Validation:               │
+│  ✓ Email unique           │
+│  ✓ Password 8+ chars      │
+│  ✓ NIC unique             │
+│  ✓ Age valid              │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│  Database Creates:         │
+│  ✓ users (email, pwd)      │
+│  ✓ patients (profile)      │
+│  ✓ session_token (auto)    │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│  Return Response:          │
+│  {                         │
+│    "status": "SUCCESS",    │
+│    "token": "...",         │
+│    "user_id": 1,           │
+│    "role": "PATIENT"       │
+│  }                         │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│  Redirect to               │
+│  Patient Dashboard         │
+└────────────────────────────┘
+```
+
+### DOCTOR REGISTRATION (Similar, with differences)
+```
+Signup Page → Fill Doctor Form
+   ↓
+Doctor-Specific Fields:
+- Specialization
+- Hospital
+- License Number
+- (NIC instead of Blood Type)
+   ↓
+POST /api/auth/doctor/signup
+   ↓
+Creates: users + doctors + session_token
+   ↓
+Returns: token + role="DOCTOR"
+   ↓
+Redirect to Doctor Dashboard
+```
+
+## 🔐 Login Flow
+
+```
+┌──────────────┐
+│  Login Page  │
+└──────┬───────┘
+       │
+       ▼ Enter email & password
+┌──────────────────────┐
+│ POST /api/auth/login │
+└──────┬───────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│ Find user by email         │
+│ Verify password (bcrypt)   │
+│ Get role (PATIENT/DOCTOR)  │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│ Create session_token       │
+│ (Valid 7 days)             │
+│ Store in database          │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│ Return Response:           │
+│ {                          │
+│   "token": "...",          │
+│   "user_id": 1,            │
+│   "role": "PATIENT",       │
+│   "profile": {...}         │
+│ }                          │
+└──────┬─────────────────────┘
+       │
+       ▼
+┌────────────────────────────┐
+│ Store token in localStorage│
+│ Redirect to Dashboard      │
+└────────────────────────────┘
+```
+
+## 📱 Device Pairing Flow
+
+```
+┌──────────────────────────┐
+│ Patient Dashboard        │
+│ [+ Add Device] Button    │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ POST /api/auth/                  │
+│ generate-pairing-token           │
+│                                  │
+│ Sends: { token: "session_token" }│
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Server:                          │
+│ ✓ Validates session token        │
+│ ✓ Gets patient_id                │
+│ ✓ Generates 32-char hex token    │
+│ ✓ Sets 1-hour expiry             │
+│ ✓ Stores in pairing_tokens table │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Returns: pairing_token           │
+│ {                                │
+│   "pairing_token": "abc123...",  │
+│   "expires_in": 3600             │
+│ }                                │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Display pairing token on screen  │
+│ Device reads/enters token        │
+│ (via serial or manual input)     │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Device sends to server:          │
+│                                  │
+│ POST /api/auth/complete-pairing  │
+│ {                                │
+│   "pairing_token": "abc123...",  │
+│   "mac_address": "AA:BB:CC:...", │
+│   "device_name": "Medi Box #1"   │
+│ }                                │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Server:                          │
+│ ✓ Validates pairing_token        │
+│ ✓ Checks expiry                  │
+│ ✓ Checks not already used        │
+│ ✓ Creates device_registry entry  │
+│ ✓ Generates device_id            │
+│ ✓ Marks pairing_token as used    │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Returns:                         │
+│ {                                │
+│   "status": "SUCCESS",           │
+│   "device_id": "DEVICE-...",     │
+│   "mac_address": "AA:BB:CC:..."  │
+│ }                                │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Device:                          │
+│ ✓ Saves device_id to EEPROM     │
+│ ✓ Starts sending sensor data    │
+│ ✓ Reports as PAIRED             │
+└────────────────────────────────────┘
+```
+
+## 👨‍⚕️ Doctor-Patient Assignment Flow
+
+```
+┌──────────────────────────┐
+│ Doctor Dashboard         │
+│ [+ Assign Patient] Btn   │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Show Assignment Form:            │
+│ Patient NIC: [_______________]   │
+│ Notes: [___________________]     │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ POST /api/doctor/assign-patient  │
+│ {                                │
+│   "token": "session_token",      │
+│   "patient_nic": "12345678",     │
+│   "notes": "Follow-up..."        │
+│ }                                │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Server:                          │
+│ ✓ Validates doctor token         │
+│ ✓ Gets doctor_id                 │
+│ ✓ Finds patient by NIC           │
+│ ✓ Checks not already assigned    │
+│ ✓ Creates assignment record      │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ patient_doctor_assignments:      │
+│ {                                │
+│   patient_id: 5,                 │
+│   doctor_id: 3,                  │
+│   assigned_at: NOW(),            │
+│   notes: "Follow-up...",         │
+│   is_active: true                │
+│ }                                │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────┐
+│ Returns: SUCCESS                 │
+└──────┬───────────────────────────┘
+       │
+       ├─────────────────────────────────────┐
+       │ Doctor Dashboard Updates:           │
+       │ - Patient appears in list           │
+       │ - Can now view patient details      │
+       │ - Can access patient data           │
+       │                                     │
+       └─────────────────────────────────────┤
+                                             │
+                                             ▼
+                                    ┌──────────────────────────────────┐
+                                    │ Patient Dashboard Shows:         │
+                                    │ - New doctor in doctor list      │
+                                    │ - Can see doctor specialization  │
+                                    │ - Can contact doctor             │
+                                    └──────────────────────────────────┘
+```
+
+## 📰 Article Management Flow
+
+```
+┌──────────────────────────┐
+┌─→ PUBLIC ARTICLE VIEW   │
+│  │ (All Users)          │
+│  │                      │
+│  │ GET /api/articles    │
+│  │ Shows:               │
+│  │ - Title              │
+│  │ - Summary            │
+│  │ - Doctor Name        │
+│  │ - Specialization     │
+│  │ - View Count         │
+│  │ - Date               │
+│  └──────────────────────┘
+│
+│  ┌──────────────────────────────────┐
+│  │ Click to view full article      │
+│  │ GET /api/articles?id=1          │
+│  │ Returns: Full content            │
+│  │ Auto-increments: view_count      │
+│  └──────────────────────────────────┘
+│
+│
+└─ ┌──────────────────────────────────┐
+   │ DOCTOR ARTICLE CREATION          │
+   │ (Doctors Only)                   │
+   │                                  │
+   │ Click [+ New Article]            │
+   │ ↓                                │
+   │ Fill form:                       │
+   │ - Title                          │
+   │ - Summary                        │
+   │ - Category                       │
+   │ - Full Content                   │
+   │ ↓                                │
+   │ POST /api/doctor/article/create  │
+   │ {                                │
+   │   "token": "...",                │
+   │   "title": "...",                │
+   │   "content": "...",              │
+   │   "summary": "...",              │
+   │   "category": "Cardiology"       │
+   │ }                                │
+   │ ↓                                │
+   │ Server:                          │
+   │ ✓ Validates doctor               │
+   │ ✓ Creates article                │
+   │ ✓ Sets is_published = true       │
+   │ ✓ Sets view_count = 0            │
+   │ ↓                                │
+   │ Returns: article_id              │
+   │ ↓                                │
+   │ Article visible to all users     │
+   └──────────────────────────────────┘
+```
+
+## 🗄️ Database Relationships
+
+```
+users (1) ──┬─→ (1) patients
+            │
+            └─→ (1) doctors
+
+patients (1) ──→ (*) device_registry
+           │
+           ├─→ (*) patient_doctor_assignments
+           │
+           ├─→ (*) temperature_logs
+           │
+           ├─→ (*) schedules
+           │
+           └─→ (*) pairing_tokens
+
+doctors (1) ──→ (*) articles
+        │
+        └─→ (*) patient_doctor_assignments
+
+session_tokens ──→ users
+pairing_tokens ──→ patients
+```
+
+## 📊 User Roles & Permissions
+
+```
+PATIENT
+├── Can
+│   ├── Create account
+│   ├── Login
+│   ├── Generate pairing tokens
+│   ├── Pair devices
+│   ├── View own health data
+│   ├── View assigned doctors
+│   └── Read articles
+│
+└── Cannot
+    ├── Assign themselves to doctors
+    ├── Create/Edit/Delete articles
+    ├── View other patients' data
+    └── Assign patients
+
+DOCTOR
+├── Can
+│   ├── Create account
+│   ├── Login
+│   ├── Search and assign patients by NIC
+│   ├── View assigned patients list
+│   ├── View detailed patient data
+│   ├── Access patient health metrics
+│   ├── Create articles
+│   ├── Edit/Delete own articles
+│   └── View all published articles
+│
+└── Cannot
+    ├── Pair devices (patients do this)
+    ├── Assign patients to themselves
+    ├── Edit articles by other doctors
+    └── Delete other doctors' articles
+```
+
+## ⏱️ Token Lifecycle
+
+```
+SESSION TOKEN (7 days)
+├── Created: User signup or login
+├── Stored: session_tokens table
+├── Used: Every authenticated API call
+├── Expires: 7 days after creation
+└── Action: User must login again
+
+PAIRING TOKEN (1 hour)
+├── Created: Patient requests device pairing
+├── Stored: pairing_tokens table
+├── Used: Device sends with MAC address
+├── Expires: 1 hour after creation
+├── Reusable: No (marked is_used = true)
+└── Action: Generate new token if expired
+```
+
+---
+
+For more details, see:
+- AUTHENTICATION_MIGRATION.md
+- DEVICE_INTEGRATION_GUIDE.md
+- Implementation_Summary.md
+- QUICK_DEPLOYMENT_GUIDE.md
