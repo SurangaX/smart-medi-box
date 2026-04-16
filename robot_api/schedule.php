@@ -28,7 +28,6 @@ if (!$action) {
 }
 
 error_log("SCHEDULE MODULE - Final action: " . $action);
-}
 
 switch ($action) {
     case 'get':
