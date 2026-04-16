@@ -322,17 +322,8 @@ function handleCompleteSchedule($method) {
     }
     
     try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
+        // Note: $user_id from token lookup is already users.id (the database primary key)
+        $db_user_id = $user_id;
         
         $query = "UPDATE schedules SET is_completed = true, completed_at = NOW() 
                   WHERE id = $1 AND user_id = $2";
@@ -416,7 +407,18 @@ function handleGetTodaySchedules($method) {
                   AND schedule_date <= $3
                   ORDER BY schedule_date ASC, hour ASC, minute ASC";
         
+        error_log("GET TODAY SCHEDULES - Query parameters: user_id=$user_id, start_date=$start_date, end_date=$end_date");
+        
         $result = pg_query_params($conn, $query, array($user_id, $start_date, $end_date));
+        
+        if ($result === false) {
+            error_log("GET TODAY SCHEDULES - Query failed: " . pg_last_error($conn));
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed: ' . pg_last_error($conn)]);
+            return;
+        }
+        
+        error_log("GET TODAY SCHEDULES - Query returned " . pg_num_rows($result) . " rows");
         
         $schedules = [];
         while ($row = pg_fetch_assoc($result)) {
