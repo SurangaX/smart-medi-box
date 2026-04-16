@@ -44,19 +44,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Set default content type
 header('Content-Type: application/json');
 
-// Parse the request URL
-$request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$request_parts = explode('/', trim($request_path, '/'));
+// Parse the request URL - use PATH_INFO which doesn't include script name
+// PATH_INFO = /api/auth/patient/signup (without the /index.php part)
+$request_path = $_SERVER['PATH_INFO'] ?? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Remove leading/trailing slashes and split
+$request_path = trim($request_path, '/');
+$request_parts = explode('/', $request_path);
+
+// Remove 'index.php' if it's the first part (shouldn't be with PATH_INFO, but be safe)
+if (isset($request_parts[0]) && $request_parts[0] === 'index.php') {
+    array_shift($request_parts);
+}
 
 // Expected format: /api/{module}/{action}
 // Example: /api/auth/verify
-
 if (count($request_parts) < 3 || $request_parts[0] !== 'api') {
     http_response_code(400);
     echo json_encode([
         'status' => 'ERROR',
         'message' => 'Invalid API request',
-        'hint' => 'Use format: /api/{module}/{action}'
+        'hint' => 'Use format: /api/{module}/{action}',
+        'received_path' => $_SERVER['PATH_INFO'] ?? 'none',
+        'debug' => true
     ]);
     exit();
 }
