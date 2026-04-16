@@ -34,6 +34,7 @@ CREATE TABLE schedules (
     schedule_id VARCHAR(60) UNIQUE NOT NULL,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type schedule_type NOT NULL,
+    schedule_date DATE NOT NULL,
     hour INT NOT NULL CHECK (hour >= 0 AND hour <= 23),
     minute INT NOT NULL CHECK (minute >= 0 AND minute <= 59),
     description TEXT,

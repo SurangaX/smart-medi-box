@@ -460,9 +460,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const [scannerStarted, setScannerStarted] = useState(false);
-  const [newSchedule, setNewSchedule] = useState({ type: 'MEDICINE', hour: 9, minute: 0, description: '' });
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({ 
+    type: 'MEDICINE', 
+    schedule_date: new Date().toISOString().split('T')[0],
+    hour: 9, 
+    minute: 0, 
+    description: '' 
+  });
+  const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const qrScannerRef = useRef(null);
   const qrInstanceRef = useRef(null);
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false);
+    onLogout();
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutConfirm(false);
+  };
 
   useEffect(() => {
     if (activeTab === 'doctors') {
@@ -524,12 +545,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = async (dateFilter = null) => {
     try {
+      const filterDate = dateFilter || scheduleFilterDate || new Date().toISOString().split('T')[0];
       const response = await fetch(`${API_URL}/index.php/api/schedule/today`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ 
+          token,
+          start_date: filterDate,
+          end_date: filterDate
+        })
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
@@ -597,6 +623,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         body: JSON.stringify({
           token,
           type: newSchedule.type,
+          schedule_date: newSchedule.schedule_date,
           hour: parseInt(newSchedule.hour),
           minute: parseInt(newSchedule.minute),
           description: newSchedule.description
@@ -605,8 +632,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         alert('✅ Schedule created successfully!');
-        setNewSchedule({ type: 'MEDICINE', hour: 9, minute: 0, description: '' });
-        fetchSchedules();
+        const today = new Date().toISOString().split('T')[0];
+        setNewSchedule({ type: 'MEDICINE', schedule_date: today, hour: 9, minute: 0, description: '' });
+        fetchSchedules(newSchedule.schedule_date);
       } else {
         alert('Error: ' + data.message);
       }
@@ -827,7 +855,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <h1>👤 Welcome, {profile.name}</h1>
           <p>NIC: {profile.nic} | ID: {profile.id}</p>
         </div>
-        <button className="btn-secondary" onClick={onLogout}>
+        <button className="btn-secondary" onClick={handleLogoutClick}>
           <LogOut size={18} /> Logout
         </button>
       </div>
@@ -1094,96 +1122,140 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <div className="schedules-container">
               <div className="card">
                 <div className="card-header">
-                  <Clock size={24} />
-                  <h3>Create New Schedule</h3>
+                  <Plus size={24} />
+                  <h3>Schedule New Reminder</h3>
                 </div>
-                <form onSubmit={handleCreateSchedule} className="form">
-                  <div className="form-group">
-                    <label>Type</label>
-                    <select 
-                      value={newSchedule.type}
-                      onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
-                    >
-                      <option>MEDICINE</option>
-                      <option>FOOD</option>
-                      <option>BLOOD_CHECK</option>
-                    </select>
-                  </div>
-                  <div className="form-row">
+                <form onSubmit={handleCreateSchedule} className="schedule-form">
+                  <div className="form-grid">
                     <div className="form-group">
-                      <label>Hour (0-23)</label>
+                      <label>Type of Reminder</label>
+                      <div className="type-selector">
+                        {['MEDICINE', 'FOOD', 'BLOOD_CHECK'].map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            className={`type-btn ${newSchedule.type === type ? 'active' : ''}`}
+                            onClick={() => setNewSchedule({...newSchedule, type})}
+                          >
+                            {type === 'MEDICINE' ? '💊' : type === 'FOOD' ? '🍽️' : '🩸'}
+                            <span>{type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Date</label>
                       <input 
-                        type="number" 
-                        min="0" 
-                        max="23"
-                        value={newSchedule.hour}
-                        onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                        type="date"
+                        value={newSchedule.schedule_date}
+                        onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
+                        required
+                        className="date-input"
                       />
                     </div>
+
                     <div className="form-group">
-                      <label>Minute (0-59)</label>
+                      <label>Time</label>
+                      <div className="time-inputs">
+                        <div className="time-field">
+                          <label>Hour</label>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="23"
+                            value={String(newSchedule.hour).padStart(2, '0')}
+                            onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                            className="time-input"
+                          />
+                        </div>
+                        <span className="time-separator">:</span>
+                        <div className="time-field">
+                          <label>Min</label>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="59"
+                            value={String(newSchedule.minute).padStart(2, '0')}
+                            onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                            className="time-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group form-full">
+                      <label>Notes (Optional)</label>
                       <input 
-                        type="number" 
-                        min="0" 
-                        max="59"
-                        value={newSchedule.minute}
-                        onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                        type="text"
+                        placeholder="Add any notes (e.g., take with food)"
+                        value={newSchedule.description}
+                        onChange={(e) => setNewSchedule({...newSchedule, description: e.target.value})}
+                        className="note-input"
                       />
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label>Description (optional)</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g., Morning medication"
-                      value={newSchedule.description}
-                      onChange={(e) => setNewSchedule({...newSchedule, description: e.target.value})}
-                    />
-                  </div>
-                  <button type="submit" className="btn-primary">Create Schedule</button>
+
+                  <button type="submit" className="btn-primary btn-large">
+                    <Plus size={18} /> Add Reminder
+                  </button>
                 </form>
               </div>
 
               <div className="card">
                 <div className="card-header">
                   <Clock size={24} />
-                  <h3>Today's Schedules</h3>
+                  <h3>Your Reminders</h3>
+                  <div className="header-actions">
+                    <input 
+                      type="date"
+                      value={scheduleFilterDate}
+                      onChange={(e) => {
+                        setScheduleFilterDate(e.target.value);
+                        fetchSchedules(e.target.value);
+                      }}
+                      className="filter-date"
+                    />
+                  </div>
                 </div>
-                <div className="schedule-table">
+                <div className="schedules-list">
                   {schedules.length > 0 ? (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Time</th>
-                          <th>Type</th>
-                          <th>Description</th>
-                          <th>Status</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schedules.map((sched) => (
-                          <tr key={sched.schedule_id} className={sched.is_completed ? 'completed' : ''}>
-                            <td>{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</td>
-                            <td><span className="badge">{sched.type}</span></td>
-                            <td>{sched.description || '-'}</td>
-                            <td>{sched.is_completed ? '✅ Done' : '⏳ Pending'}</td>
-                            <td>
-                              {!sched.is_completed && (
-                                <button 
-                                  className="btn-small"
-                                  onClick={() => handleCompleteSchedule(sched.schedule_id)}
-                                >
-                                  Mark Done
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    schedules.map((sched) => (
+                      <div key={sched.schedule_id} className={`schedule-card ${sched.is_completed ? 'completed' : ''}`}>
+                        <div className="schedule-badge">
+                          {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
+                        </div>
+                        <div className="schedule-content">
+                          <div className="schedule-main">
+                            <h4>{sched.type}</h4>
+                            <p className="schedule-datetime">
+                              {new Date(sched.schedule_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} 
+                              {' '} 
+                              <span className="time-display">{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</span>
+                            </p>
+                            {sched.description && <p className="schedule-description">{sched.description}</p>}
+                          </div>
+                          <div className="schedule-status-badge">
+                            {sched.is_completed ? '✅ Done' : '⏳ Pending'}
+                          </div>
+                        </div>
+                        {!sched.is_completed && (
+                          <button 
+                            className="btn-check"
+                            onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                            title="Mark as complete"
+                          >
+                            ✓
+                          </button>
+                        )}
+                      </div>
+                    ))
                   ) : (
-                    <p className="placeholder">No schedules created yet</p>
+                    <div className="empty-state">
+                      <Clock size={48} />
+                      <p>No reminders for this date</p>
+                      <small>Create a new reminder to get started</small>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1516,6 +1588,24 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Confirm Logout</h2>
+            <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
+            <div className="modal-buttons">
+              <button className="btn-secondary" onClick={handleCancelLogout}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={handleConfirmLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

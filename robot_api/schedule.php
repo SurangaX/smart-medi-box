@@ -108,6 +108,7 @@ function handleCreateSchedule($method) {
     $token = $input['token'] ?? $_POST['token'] ?? null;
     $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
     $type = $input['type'] ?? $_POST['type'] ?? null;
+    $schedule_date = $input['schedule_date'] ?? $_POST['schedule_date'] ?? date('Y-m-d');
     $hour = $input['hour'] ?? $_POST['hour'] ?? null;
     $minute = $input['minute'] ?? $_POST['minute'] ?? null;
     $description = $input['description'] ?? $_POST['description'] ?? '';
@@ -123,9 +124,16 @@ function handleCreateSchedule($method) {
         }
     }
     
-    if (!$user_id || !$type || $hour === null || $minute === null) {
+    if (!$user_id || !$type || !$schedule_date || $hour === null || $minute === null) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: user_id (via token or direct), type, hour, minute']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: user_id (via token), type, schedule_date (YYYY-MM-DD), hour, minute']);
+        return;
+    }
+    
+    // Validate date format
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $schedule_date)) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Invalid date format. Use YYYY-MM-DD']);
         return;
     }
     
@@ -161,11 +169,11 @@ function handleCreateSchedule($method) {
         $db_user_id = $user_data['id'];
         
         $query = "INSERT INTO schedules 
-                  (id, user_id, type, hour, minute, description, status, is_completed) 
-                  VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', false)";
+                  (schedule_id, user_id, type, schedule_date, hour, minute, description, status, is_completed) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE', false)";
         
         $result = pg_query_params($conn, $query, 
-            array($schedule_id, $db_user_id, $type, $hour, $minute, $description));
+            array($schedule_id, $db_user_id, $type, $schedule_date, $hour, $minute, $description));
         
         if ($result) {
             http_response_code(201);
@@ -336,6 +344,8 @@ function handleGetTodaySchedules($method) {
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
     $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $start_date = $input['start_date'] ?? $_POST['start_date'] ?? $_GET['start_date'] ?? date('Y-m-d');
+    $end_date = $input['end_date'] ?? $_POST['end_date'] ?? $_GET['end_date'] ?? date('Y-m-d');
     
     // If token is provided, look up the user_id from it
     if ($token && !$user_id) {
@@ -355,33 +365,35 @@ function handleGetTodaySchedules($method) {
     }
     
     try {
-        $today = date('Y-m-d');
-        
-        $query = "SELECT id, type, hour, minute, description, is_completed 
+        $query = "SELECT id, type, schedule_date, hour, minute, description, is_completed 
                   FROM schedules 
                   WHERE user_id = (SELECT id FROM users WHERE user_id = $1) 
                   AND status = 'ACTIVE'
-                  AND DATE(created_at) = $2
-                  ORDER BY hour ASC, minute ASC";
+                  AND schedule_date >= $2
+                  AND schedule_date <= $3
+                  ORDER BY schedule_date ASC, hour ASC, minute ASC";
         
-        $result = pg_query_params($conn, $query, array($user_id, $today));
+        $result = pg_query_params($conn, $query, array($user_id, $start_date, $end_date));
         
         $schedules = [];
         while ($row = pg_fetch_assoc($result)) {
             $schedules[] = [
                 'schedule_id' => $row['id'],
                 'type' => $row['type'],
+                'schedule_date' => $row['schedule_date'],
                 'hour' => intval($row['hour']),
                 'minute' => intval($row['minute']),
                 'description' => $row['description'],
-                'is_completed' => $row['is_completed'] === 't' || $row['is_completed'] === true
+                'is_completed' => $row['is_completed'] === 't' || $row['is_completed'] === true,
+                'datetime' => $row['schedule_date'] . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
             ];
         }
         
         http_response_code(200);
         echo json_encode([
             'status' => 'SUCCESS',
-            'date' => $today,
+            'start_date' => $start_date,
+            'end_date' => $end_date,
             'count' => count($schedules),
             'schedules' => $schedules
         ]);
