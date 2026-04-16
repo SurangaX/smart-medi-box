@@ -48,12 +48,3 @@ if (!$conn) {
 pg_set_client_encoding($conn, 'UTF-8');
 define('DB_CONNECTED', true);
 ?>
-    ]);
-    exit();
-}
-
-$conn->set_charset("utf8mb4");
-*/
-
-define('DEBUG_MODE', true);
-?>
