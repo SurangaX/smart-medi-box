@@ -124,13 +124,6 @@ switch ($module) {
         require 'doctor_patient_management.php';
         break;
     
-    case 'articles':
-        // Article management
-        $_GET['action'] = $action;
-        if (isset($_GET['id'])) $_GET['id'] = $_GET['id'];
-        require 'doctor_patient_management.php';
-        break;
-    
     case 'schedule':
         error_log("INDEX.PHP - Routing to SCHEDULE module, action: " . $action);
         // Include schedule module
