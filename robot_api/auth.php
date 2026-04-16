@@ -88,6 +88,14 @@ switch ($action) {
         handleMACLookup($method);
         break;
     
+    case 'generate-pairing-token':
+        handleGeneratePairingToken($method);
+        break;
+    
+    case 'complete-pairing':
+        handleCompletePairing($method);
+        break;
+    
     default:
         errorResponse(404, 'Endpoint not found');
 }
@@ -577,6 +585,137 @@ function handleMACLookup($method) {
     } catch (Exception $e) {
         error_log("MAC Lookup Error: " . $e->getMessage());
         return errorResponse(500, 'Lookup failed');
+    }
+}
+
+// ============================================================================
+// HANDLER: GENERATE PAIRING TOKEN
+// ============================================================================
+function handleGeneratePairingToken($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        return errorResponse(405, 'Method not allowed');
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $token = $input['token'] ?? null;
+    
+    if (!$token) {
+        return errorResponse(400, 'User token required');
+    }
+    
+    try {
+        // Validate user token
+        $query = "SELECT id FROM users WHERE id IN (
+                  SELECT user_id FROM auth_tokens 
+                  WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP)";
+        $result = pg_query_params($conn, $query, [$token]);
+        
+        if (!$result || pg_num_rows($result) === 0) {
+            return errorResponse(401, 'Invalid or expired token');
+        }
+        
+        $user = pg_fetch_assoc($result);
+        $user_id = $user['id'];
+        
+        // Generate pairing token
+        $pairing_token = bin2hex(random_bytes(32));
+        $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        
+        // Create pairing token record
+        $query = "INSERT INTO pairing_tokens (user_id, token, expires_at, is_used) 
+                  VALUES ($1, $2, $3, false)
+                  RETURNING token";
+        
+        $result = pg_query_params($conn, $query, [$user_id, $pairing_token, $expires_at]);
+        
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
+        }
+        
+        error_log("PAIRING TOKEN GENERATED: user_id=$user_id");
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'pairing_token' => $pairing_token,
+            'expires_in' => 3600
+        ]);
+    } catch (Exception $e) {
+        error_log("Pairing Token Generation Error: " . $e->getMessage());
+        return errorResponse(500, 'Failed to generate pairing token');
+    }
+}
+
+// ============================================================================
+// HANDLER: COMPLETE PAIRING
+// ============================================================================
+function handleCompletePairing($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        return errorResponse(405, 'Method not allowed');
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $pairing_token = $input['pairing_token'] ?? null;
+    $mac_address = $input['mac_address'] ?? null;
+    $device_name = $input['device_name'] ?? null;
+    
+    if (!$pairing_token || !$mac_address) {
+        return errorResponse(400, 'Pairing token and MAC address required');
+    }
+    
+    try {
+        // Validate pairing token
+        $query = "SELECT user_id FROM pairing_tokens 
+                  WHERE token = $1 AND is_used = false AND expires_at > CURRENT_TIMESTAMP";
+        $result = pg_query_params($conn, $query, [$pairing_token]);
+        
+        if (!$result || pg_num_rows($result) === 0) {
+            return errorResponse(401, 'Invalid or expired pairing token');
+        }
+        
+        $token_row = pg_fetch_assoc($result);
+        $user_id = $token_row['user_id'];
+        
+        // Check if device already exists
+        $check = pg_query_params($conn, "SELECT id FROM device_registry WHERE mac_address = $1", [$mac_address]);
+        if (!$check) throw new Exception(pg_last_error($conn));
+        
+        if (pg_num_rows($check) > 0) {
+            return errorResponse(409, 'Device already paired');
+        }
+        
+        // Mark pairing token as used
+        $query = "UPDATE pairing_tokens SET is_used = true, device_mac_address = $1, device_name = $2 
+                  WHERE token = $3";
+        pg_query_params($conn, $query, [$mac_address, $device_name ?? 'Smart Box', $pairing_token]);
+        
+        // Register device
+        $device_id = "DEVICE-" . bin2hex(random_bytes(8));
+        $query = "INSERT INTO device_registry (device_id, user_id, device_name, mac_address, device_type) 
+                  VALUES ($1, $2, $3, $4, $5)";
+        
+        $result = pg_query_params($conn, $query, [$device_id, $user_id, $device_name ?? 'Smart Box', $mac_address, 'SMART_BOX']);
+        
+        if (!$result) {
+            throw new Exception(pg_last_error($conn));
+        }
+        
+        error_log("DEVICE PAIRED: user_id=$user_id, device_id=$device_id, mac=$mac_address");
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Device paired successfully',
+            'device_id' => $device_id,
+            'mac_address' => $mac_address
+        ]);
+    } catch (Exception $e) {
+        error_log("Device Pairing Error: " . $e->getMessage());
+        return errorResponse(500, 'Device pairing failed: ' . $e->getMessage());
     }
 }
 

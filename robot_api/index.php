@@ -78,7 +78,7 @@ $subaction = isset($request_parts[3]) ? $request_parts[3] : '';
 // Route to appropriate module
 switch ($module) {
     case 'auth':
-        // All auth endpoints (login, signup, QR-based verify, etc.)
+        // All auth endpoints (login, signup, QR-based verify, pairing, etc.)
         // The auth.php module handles routing to specific handlers
         $_GET['action'] = $action;
         $_GET['module'] = 'auth';
