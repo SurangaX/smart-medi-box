@@ -28,6 +28,28 @@ export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, 
       }, (errorMessage, error) => {
         // ignore intermittent scan errors
       }, /* isFormFactorMobile */ true);
+
+      // If mobile and an explicit camera wasn't requested, prefer back camera
+      const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '');
+      if (isMobile && !selectedCameraId) {
+        // small delay to allow scanner to initialize
+        setTimeout(async () => {
+          try {
+            const html5Qrcode = scanner.html5Qrcode;
+            if (html5Qrcode) {
+              await html5Qrcode.start(
+                { facingMode: { ideal: 'environment' } },
+                { fps: 10, qrbox: 250 },
+                (decoded) => { if (onDetected) onDetected(decoded); },
+                (err) => {}
+              );
+              console.log('ScanAppScanner started with facingMode=environment');
+            }
+          } catch (e) {
+            console.warn('ScanAppScanner facingMode start failed', e);
+          }
+        }, 300);
+      }
     } catch (e) {
       console.error('Failed to initialize ScanAppScanner', e);
       if (onCameraError) onCameraError(e);

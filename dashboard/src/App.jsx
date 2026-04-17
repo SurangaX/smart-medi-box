@@ -928,6 +928,34 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const html5Qr = new Html5Qrcode('qr-reader');
       qrInstanceRef.current = html5Qr;
 
+      // If on mobile, try to default to the back camera using facingMode first
+      const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '');
+      if (isMobile && !selectedCameraId) {
+        try {
+          await html5Qr.start(
+            { facingMode: { ideal: 'environment' } },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+              console.log('QR Scanned:', decodedText);
+              const mac = decodedText.trim();
+              setScannedMac(mac);
+              setScannerError('');
+              try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
+              qrInstanceRef.current = null;
+              setScannerStarted(false);
+              setShowQRScanner(false);
+              setShowDeviceFound(true);
+            },
+            (errorMessage) => { /* ignore minor scan errors */ }
+          );
+          setScannerStarted(true);
+          console.log('QR Scanner started with facingMode=environment on mobile');
+          return;
+        } catch (fmErr) {
+          console.warn('FacingMode start failed, falling back to device list start', fmErr);
+        }
+      }
+
       // Try to start with the selected camera; if it fails, attempt other cameras sequentially
       const probeCamera = async (camDeviceId) => {
         try {
