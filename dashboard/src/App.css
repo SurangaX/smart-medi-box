@@ -35,6 +35,20 @@ body {
   line-height: 1.6;
 }
 
+/* Prevent I-beam text cursor and accidental text selection on non-form elements */
+.dashboard, .section, .card, .device-card, .device-info, .devices-list, .device-meta-row, .qr-scanner-box, .pairing-code-box, .auth-box {
+  cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Restore selectable and interactive behavior for form controls and links */
+input, textarea, select { user-select: text; cursor: text; }
+button, a { user-select: none; cursor: pointer; }
+
+
 /* ==================== Auth Screens ==================== */
 .auth-screen {
   min-height: 100vh;
