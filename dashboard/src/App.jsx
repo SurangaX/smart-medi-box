@@ -2038,6 +2038,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('login');
+  const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -2059,6 +2060,27 @@ export default function App() {
         setCurrentPage(hash);
       }
     }
+  }, []);
+
+  // Global notification -> toast bridge (available for all pages)
+  useEffect(() => {
+    const handler = (e) => {
+      const payload = (e && e.detail) ? e.detail : {};
+      const t = { id: Date.now() + Math.floor(Math.random()*1000), message: payload.message || '', type: payload.type || 'info' };
+      setToasts(prev => [t, ...prev]);
+      // auto-remove after 4s
+      setTimeout(() => {
+        setToasts(prev => prev.filter(x => x.id !== t.id));
+      }, 4000);
+    };
+
+    window.addEventListener('app-notification', handler);
+    // ensure window.appNotify exists
+    window.appNotify = (payload) => {
+      try { window.dispatchEvent(new CustomEvent('app-notification', { detail: payload })); } catch (e) { console.error(e); }
+    };
+
+    return () => window.removeEventListener('app-notification', handler);
   }, []);
 
   // Handle hash changes for navigation
@@ -2115,6 +2137,14 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
+      {/* Toast container (bottom-left transient notifications) */}
+      <div className="toast-container" aria-live="polite">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.type || ''}`}>
+            <div className="toast-message">{t.message}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
