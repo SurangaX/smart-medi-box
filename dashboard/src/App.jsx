@@ -1008,8 +1008,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     const tempInstance = new Html5Qrcode(tempContainerId);
     try {
       const result = await tempInstance.scanFile(file, true);
-      if (result && result.decodedText) {
-        const mac = result.decodedText.trim();
+      console.log('scanFile result:', result);
+      let decoded = null;
+      if (!result) {
+        decoded = null;
+      } else if (typeof result === 'string') {
+        decoded = result;
+      } else if (result.decodedText) {
+        decoded = result.decodedText;
+      } else if (Array.isArray(result) && result.length) {
+        decoded = result[0].decodedText || result[0];
+      }
+
+      if (decoded) {
+        const mac = String(decoded).trim();
         setScannedMac(mac);
         setShowDeviceFound(true);
         setShowQRScanner(false);
