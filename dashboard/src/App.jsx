@@ -2242,31 +2242,45 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const handleCreateArticle = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        token,
-        title: newArticle.title,
-        content: newArticle.content,
-        cover_image: newArticle.cover_image || null
-      };
+      // If a raw file was chosen, upload as multipart/form-data to preserve bytes
+      let response;
+      if (newArticle.cover_file) {
+        const form = new FormData();
+        form.append('token', token);
+        form.append('title', newArticle.title);
+        form.append('content', newArticle.content);
+        form.append('cover_file', newArticle.cover_file, newArticle.cover_image_filename || newArticle.cover_file.name);
 
-      if (newArticle.cover_image_data_url) {
-        // send full data URL so server can store and return it verbatim
-        payload.cover_image_data_url = newArticle.cover_image_data_url;
-      } else if (newArticle.cover_image_base64) {
-        payload.cover_image_base64 = newArticle.cover_image_base64;
-        payload.cover_image_mime = newArticle.cover_image_mime;
-        payload.cover_image_filename = newArticle.cover_image_filename;
+        response = await fetch(`${API_URL}/index.php/api/articles/create`, {
+          method: 'POST',
+          body: form
+        });
+      } else {
+        const payload = {
+          token,
+          title: newArticle.title,
+          content: newArticle.content,
+          cover_image: newArticle.cover_image || null
+        };
+
+        if (newArticle.cover_image_data_url) {
+          payload.cover_image_data_url = newArticle.cover_image_data_url;
+        } else if (newArticle.cover_image_base64) {
+          payload.cover_image_base64 = newArticle.cover_image_base64;
+          payload.cover_image_mime = newArticle.cover_image_mime;
+          payload.cover_image_filename = newArticle.cover_image_filename;
+        }
+
+        response = await fetch(`${API_URL}/index.php/api/articles/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
       }
-
-      const response = await fetch(`${API_URL}/index.php/api/articles/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Article published successfully', type: 'success' });
-        setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
+        setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null, cover_file: null });
         setShowNewArticle(false);
         fetchArticles();
       } else {
@@ -2439,23 +2453,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const file = e.target.files && e.target.files[0];
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const result = reader.result || '';
-                        // result is data:<mime>;base64,<data>
-                        const parts = result.split(',');
-                        const b64 = parts[1] || null;
-                        const mime = (parts[0] && parts[0].match(/data:(.*);base64/)) ? parts[0].match(/data:(.*);base64/)[1] : file.type;
-                        setNewArticle({ ...newArticle, cover_image_data_url: result, cover_image_base64: b64, cover_image_mime: mime, cover_image_filename: file.name });
-                      };
-                      reader.readAsDataURL(file);
+                      // keep raw file for multipart upload
+                      setNewArticle({ ...newArticle, cover_file: file, cover_image_filename: file.name, cover_image_mime: file.type });
                     }}
                   />
                   {newArticle.cover_image_filename && (
-                    <div className="small-text">Selected: {newArticle.cover_image_filename}</div>
+                    <div className="small-text">Selected: {newArticle.cover_image_filename} ({Math.round((newArticle.cover_file?.size||0)/1024)} KB)</div>
                   )}
                 </div>
                 <div className="article-form-group">

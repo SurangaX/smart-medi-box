@@ -318,6 +318,23 @@ function handleCreateArticle($method) {
     $cover_image_mime = $input['cover_image_mime'] ?? null;
     $cover_image_filename = $input['cover_image_filename'] ?? null;
     $cover_image_data_url = $input['cover_image_data_url'] ?? null;
+    // Handle multipart file upload
+    if (isset($_FILES['cover_file']) && is_uploaded_file($_FILES['cover_file']['tmp_name'])) {
+        error_log('CREATE ARTICLE - Received multipart file upload: ' . ($_FILES['cover_file']['name'] ?? 'unknown'));
+        $fileTmp = $_FILES['cover_file']['tmp_name'];
+        $fileName = $_FILES['cover_file']['name'] ?? null;
+        $fileType = $_FILES['cover_file']['type'] ?? null;
+        $fileContents = file_get_contents($fileTmp);
+        if ($fileContents !== false) {
+            $cover_image_base64 = base64_encode($fileContents);
+            $cover_image_mime = $fileType ?: $cover_image_mime;
+            $cover_image_filename = $fileName ?: $cover_image_filename;
+            // leave $cover_image (link) null when uploading file
+            $cover_image = null;
+        } else {
+            error_log('CREATE ARTICLE - Failed to read uploaded file');
+        }
+    }
     
     error_log("CREATE ARTICLE - Token received: " . ($token ? substr($token, 0, 10) . '...' : 'NULL'));
     error_log("CREATE ARTICLE - User ID received: " . ($user_id ?? 'NULL'));
