@@ -538,15 +538,23 @@ function handleDeleteArticle($method) {
         $doctor_row = pg_fetch_assoc($doctor_lookup_result);
         $doctor_id = $doctor_row['id'];
         
-        $query = "UPDATE articles SET is_published = false WHERE id = $1 AND doctor_id = $2";
+        // Permanently remove the article row owned by this doctor
+        $query = "DELETE FROM articles WHERE id = $1 AND doctor_id = $2";
         $result = pg_query_params($conn, $query, array($article_id, $doctor_id));
-        
-        if ($result) {
+
+        if ($result === false) {
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete article: ' . pg_last_error($conn)]);
+            return;
+        }
+
+        $affected = pg_affected_rows($result);
+        if ($affected > 0) {
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Article deleted']);
         } else {
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete article: ' . pg_last_error($conn)]);
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Article not found or not owned by doctor']);
         }
     } catch (Exception $e) {
         error_log("Delete Article Error: " . $e->getMessage());
