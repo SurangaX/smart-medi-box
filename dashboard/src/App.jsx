@@ -988,7 +988,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     setScannerError('');
     setScannerStarted(false);
 
-    // Ensure qr-reader container exists
+    // If a live camera scan is running, stop it first so scanFile can run
+    let restartCameraAfter = false;
+    if (qrInstanceRef.current && scannerStarted) {
+      restartCameraAfter = true;
+      try {
+        await stopQRScanner();
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) { console.warn('Error stopping live scanner before file scan', e); }
+    }
+
     // Create a temporary off-DOM container to avoid interfering with live scanner
     const tempContainerId = 'qr-file-scanner-' + Date.now();
     const container = document.createElement('div');
@@ -1018,6 +1027,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     } finally {
       try { await tempInstance.clear(); } catch (e) { /* ignore */ }
       try { document.body.removeChild(container); } catch (e) { /* ignore */ }
+      if (restartCameraAfter && showQRScanner) {
+        // Restart camera scanner after a short delay to let browser free the device
+        setTimeout(() => startQRScanner().catch(() => {}), 400);
+      }
     }
   };
 
