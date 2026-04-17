@@ -934,6 +934,36 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  // Unpair device API
+  const [showUnpairConfirm, setShowUnpairConfirm] = useState(false);
+  const [deviceToUnpair, setDeviceToUnpair] = useState(null);
+
+  const unpairDevice = async () => {
+    if (!deviceToUnpair) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/patient/unpair-device`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, device_id: deviceToUnpair })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setShowUnpairConfirm(false);
+        setDeviceToUnpair(null);
+        fetchDevices();
+        alert('Device unpaired successfully');
+      } else {
+        alert('Failed to unpair device: ' + (data.message || 'Unknown'));
+      }
+    } catch (err) {
+      console.error('Unpair error:', err);
+      alert('Network error while unpairing device');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="dashboard patient-dashboard">
       <div className="dashboard-header">
@@ -996,9 +1026,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className="section">
             <div className="section-header">
               <h2>Paired Devices</h2>
-              <button className="btn-primary" onClick={() => setShowQRScanner(!showQRScanner)}>
-                <Plus size={18} /> {showQRScanner ? 'Cancel Scan' : 'Scan Device QR'}
-              </button>
+              {devices && devices.length === 0 ? (
+                <button className="btn-primary" onClick={() => setShowQRScanner(!showQRScanner)}>
+                  <Plus size={18} /> {showQRScanner ? 'Cancel Scan' : 'Scan Device QR'}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ alignSelf: 'center', color: 'var(--text-secondary)' }}>1 device paired</span>
+                </div>
+              )}
             </div>
 
             {showQRScanner && (
@@ -1088,6 +1124,18 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       <p className={`status ${device.status ? device.status.toLowerCase() : 'active'}`}>
                         Status: {device.status || 'Active'}
                       </p>
+                    </div>
+                    <div className="device-actions">
+                      <button
+                        className="btn-danger"
+                        title="Unpair device"
+                        onClick={() => {
+                          setDeviceToUnpair(device.device_id);
+                          setShowUnpairConfirm(true);
+                        }}
+                      >
+                        <Trash2 size={16} /> Unpair
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1507,6 +1555,22 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               <button className="btn-danger" onClick={handleConfirmLogout}>
                 Logout
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unpair Confirmation Modal */}
+      {showUnpairConfirm && (
+        <div className="modal-overlay" onClick={() => setShowUnpairConfirm(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <h3>Unpair device?</h3>
+            <p>Are you sure you want to unpair this device? This will remove it from your account.</p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button className="btn-danger" onClick={unpairDevice} disabled={loading}>
+                {loading ? 'Unpairing...' : 'Yes, Unpair'}
+              </button>
+              <button className="btn-secondary" onClick={() => setShowUnpairConfirm(false)}>Cancel</button>
             </div>
           </div>
         </div>

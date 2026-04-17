@@ -284,6 +284,59 @@ class DoctorPatientManager {
             return ['status' => 'ERROR', 'message' => 'Failed to fetch devices'];
         }
     }
+
+    /**
+     * Unpair a device for the authenticated patient
+     */
+    public function unpairDevice($token, $device_id) {
+        try {
+            if (empty($token)) {
+                return ['status' => 'ERROR', 'message' => 'Token required'];
+            }
+
+            // Authenticate patient
+            $auth = $this->authenticateUser($token);
+            if ($auth['status'] !== 'SUCCESS') {
+                return $auth;
+            }
+
+            $user_id = $auth['user_id'];
+
+            if (empty($device_id)) {
+                return ['status' => 'ERROR', 'message' => 'Device ID required'];
+            }
+
+            // Find device DB id
+            $stmt = $this->db->prepare("SELECT id FROM devices WHERE device_id = $1");
+            $result = pg_execute($this->db, $stmt, [$device_id]);
+            if (pg_num_rows($result) === 0) {
+                return ['status' => 'ERROR', 'message' => 'Device not found'];
+            }
+            $device = pg_fetch_assoc($result);
+            $device_db_id = $device['id'];
+
+            // Delete mapping for this user
+            $stmt = $this->db->prepare("DELETE FROM device_user_map WHERE device_id = $1 AND user_id = $2 RETURNING id");
+            $result = pg_execute($this->db, $stmt, [$device_db_id, $user_id]);
+
+            if (pg_num_rows($result) === 0) {
+                return ['status' => 'ERROR', 'message' => 'No such device assigned to user'];
+            }
+
+            // If no other users mapped to this device, delete the device record
+            $stmt = $this->db->prepare("SELECT id FROM device_user_map WHERE device_id = $1 LIMIT 1");
+            $result = pg_execute($this->db, $stmt, [$device_db_id]);
+            if (pg_num_rows($result) === 0) {
+                $stmt = $this->db->prepare("DELETE FROM devices WHERE id = $1");
+                pg_execute($this->db, $stmt, [$device_db_id]);
+            }
+
+            return ['status' => 'SUCCESS', 'message' => 'Device unpaired successfully'];
+        } catch (Exception $e) {
+            error_log("unpairDevice exception: " . $e->getMessage());
+            return ['status' => 'ERROR', 'message' => 'Failed to unpair device: ' . $e->getMessage()];
+        }
+    }
     
     /**
      * Get patient details (for doctor)
@@ -619,6 +672,12 @@ try {
         case 'patient/devices':
             $token = $input['token'] ?? '';
             echo json_encode($dpm->getPatientDevices($token));
+            break;
+
+        case 'patient/unpair-device':
+            $token = $input['token'] ?? '';
+            $device_id = $input['device_id'] ?? '';
+            echo json_encode($dpm->unpairDevice($token, $device_id));
             break;
             
         case 'article/create':
