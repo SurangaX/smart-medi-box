@@ -35,13 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Helper function to generate image URL
-function getImageUrl($article_id) {
-    // Get the API base URL from environment or construct it
-    $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $base_url = $scheme . '://' . $host;
-    return $base_url . '/index.php/api/image/article/' . $article_id;
+// Helper function to generate image URL or data URL
+function getImageUrl($row_id, $cover_image_link, $cover_image_b64, $cover_image_mime) {
+    // If binary data exists (returned as base64), convert to data URL
+    if (!empty($cover_image_b64)) {
+        return 'data:' . ($cover_image_mime ?? 'image/jpeg') . ';base64,' . $cover_image_b64;
+    }
+    // Otherwise return the link URL or data-url stored in cover_image
+    return $cover_image_link;
 }
 
 // Get action from query string
@@ -147,7 +148,7 @@ function handleListArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
-                'cover_image' => getImageUrl($row['id']),
+                'cover_image' => getImageUrl($row['id'], $row['cover_image'], $row['cover_image_b64'], $row['cover_image_mime']),
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
@@ -283,7 +284,7 @@ function handleMyArticles($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
-                'cover_image' => getImageUrl($row['id'])
+                'cover_image' => getImageUrl($row['id'], $row['cover_image'], $row['cover_image_b64'], $row['cover_image_mime'])
             ];
         }
         
@@ -665,8 +666,9 @@ function handleViewArticle($method) {
         $query = "UPDATE articles SET view_count = view_count + 1 WHERE id = $1";
         pg_query_params($conn, $query, array($article_id));
 
-        // return the full article details for the client to render (include image URL)
-        $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name
+        // return the full article details for the client to render (include image data)
+        $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name,
+                         a.cover_image, encode(a.cover_image_data, 'base64') AS cover_image_b64, a.cover_image_mime
                          FROM articles a
                          JOIN doctors d ON a.doctor_id = d.id
                          WHERE a.id = $1 LIMIT 1";
@@ -683,7 +685,7 @@ function handleViewArticle($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
-                'cover_image' => getImageUrl($row['id'])
+                'cover_image' => getImageUrl($row['id'], $row['cover_image'], $row['cover_image_b64'], $row['cover_image_mime'])
             ]]);
             return;
         }
