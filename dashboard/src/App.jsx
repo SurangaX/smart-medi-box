@@ -493,6 +493,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [articlesLoading, setArticlesLoading] = useState(false);
   const qrScannerRef = useRef(null);
   const qrInstanceRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleLogoutClick = () => {
     console.log('🚪 Logout button clicked');
@@ -982,6 +983,45 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  const scanImageFile = async (file) => {
+    if (!file) return;
+    setScannerError('');
+    setScannerStarted(false);
+
+    // Ensure qr-reader container exists
+    if (!qrScannerRef.current) {
+      setScannerError('Scanner container not found.');
+      return;
+    }
+
+    // Create a temporary Html5Qrcode instance to use scanFile if none exists
+    let tempInstance = qrInstanceRef.current;
+    let created = false;
+    try {
+      if (!tempInstance) {
+        qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
+        tempInstance = new Html5Qrcode('qr-reader');
+        created = true;
+      }
+
+      const result = await tempInstance.scanFile(file, true);
+      if (result && result.decodedText) {
+        const mac = result.decodedText.trim();
+        setScannedMac(mac);
+        setShowDeviceFound(true);
+        setShowQRScanner(false);
+      }
+    } catch (err) {
+      console.error('Image scan failed:', err);
+      setScannerError('Failed to decode image. Make sure the QR code is clear and try a different image.');
+    } finally {
+      try { if (created && tempInstance) { await tempInstance.clear(); } } catch (e) {}
+      if (created) {
+        qrInstanceRef.current = null;
+      }
+    }
+  };
+
   const stopQRScanner = () => {
     try {
       if (qrInstanceRef.current) {
@@ -1281,6 +1321,27 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         <option value="">Detecting cameras...</option>
                       )}
                     </select>
+
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      title="Scan from image file"
+                    >
+                      Scan an Image File
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files && e.target.files[0];
+                        if (f) scanImageFile(f);
+                        // reset value to allow reselecting same file
+                        e.target.value = '';
+                      }}
+                    />
                   </div>
 
                   <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}></div>
