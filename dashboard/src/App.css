@@ -815,16 +815,18 @@ button, a { user-select: none; cursor: pointer; }
 
 .modal-loading-overlay {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   background: rgba(0,0,0,0.35);
   color: var(--text-primary);
-  z-index: 30;
-  border-radius: 6px;
-  backdrop-filter: blur(2px);
+  z-index: 1010;
+  border-radius: 8px;
+  padding: 12px 18px;
 }
 
 .modal-loading-overlay .modal-loader {

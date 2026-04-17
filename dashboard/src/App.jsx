@@ -2028,12 +2028,6 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       {selectedArticle && (
         <div className={`modal-overlay ${isArticleLoading ? 'no-backdrop-blur' : ''}`} onClick={() => setSelectedArticle(null)}>
           <div className={`modal-content ${isArticleLoading ? 'loading-blur' : ''}`} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-              {isArticleLoading && (
-                <div className="modal-loading-overlay" onClick={e => e.stopPropagation()}>
-                  <div className="loader modal-loader" aria-hidden="true" />
-                  <div>Loading full article...</div>
-                </div>
-              )}
             <button
               style={{ float: 'right', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '24px', padding: '0' }}
               onClick={() => setSelectedArticle(null)}
@@ -2051,6 +2045,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               {(selectedArticle.content && !isArticleLoading) ? selectedArticle.content : (selectedArticle.excerpt || '')}
             </div>
           </div>
+
+          {isArticleLoading && (
+            <div className="modal-loading-overlay" onClick={e => e.stopPropagation()}>
+              <div className="loader modal-loader" aria-hidden="true" />
+              <div>Loading full article...</div>
+            </div>
+          )}
         </div>
       )}
 
