@@ -484,6 +484,8 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 1 1 auto;
+  align-items: center;
+  text-align: center;
 }
 
 .status {
@@ -512,9 +514,9 @@ body {
 }
 
 /* Make device card layout place status and actions on same row */
-.device-card { display:flex; align-items:center; gap:16px; justify-content:space-between; }
-.device-meta-row { display:flex; gap:12px; align-items:center; }
-.device-actions { display:flex; gap:8px; align-items:center; }
+.device-card { display:flex; flex-direction:column; align-items:center; gap:12px; justify-content:center; max-width:360px; margin: 0 auto; }
+.device-meta-row { display:flex; gap:12px; align-items:center; justify-content:center; width:100%; }
+.device-actions { display:flex; gap:8px; align-items:center; justify-content:center; }
 
 .status.offline {
   background: rgba(239, 68, 68, 0.2);
