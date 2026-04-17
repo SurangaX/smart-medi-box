@@ -896,12 +896,29 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       }
 
       // Use lower-level Html5Qrcode to control camera selection and avoid
-      // library-injected dropdown overlays. Fetch available cameras.
-      const devices = await Html5Qrcode.getCameras();
-      setCameras(devices || []);
-      const chosenCamera = selectedCameraId || (devices && devices.length ? devices[0].id : null);
+      // library-injected dropdown overlays. Try Html5Qrcode.getCameras(),
+      // fallback to navigator.mediaDevices.enumerateDevices if needed.
+      let devices = [];
+      try {
+        devices = await Html5Qrcode.getCameras();
+      } catch (e) {
+        console.warn('Html5Qrcode.getCameras failed, falling back to enumerateDevices', e);
+      }
 
-      if (!chosenCamera) {
+      if (!devices || devices.length === 0) {
+        try {
+          const list = await navigator.mediaDevices.enumerateDevices();
+          devices = list.filter(d => d.kind === 'videoinput').map(d => ({ id: d.deviceId, label: d.label || d.deviceId }));
+        } catch (e) {
+          console.error('enumerateDevices failed', e);
+        }
+      }
+
+      setCameras(devices || []);
+
+      // Auto-select the first camera if none selected
+      const initialCamera = selectedCameraId || (devices && devices.length ? devices[0].id : null);
+      if (!initialCamera) {
         setScannerError('No camera found on this device');
         return;
       }
@@ -909,24 +926,52 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const html5Qr = new Html5Qrcode('qr-reader');
       qrInstanceRef.current = html5Qr;
 
-      await html5Qr.start(
-        chosenCamera,
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          console.log('QR Scanned:', decodedText);
-          const mac = decodedText.trim();
-          setScannedMac(mac);
-          setScannerError('');
-          try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
-          qrInstanceRef.current = null;
-          setScannerStarted(false);
-          setShowQRScanner(false);
-          setShowDeviceFound(true);
-        },
-        (errorMessage) => {
-          // ignore minor scan errors
+      // Try to start with the selected camera; if it fails, attempt other cameras sequentially
+      const tryCameras = selectedCameraId ? [selectedCameraId, ...devices.filter(d => d.id !== selectedCameraId).map(d => d.id)] : devices.map(d => d.id);
+      let started = false;
+      for (const camId of tryCameras) {
+        try {
+          // Quick permission probe: try getUserMedia with the specific deviceId
+          await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camId } } });
+        } catch (probeErr) {
+          console.warn('Camera probe failed for', camId, probeErr);
+          continue; // try next
         }
-      );
+
+        try {
+          await html5Qr.start(
+            camId,
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+              console.log('QR Scanned:', decodedText);
+              const mac = decodedText.trim();
+              setScannedMac(mac);
+              setScannerError('');
+              try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
+              qrInstanceRef.current = null;
+              setScannerStarted(false);
+              setShowQRScanner(false);
+              setShowDeviceFound(true);
+            },
+            (errorMessage) => { /* ignore minor scan errors */ }
+          );
+          // success
+          setSelectedCameraId(camId);
+          started = true;
+          break;
+        } catch (startErr) {
+          console.warn('Failed to start html5Qr on', camId, startErr);
+          // try next camera
+        }
+      }
+
+      if (!started) {
+        setScannerError('Unable to open any camera. Check browser permissions or close other apps using the camera.');
+        try { html5Qr.clear(); } catch (e) {}
+        qrInstanceRef.current = null;
+        setScannerStarted(false);
+        return;
+      }
 
       setScannerStarted(true);
       console.log('QR Scanner started successfully (Html5Qrcode)');
