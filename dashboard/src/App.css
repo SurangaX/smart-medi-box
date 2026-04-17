@@ -670,76 +670,74 @@ button, a { user-select: none; cursor: pointer; }
 
 /* ==================== QR Scanner ==================== */
 .qr-scanner-box {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.04);
-  border-radius: 14px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
   padding: 20px;
-  margin: 20px auto;
-  max-width: 520px;
-  box-shadow: 0 18px 40px rgba(2,6,23,0.45);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
+  margin-bottom: 20px;
 }
 
 .qr-scanner-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  gap: 12px;
-  padding-bottom: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .qr-scanner-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
 }
 
 .close-btn {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: none;
+  border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 6px;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  transition: all 0.16s ease;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
-.close-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); transform: translateY(-2px); }
+.close-btn:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
 
 .scanner-start-section {
   text-align: center;
-  padding: 18px 12px;
-  width: 100%;
+  padding: 30px 20px;
 }
 
-.scanner-start-section p { color: var(--text-secondary); margin-bottom: 12px; }
-
-.btn-start-large { padding: 12px 18px; border-radius: 12px; font-size: 15px; }
+.scanner-start-section p {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
 
 .scanner-active-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.qr-scanner-container { width: 100%; max-width: 480px; display:flex; justify-content:center; }
+.qr-scanner-container {
+  width: 100%;
+  max-width: 400px;
+}
 
 .qr-reader {
   width: 100%;
-  border-radius: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
   overflow: hidden;
   background: #000;
-  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
-  border: 1px solid rgba(255,255,255,0.03);
 }
 
 .qr-reader video {
@@ -802,34 +800,8 @@ button, a { user-select: none; cursor: pointer; }
   #qr-reader::after { width: 80%; height: 50%; }
 }
 
-/* Hide html5-qrcode built-in toolbar / camera select UI so our UI is single and consistent */
-#qr-reader .html5-qrcode-toolbar,
-#qr-reader .html5-qrcode-camera__select,
-#qr-reader .html5-qrcode-button-area,
-#qr-reader .html5-qrcode-status,
-#qr-reader .html5-qrcode-button,
-#qr-reader .html5-qrcode-camera__wrap,
-#qr-reader .html5-qrcode-element {
-  display: none !important;
-}
-
-/* Hide any selects or small inline stop buttons from the library */
-#qr-reader select, #qr-reader button { display: none !important; }
-
 /* Ensure our Stop Scanning control remains visible below scanner */
 .qr-scanner-box > button.btn-secondary { margin-top: 12px; }
-
-/* Extra aggressive: hide any library camera/select/toolbar-like elements inside qr-reader */
-#qr-reader [class*="camera"] { display: none !important; }
-#qr-reader [class*="toolbar"] { display: none !important; }
-#qr-reader [class*="select"] { display: none !important; }
-#qr-reader [class*="button"] { display: none !important; }
-#qr-reader [class*="control"] { display: none !important; }
-#qr-reader [role="toolbar"] { display: none !important; }
-#qr-reader [aria-label*="Camera"] { display: none !important; }
-#qr-reader [aria-label*="Select"] { display: none !important; }
-#qr-reader [title*="Camera"] { display: none !important; }
-#qr-reader select, #qr-reader option { display: none !important; }
 
 .scanned-result {
   background: var(--background);
