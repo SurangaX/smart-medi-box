@@ -58,8 +58,10 @@
 .notif-message { font-size:14px; }
 .notif-meta { font-size:11px; color: var(--muted, #6b7280); }
 
-.btn-icon { background: transparent; border: none; cursor: pointer; padding:6px 8px; position:relative; }
-.notif-badge { position:absolute; top:2px; right:2px; background: #ef4444; color: white; font-size:11px; padding:2px 6px; border-radius:999px; }
+.btn-icon { background: var(--muted, #6b7280); border: none; cursor: pointer; padding:8px; position:relative; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:999px; color: #fff; }
+.btn-icon:hover { filter: brightness(0.95); box-shadow: 0 6px 18px rgba(2,6,23,0.08); }
+.btn-icon svg { color: inherit; }
+.notif-badge { position:absolute; top:2px; right:2px; background: var(--danger, #ef4444); color: white; font-size:11px; padding:2px 6px; border-radius:999px; }
 
 @media (max-width: 700px) {
   .notif-panel { right: 8px; left: 8px; width: auto; top: 64px; }
