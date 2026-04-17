@@ -2105,6 +2105,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [creatingArticle, setCreatingArticle] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteArticleConfirm, setShowDeleteArticleConfirm] = useState(false);
+  const [articleIdToDelete, setArticleIdToDelete] = useState(null);
   // Local notification state for doctor dashboard
   const [notificationsDoc, setNotificationsDoc] = useState([]);
   const [notifPanelOpenDoc, setNotifPanelOpenDoc] = useState(false);
@@ -2299,8 +2301,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  const handleDeleteArticle = async (articleId) => {
-    if (!confirm('Are you sure you want to delete this article?')) return;
+  const handleDeleteArticle = (articleId) => {
+    setArticleIdToDelete(articleId);
+    setShowDeleteArticleConfirm(true);
+  };
+
+  const handleConfirmDeleteArticle = async () => {
+    setShowDeleteArticleConfirm(false);
+    const articleId = articleIdToDelete;
+    setArticleIdToDelete(null);
     
     try {
       const response = await fetch(`${API_URL}/index.php/api/articles/delete`, {
@@ -2322,6 +2331,11 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
     } catch (err) {
       window.appNotify({ message: 'Error deleting article: ' + err.message, type: 'error' });
     }
+  };
+
+  const handleCancelDeleteArticle = () => {
+    setShowDeleteArticleConfirm(false);
+    setArticleIdToDelete(null);
   };
 
   return (
@@ -2552,6 +2566,24 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
           </div>
         )}
       </div>
+
+      {/* Delete Article Confirmation Modal */}
+      {showDeleteArticleConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Delete Article</h2>
+            <p>Are you sure you want to delete this article? This action cannot be undone.</p>
+            <div className="modal-buttons">
+              <button className="btn-secondary" onClick={handleCancelDeleteArticle}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={handleConfirmDeleteArticle}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
