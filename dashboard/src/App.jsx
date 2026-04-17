@@ -2098,7 +2098,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [patients, setPatients] = useState([]);
   const [articles, setArticles] = useState([]);
   const [showNewArticle, setShowNewArticle] = useState(false);
-  const [newArticle, setNewArticle] = useState({ title: '', content: '', cover_image: '', cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
+  const [newArticle, setNewArticle] = useState({ title: '', content: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
   const [assignPatient, setAssignPatient] = useState({ patient_nic: '', notes: '' });
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -2249,7 +2249,10 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         cover_image: newArticle.cover_image || null
       };
 
-      if (newArticle.cover_image_base64) {
+      if (newArticle.cover_image_data_url) {
+        // send full data URL so server can store and return it verbatim
+        payload.cover_image_data_url = newArticle.cover_image_data_url;
+      } else if (newArticle.cover_image_base64) {
         payload.cover_image_base64 = newArticle.cover_image_base64;
         payload.cover_image_mime = newArticle.cover_image_mime;
         payload.cover_image_filename = newArticle.cover_image_filename;
@@ -2263,7 +2266,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Article published successfully', type: 'success' });
-        setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '', cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
+        setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
         setShowNewArticle(false);
         fetchArticles();
       } else {
@@ -2446,7 +2449,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                         const parts = result.split(',');
                         const b64 = parts[1] || null;
                         const mime = (parts[0] && parts[0].match(/data:(.*);base64/)) ? parts[0].match(/data:(.*);base64/)[1] : file.type;
-                        setNewArticle({ ...newArticle, cover_image_base64: b64, cover_image_mime: mime, cover_image_filename: file.name });
+                        setNewArticle({ ...newArticle, cover_image_data_url: result, cover_image_base64: b64, cover_image_mime: mime, cover_image_filename: file.name });
                       };
                       reader.readAsDataURL(file);
                     }}
