@@ -802,6 +802,23 @@ button, a { user-select: none; cursor: pointer; }
   #qr-reader::after { width: 80%; height: 50%; }
 }
 
+/* Hide html5-qrcode built-in toolbar / camera select UI so our UI is single and consistent */
+#qr-reader .html5-qrcode-toolbar,
+#qr-reader .html5-qrcode-camera__select,
+#qr-reader .html5-qrcode-button-area,
+#qr-reader .html5-qrcode-status,
+#qr-reader .html5-qrcode-button,
+#qr-reader .html5-qrcode-camera__wrap,
+#qr-reader .html5-qrcode-element {
+  display: none !important;
+}
+
+/* Hide any selects or small inline stop buttons from the library */
+#qr-reader select, #qr-reader button { display: none !important; }
+
+/* Ensure our Stop Scanning control remains visible below scanner */
+.qr-scanner-box > button.btn-secondary { margin-top: 12px; }
+
 .scanned-result {
   background: var(--background);
   border: 2px solid var(--success);
