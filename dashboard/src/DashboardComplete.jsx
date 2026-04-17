@@ -492,7 +492,7 @@ const AlarmsSection = ({ alarms, deviceStatus }) => {
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
-        alert('Alarm dismissed');
+        try { window.appNotify({ message: 'Alarm dismissed', type: 'info' }); } catch (e) { /* fallback */ }
       }
     } catch (err) {
       console.error('Error dismissing alarm:', err);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
@@ -454,6 +455,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [tempHistory, setTempHistory] = useState([]);
@@ -550,6 +553,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       setDevicesLoading(false);
     }
   };
+
+  // Notification helpers
+  const addNotification = ({ title = null, message = '', type = 'info' }) => {
+    const n = { id: Date.now() + Math.floor(Math.random() * 1000), title, message, type, timestamp: new Date().toISOString(), read: false };
+    setNotifications(prev => [n, ...prev]);
+  };
+
+  useEffect(() => {
+    // Expose global dispatch helper so other modules can push notifications
+    window.appNotify = (payload) => {
+      try {
+        window.dispatchEvent(new CustomEvent('app-notification', { detail: payload }));
+      } catch (e) { console.error('appNotify error', e); }
+    };
+
+    const handler = (e) => {
+      if (e && e.detail) addNotification(e.detail);
+    };
+
+    window.addEventListener('app-notification', handler);
+    return () => window.removeEventListener('app-notification', handler);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const fetchDoctors = async () => {
     setLoading(true);
@@ -711,18 +738,18 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       
       if (data.status === 'SUCCESS') {
         console.log('✅ Schedule created successfully!');
-        alert('✅ Schedule created successfully!');
+        window.appNotify({ message: 'Schedule created successfully', type: 'success' });
         const today = new Date().toISOString().split('T')[0];
         setNewSchedule({ type: 'MEDICINE', schedule_date: today, hour: 9, minute: 0, description: '' });
         // Refresh schedules from the newly created schedule's date
         fetchSchedules(newSchedule.schedule_date);
       } else {
         console.error('❌ Schedule creation failed:', data.message);
-        alert('Error: ' + (data.message || 'Failed to create schedule'));
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create schedule'), type: 'error' });
       }
     } catch (err) {
       console.error('🚨 Schedule creation exception:', err);
-      alert('Failed to create schedule: ' + err.message);
+      window.appNotify({ message: 'Failed to create schedule: ' + err.message, type: 'error' });
     }
   };
 
@@ -740,15 +767,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       
       if (data.status === 'SUCCESS') {
         console.log('✅ Schedule marked as complete!');
-        alert('✅ Schedule marked as complete!');
+        window.appNotify({ message: 'Schedule marked as complete', type: 'success' });
         fetchSchedules();
       } else {
         console.error('❌ Failed to mark schedule complete:', data.message);
-        alert('Error: ' + (data.message || 'Failed to mark schedule complete'));
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to mark schedule complete'), type: 'error' });
       }
     } catch (err) {
       console.error('🚨 Complete schedule exception:', err);
-      alert('Failed to mark schedule complete: ' + err.message);
+      window.appNotify({ message: 'Failed to mark schedule complete: ' + err.message, type: 'error' });
     }
   };
 
@@ -756,7 +783,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     try {
       // Prevent creating a pairing token if user already has a device (one account -> one device)
       if (devices && devices.length > 0) {
-        alert('You already have a paired device. Unpair first to pair a new device.');
+        window.appNotify({ message: 'You already have a paired device. Unpair first to pair a new device.', type: 'info' });
         return;
       }
       const response = await fetch(`${API_URL}/index.php/api/auth/generate-pairing-token`, {
@@ -931,7 +958,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         setManualMacInput('');
         setScannerError('');
         fetchDevices(); // Refresh device list
-        alert('✅ Device paired successfully!');
+        window.appNotify({ message: 'Device paired successfully', type: 'success' });
       } else {
         setScannerError(`Failed to pair device: ${data.message || 'Unknown error'}`);
         console.error('Pairing failed:', data);
@@ -962,13 +989,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         setShowUnpairConfirm(false);
         setDeviceToUnpair(null);
         fetchDevices();
-        alert('Device unpaired successfully');
+        window.appNotify({ message: 'Device unpaired successfully', type: 'success' });
       } else {
-        alert('Failed to unpair device: ' + (data.message || 'Unknown'));
+        window.appNotify({ message: 'Failed to unpair device: ' + (data.message || 'Unknown'), type: 'error' });
       }
     } catch (err) {
       console.error('Unpair error:', err);
-      alert('Network error while unpairing device');
+      window.appNotify({ message: 'Network error while unpairing device', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -981,10 +1008,36 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <h1>👤 Welcome, {profile.name}</h1>
           <p>NIC: {profile.nic} | ID: {profile.id}</p>
         </div>
-        <button className="btn-secondary" onClick={handleLogoutClick}>
-          <LogOut size={18} /> Logout
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn-icon" onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
+            <Bell size={18} />
+            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+          </button>
+          <button className="btn-secondary" onClick={handleLogoutClick}>
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
       </div>
+
+      {notifPanelOpen && (
+        <div className="notif-panel">
+          <div className="notif-panel-header">
+            <strong>Notifications</strong>
+            <button className="btn-link" onClick={() => { setNotifications([]); setNotifPanelOpen(false); }}>Clear</button>
+          </div>
+          <div className="notif-list">
+            {notifications.length === 0 && <div className="notif-empty">No notifications</div>}
+            {notifications.map(n => (
+              <div key={n.id} className={`notif-item ${n.type || ''}`}>
+                <div className="notif-message">{n.message}</div>
+                <div className="notif-meta">
+                  <small>{new Date(n.timestamp).toLocaleString()}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-tabs">
         <button
@@ -1715,15 +1768,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
-        alert('✅ Article published successfully!');
+        window.appNotify({ message: 'Article published successfully', type: 'success' });
         setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '' });
         setShowNewArticle(false);
         fetchArticles();
       } else {
-        alert('Error: ' + (data.message || 'Failed to create article'));
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create article'), type: 'error' });
       }
     } catch (err) {
-      alert('Error creating article: ' + err.message);
+      window.appNotify({ message: 'Error creating article: ' + err.message, type: 'error' });
     }
   };
 
@@ -1739,16 +1792,16 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       
       if (data.status === 'SUCCESS') {
-        alert('✅ Article deleted successfully!');
+        window.appNotify({ message: 'Article deleted successfully', type: 'success' });
         // Immediately remove from UI
         setArticles(articles.filter(article => article.id !== articleId && article.article_id !== articleId));
         // Also refresh to be sure
         await fetchArticles();
       } else {
-        alert('Error: ' + (data.message || 'Failed to delete article'));
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete article'), type: 'error' });
       }
     } catch (err) {
-      alert('Error deleting article: ' + err.message);
+      window.appNotify({ message: 'Error deleting article: ' + err.message, type: 'error' });
     }
   };
 
@@ -1759,10 +1812,36 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
           <h1>👨‍⚕️ Welcome, Dr. {profile.name}</h1>
           <p>Specialization: {profile.specialization} | Hospital: {profile.hospital}</p>
         </div>
-        <button className="btn-secondary" onClick={handleLogoutClick}>
-          <LogOut size={18} /> Logout
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn-icon" onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
+            <Bell size={18} />
+            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+          </button>
+          <button className="btn-secondary" onClick={handleLogoutClick}>
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
       </div>
+
+      {notifPanelOpen && (
+        <div className="notif-panel">
+          <div className="notif-panel-header">
+            <strong>Notifications</strong>
+            <button className="btn-link" onClick={() => { setNotifications([]); setNotifPanelOpen(false); }}>Clear</button>
+          </div>
+          <div className="notif-list">
+            {notifications.length === 0 && <div className="notif-empty">No notifications</div>}
+            {notifications.map(n => (
+              <div key={n.id} className={`notif-item ${n.type || ''}`}>
+                <div className="notif-message">{n.message}</div>
+                <div className="notif-meta">
+                  <small>{new Date(n.timestamp).toLocaleString()}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-tabs">
         <button
@@ -1912,7 +1991,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                           className="btn-secondary"
                           style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
                           onClick={() => {
-                            alert('Edit functionality coming soon');
+                            window.appNotify({ message: 'Edit functionality coming soon', type: 'info' });
                           }}
                         >
                           Edit
