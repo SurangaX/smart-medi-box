@@ -99,6 +99,32 @@ const LoginScreen = ({ onLoginSuccess }) => {
               </div>
             )}
 
+            {showDeviceFound && scannedMac && (
+              <div className="device-found-box">
+                <h3>Device Found</h3>
+                <p>MAC Address: <strong>{scannedMac}</strong></p>
+                <p>Detected device name: <strong>{`Smart Medi Box - ${scannedMac}`}</strong></p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button
+                    className="btn-primary"
+                    onClick={() => completePairingWithMac(scannedMac)}
+                    disabled={loading}
+                  >
+                    {loading ? 'Pairing...' : 'Pair Device'}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowDeviceFound(false);
+                      setScannedMac('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button type="submit" className="btn-primary btn-block" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -474,6 +500,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const [scannerStarted, setScannerStarted] = useState(false);
+  const [showDeviceFound, setShowDeviceFound] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'MEDICINE', 
@@ -905,10 +932,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       await qrScanner.render(
         (decodedText) => {
           console.log('QR Scanned:', decodedText);
-          setScannedMac(decodedText.trim());
+          const mac = decodedText.trim();
+          setScannedMac(mac);
           setScannerError('');
-          qrScanner.pause();
+          try {
+            qrScanner.pause();
+            qrScanner.stop().catch(() => {});
+          } catch (e) {}
+          qrInstanceRef.current = null;
           setScannerStarted(false);
+          setShowQRScanner(false);
+          setShowDeviceFound(true);
         },
         (errorMessage) => {
           // Suppress logging for performance
@@ -1206,18 +1240,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   </div>
                 )}
 
-                {scannedMac && (
-                  <div className="scanned-result">
-                    <p>MAC Address detected: <strong>{scannedMac}</strong></p>
-                    <button 
-                      className="btn-primary"
-                      onClick={() => completePairingWithMac(scannedMac)}
-                      disabled={loading}
-                    >
-                      {loading ? 'Pairing...' : 'Pair Device'}
-                    </button>
-                  </div>
-                )}
+                {/* scannedMac handled by Device Found panel (shown after scanner) */}
               </div>
             )}
 

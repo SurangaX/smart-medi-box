@@ -770,6 +770,16 @@ button, a { user-select: none; cursor: pointer; }
   font-family: 'Courier New', monospace;
 }
 
+.device-found-box {
+  background: var(--background);
+  border: 2px solid var(--success);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  text-align: center;
+}
+.device-found-box p { color: var(--text-secondary); margin: 8px 0; }
+
 /* Responsive QR Scanner */
 @media (max-width: 768px) {
   .qr-scanner-container {
