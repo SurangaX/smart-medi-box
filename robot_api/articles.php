@@ -576,9 +576,34 @@ function handleViewArticle($method) {
     }
     
     try {
+        // increment view count
         $query = "UPDATE articles SET view_count = view_count + 1 WHERE id = $1";
         pg_query_params($conn, $query, array($article_id));
-        
+
+        // return the full article details for the client to render
+        $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name
+                         FROM articles a
+                         JOIN doctors d ON a.doctor_id = d.id
+                         WHERE a.id = $1 LIMIT 1";
+        $detail_result = pg_query_params($conn, $detail_query, array($article_id));
+        if ($detail_result && pg_num_rows($detail_result) > 0) {
+            $row = pg_fetch_assoc($detail_result);
+            http_response_code(200);
+            echo json_encode(['status' => 'SUCCESS', 'article' => [
+                'id' => intval($row['id']),
+                'article_id' => $row['article_id'],
+                'title' => $row['title'],
+                'content' => $row['content'],
+                'summary' => $row['summary'],
+                'views' => intval($row['views']),
+                'created_at' => $row['created_at'],
+                'doctor_name' => $row['doctor_name'],
+                'cover_image' => null
+            ]]);
+            return;
+        }
+
+        // fallback: success without article
         http_response_code(200);
         echo json_encode(['status' => 'SUCCESS']);
     } catch (Exception $e) {

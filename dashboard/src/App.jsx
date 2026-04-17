@@ -762,13 +762,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const handleViewArticle = async (articleId) => {
     try {
-      await fetch(`${API_URL}/index.php/api/articles/view`, {
+      const resp = await fetch(`${API_URL}/index.php/api/articles/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article_id: articleId })
       });
+      const data = await resp.json();
+      if (data && data.status === 'SUCCESS' && data.article) {
+        setSelectedArticle(data.article);
+      } else {
+        // no article returned; keep minimal info
+        console.warn('Article detail not returned by API, falling back to list item');
+      }
     } catch (err) {
-      console.error('Failed to track view:', err);
+      console.error('Failed to track/fetch article detail:', err);
     }
   };
 
