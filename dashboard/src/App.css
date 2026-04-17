@@ -803,6 +803,30 @@ button, a { user-select: none; cursor: pointer; }
   to { transform: rotate(360deg); }
 }
 
+/* Modal loading overlay and blur while fetching full article */
+.modal-content {
+  position: relative;
+}
+
+.modal-content.loading-blur {
+  filter: blur(6px) saturate(0.9);
+  transition: filter 180ms ease-in-out;
+}
+
+.modal-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.35);
+  color: var(--text-primary);
+  z-index: 30;
+  border-radius: 6px;
+  backdrop-filter: blur(2px);
+}
+
 @media (max-width: 600px) {
   .qr-scanner-container {
     max-width: 100%;
