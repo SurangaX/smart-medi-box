@@ -1614,6 +1614,12 @@ button, a { user-select: none; cursor: pointer; }
   animation: fadeIn 0.3s ease;
 }
 
+/* When we only want to blur the modal content, disable the overlay's backdrop blur */
+.modal-overlay.no-backdrop-blur {
+  backdrop-filter: none;
+  background: rgba(0,0,0,0.45);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

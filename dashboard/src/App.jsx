@@ -2026,7 +2026,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       {/* Article Detail Modal */}
       {selectedArticle && (
-        <div className="modal-overlay" onClick={() => setSelectedArticle(null)}>
+        <div className={`modal-overlay ${isArticleLoading ? 'no-backdrop-blur' : ''}`} onClick={() => setSelectedArticle(null)}>
           <div className={`modal-content ${isArticleLoading ? 'loading-blur' : ''}`} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               {isArticleLoading && (
                 <div className="modal-loading-overlay" onClick={e => e.stopPropagation()}>
