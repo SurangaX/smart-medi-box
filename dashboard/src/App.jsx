@@ -962,6 +962,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     };
   }, []);
 
+  // Auto-start scanner when the scan view is opened, stop when closed
+  useEffect(() => {
+    if (showQRScanner) {
+      setScannerError('');
+      startQRScanner();
+    } else {
+      stopQRScanner();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showQRScanner]);
+
   const completePairingWithMac = async (macAddress) => {
     if (!macAddress) {
       setScannerError('Please enter or scan a valid device MAC address');
@@ -1182,20 +1193,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   </button>
                 </div>
 
-                {!scannerStarted ? (
-                  <div className="scanner-start-section">
-                    <p>Click the button below to start scanning your device's QR code</p>
-                    <button 
-                      className="btn-primary"
-                      onClick={async () => {
-                        setScannerError('');
-                        await startQRScanner();
-                      }}
-                    >
-                      <Camera size={18} /> Start Camera
-                    </button>
-                  </div>
-                ) : null}
+                {/* Scanner auto-starts when the scan view opens; manual start removed */}
 
                 <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: scannerStarted ? 'block' : 'none' }}></div>
 
