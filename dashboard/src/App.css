@@ -750,6 +750,69 @@ button, a { user-select: none; cursor: pointer; }
   display: none;
 }
 
+/* Fix: make camera preview fill the scan region and avoid tiny video (<85px) showing */
+#qr-reader__scan_region {
+  width: 100% !important;
+  min-height: 240px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+#qr-reader__scan_region video,
+#qr-reader__scan_region canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 420px !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Compact and align the dashboard controls inside the reader */
+#qr-reader__dashboard_section_csr {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 8px 6px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#qr-reader__dashboard_section_csr .html5-qrcode-element {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255,255,255,0.02) !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  color: var(--text-primary) !important;
+  padding: 6px 8px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+
+/* Camera select sizing and ellipsis */
+#html5-qrcode-select-camera {
+  max-width: 260px !important;
+  min-width: 140px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Make the library stop button unobtrusive; prefer our app stop button */
+#html5-qrcode-button-camera-stop {
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+}
+
+/* Hide the small 'Powered by' info if it appears in top-right */
+#qr-reader > div > div > div[style*="Powered by"],
+#qr-reader a[href*="scanapp.org"] { display: none !important; }
+
 /* Tame html5-qrcode default controls so they don't create large grey overlays
    Make controls compact, translucent, and inline with dashboard theme. */
 #qr-reader .html5-qrcode-element {
