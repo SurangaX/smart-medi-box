@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
@@ -476,6 +476,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const [scannerStarted, setScannerStarted] = useState(false);
+  const [cameras, setCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [showDeviceFound, setShowDeviceFound] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ 
@@ -893,41 +895,41 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         return;
       }
 
-      const qrScanner = new Html5QrcodeScanner(
-        'qr-reader',
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          rememberLastUsedCamera: true,
-          aspectRatio: 1.0,
-        },
-        false
-      );
+      // Use lower-level Html5Qrcode to control camera selection and avoid
+      // library-injected dropdown overlays. Fetch available cameras.
+      const devices = await Html5Qrcode.getCameras();
+      setCameras(devices || []);
+      const chosenCamera = selectedCameraId || (devices && devices.length ? devices[0].id : null);
 
-      // Render returns a promise
-      await qrScanner.render(
+      if (!chosenCamera) {
+        setScannerError('No camera found on this device');
+        return;
+      }
+
+      const html5Qr = new Html5Qrcode('qr-reader');
+      qrInstanceRef.current = html5Qr;
+
+      await html5Qr.start(
+        chosenCamera,
+        { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           console.log('QR Scanned:', decodedText);
           const mac = decodedText.trim();
           setScannedMac(mac);
           setScannerError('');
-          try {
-            qrScanner.pause();
-            qrScanner.stop().catch(() => {});
-          } catch (e) {}
+          try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
           qrInstanceRef.current = null;
           setScannerStarted(false);
           setShowQRScanner(false);
           setShowDeviceFound(true);
         },
         (errorMessage) => {
-          // Suppress logging for performance
+          // ignore minor scan errors
         }
       );
 
-      qrInstanceRef.current = qrScanner;
       setScannerStarted(true);
-      console.log('QR Scanner started successfully');
+      console.log('QR Scanner started successfully (Html5Qrcode)');
     } catch (error) {
       console.error('Failed to start QR scanner:', error);
       setScannerError('Camera access denied or not available. Please check permissions: ' + error.message);
@@ -938,11 +940,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const stopQRScanner = () => {
     try {
       if (qrInstanceRef.current) {
-        // Stop the scanner properly
-        qrInstanceRef.current.pause();
-        qrInstanceRef.current.stop().catch(err => console.log('Scanner already stopped:', err));
+        // Defensive stop for either Html5Qrcode or Html5QrcodeScanner
+        try { if (qrInstanceRef.current.pause) qrInstanceRef.current.pause(); } catch(e) {}
+        try { if (qrInstanceRef.current.stop) qrInstanceRef.current.stop(); } catch(e) {}
+        try { if (qrInstanceRef.current.clear) qrInstanceRef.current.clear(); } catch(e) {}
         qrInstanceRef.current = null;
-        
+
         // Clear the scanner element
         if (qrScannerRef.current) {
           qrScannerRef.current.innerHTML = '';
@@ -954,6 +957,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       setScannerStarted(false);
     }
   };
+
+  // Restart scanner when selected camera changes
+  useEffect(() => {
+    if (!showQRScanner) return;
+    if (!selectedCameraId) return;
+    if (scannerStarted) {
+      // restart with new camera
+      stopQRScanner();
+      setTimeout(() => startQRScanner(), 200);
+    } else {
+      startQRScanner();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCameraId]);
 
   useEffect(() => {
     return () => {
@@ -1204,19 +1221,37 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
                 {/* Scanner auto-starts when the scan view opens; manual start removed */}
 
-                <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: scannerStarted ? 'block' : 'none' }}></div>
+                <div style={{ marginBottom: 10, display: showQRScanner ? 'block' : 'none' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                    <label style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Camera</label>
+                    <select
+                      value={selectedCameraId || ''}
+                      onChange={(e) => setSelectedCameraId(e.target.value)}
+                      className="btn-secondary"
+                      style={{ minWidth: 220 }}
+                    >
+                      {cameras && cameras.length > 0 ? (
+                        cameras.map(c => <option key={c.id} value={c.id}>{c.label || c.id}</option>)
+                      ) : (
+                        <option value="">Detecting cameras...</option>
+                      )}
+                    </select>
+                  </div>
 
-                {scannerStarted && (
-                  <button 
-                    className="btn-secondary"
-                    onClick={() => {
-                      stopQRScanner();
-                      setShowQRScanner(false);
-                    }}
-                  >
-                    Stop Scanning
-                  </button>
-                )}
+                  <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}></div>
+
+                  {scannerStarted && (
+                    <button 
+                      className="btn-secondary"
+                      onClick={() => {
+                        stopQRScanner();
+                        setShowQRScanner(false);
+                      }}
+                    >
+                      Stop Scanning
+                    </button>
+                  )}
+                </div>
 
                 {scannerError && (
                   <div className="error-message">
