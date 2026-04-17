@@ -100,7 +100,10 @@ function handleListArticles($method) {
                     a.title,
                                         a.content,
                                         a.summary,
-                                        a.cover_image,
+                                          a.cover_image,
+                                          a.cover_image_data,
+                                          a.cover_image_mime,
+                                          a.cover_image_filename,
                     a.category,
                     a.view_count as views,
                     a.created_at,
@@ -135,7 +138,10 @@ function handleListArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
-                'cover_image' => $row['cover_image'] ?? null,
+                    // If image binary exists, convert to data URL, otherwise return cover_image link
+                    'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
+                                      ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                                      ($row['cover_image'] ?? null),
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
@@ -230,20 +236,24 @@ function handleMyArticles($method) {
         $doctor_id = $doctor_row['id'];
         error_log("MY ARTICLES - Found doctor_id: " . $doctor_id);
         
-        $query = "SELECT 
-                    id,
-                    id as article_id,
-                    title,
-                    content,
-                    summary,
-                                        category,
-                    is_published,
-                    view_count as views,
-                    created_at,
-                    updated_at
-                  FROM articles
-                  WHERE doctor_id = $1
-                  ORDER BY created_at DESC";
+                $query = "SELECT 
+                                        id,
+                                        id as article_id,
+                                        title,
+                                        content,
+                                        summary,
+                                                                                category,
+                                        is_published,
+                                        view_count as views,
+                                        created_at,
+                                        updated_at,
+                                        cover_image,
+                                        cover_image_data,
+                                        cover_image_mime,
+                                        cover_image_filename
+                                    FROM articles
+                                    WHERE doctor_id = $1
+                                    ORDER BY created_at DESC";
         
         error_log("MY ARTICLES - Executing query with doctor_id: " . $doctor_id);
         $result = pg_query_params($conn, $query, array($doctor_id));
@@ -267,7 +277,9 @@ function handleMyArticles($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
-                'cover_image' => $row['cover_image'] ?? null
+                'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
+                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                                  ($row['cover_image'] ?? null)
             ];
         }
         
@@ -302,6 +314,9 @@ function handleCreateArticle($method) {
     $title = $input['title'] ?? null;
     $content = $input['content'] ?? null;
     $cover_image = $input['cover_image'] ?? null;
+    $cover_image_base64 = $input['cover_image_base64'] ?? null;
+    $cover_image_mime = $input['cover_image_mime'] ?? null;
+    $cover_image_filename = $input['cover_image_filename'] ?? null;
     
     error_log("CREATE ARTICLE - Token received: " . ($token ? substr($token, 0, 10) . '...' : 'NULL'));
     error_log("CREATE ARTICLE - User ID received: " . ($user_id ?? 'NULL'));
@@ -391,12 +406,22 @@ function handleCreateArticle($method) {
         
         // Step 2: Insert the article with the correct doctor_id
         error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
-        $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
-                  VALUES ($1, $2, $3, $4, true)
-                  RETURNING id";
 
-        $result = pg_query_params($conn, $query, 
-            array($doctor_id, $title, $content, $cover_image));
+        if ($cover_image_base64) {
+            $decoded = base64_decode($cover_image_base64);
+            // Insert with binary data and metadata
+            $query = "INSERT INTO articles (doctor_id, title, content, cover_image, cover_image_data, cover_image_mime, cover_image_filename, is_published)
+                      VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+                      RETURNING id";
+
+            $result = pg_query_params($conn, $query,
+                array($doctor_id, $title, $content, $cover_image, $decoded, $cover_image_mime, $cover_image_filename));
+        } else {
+            $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
+                      VALUES ($1, $2, $3, $4, true)
+                      RETURNING id";
+            $result = pg_query_params($conn, $query, array($doctor_id, $title, $content, $cover_image));
+        }
         
         if ($result === false) {
             throw new Exception("Failed to insert article: " . pg_last_error($conn));
@@ -591,8 +616,9 @@ function handleViewArticle($method) {
         $query = "UPDATE articles SET view_count = view_count + 1 WHERE id = $1";
         pg_query_params($conn, $query, array($article_id));
 
-        // return the full article details for the client to render
-        $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name
+        // return the full article details for the client to render (include image binary if present)
+        $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name,
+                         a.cover_image, a.cover_image_data, a.cover_image_mime
                          FROM articles a
                          JOIN doctors d ON a.doctor_id = d.id
                          WHERE a.id = $1 LIMIT 1";
@@ -609,7 +635,9 @@ function handleViewArticle($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
-                'cover_image' => null
+                'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
+                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                                  ($row['cover_image'] ?? null)
             ]]);
             return;
         }
