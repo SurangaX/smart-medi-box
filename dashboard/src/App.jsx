@@ -1088,6 +1088,24 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       // rebuild reader container
       if (qrScannerRef.current) qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
+      // Ensure the #qr-reader element is attached and has layout before creating Html5Qrcode
+      const ensureReaderReady = async () => {
+        const start = Date.now();
+        let el = document.getElementById('qr-reader');
+        while ((!el || (el && el.clientWidth === 0)) && Date.now() - start < 2000) {
+          // try to set minimal sizing to help mobile layout engines
+          if (el) {
+            try { el.style.width = el.style.width || '320px'; el.style.height = el.style.height || '240px'; } catch(e){}
+          }
+          await new Promise(r => setTimeout(r, 100));
+          el = document.getElementById('qr-reader');
+        }
+        return document.getElementById('qr-reader');
+      };
+
+      const readerEl = await ensureReaderReady();
+      if (!readerEl) console.warn('qr-reader element not available or has zero size when switching camera');
+
       const html5Qr = new Html5Qrcode('qr-reader');
       qrInstanceRef.current = html5Qr;
       await html5Qr.start(
