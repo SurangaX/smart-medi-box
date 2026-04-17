@@ -409,11 +409,24 @@ function handleCreateArticle($method) {
         error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
 
         if ($cover_image_data_url) {
-            // Store the full data URL text verbatim in cover_image so it can be returned exactly as uploaded
+            // Clean the incoming data URL: URL-decode any percent-encoding and strip whitespace/newlines
+            $clean_data_url = $cover_image_data_url;
+            if (strpos($clean_data_url, '%') !== false) {
+                $clean_data_url = rawurldecode($clean_data_url);
+            }
+            // Normalize and remove any whitespace/newlines in base64 section
+            if (preg_match('#^data:(.*?);base64,(.*)$#s', $clean_data_url, $m)) {
+                $mime_part = $m[1];
+                $b64part = $m[2];
+                $b64part = preg_replace('/\s+/', '', $b64part);
+                $clean_data_url = 'data:' . $mime_part . ';base64,' . $b64part;
+            }
+
+            // Store the cleaned data URL into cover_image
             $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
                       VALUES ($1, $2, $3, $4, true)
                       RETURNING id";
-            $result = pg_query_params($conn, $query, array($doctor_id, $title, $content, $cover_image_data_url));
+            $result = pg_query_params($conn, $query, array($doctor_id, $title, $content, $clean_data_url));
         } elseif ($cover_image_base64) {
             // Store binary data using SQL decode(base64) to avoid sending raw non-UTF8 bytes in params
             $query = "INSERT INTO articles (doctor_id, title, content, cover_image, cover_image_data, cover_image_mime, cover_image_filename, is_published)
