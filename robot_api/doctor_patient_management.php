@@ -307,28 +307,24 @@ class DoctorPatientManager {
             }
 
             // Find device DB id
-            $stmt = $this->db->prepare("SELECT id FROM devices WHERE device_id = $1");
-            $result = pg_execute($this->db, $stmt, [$device_id]);
-            if (pg_num_rows($result) === 0) {
+            $result = pg_query_params($this->db, "SELECT id FROM devices WHERE device_id = $1", [$device_id]);
+            if (!$result || pg_num_rows($result) === 0) {
                 return ['status' => 'ERROR', 'message' => 'Device not found'];
             }
             $device = pg_fetch_assoc($result);
             $device_db_id = $device['id'];
 
             // Delete mapping for this user
-            $stmt = $this->db->prepare("DELETE FROM device_user_map WHERE device_id = $1 AND user_id = $2 RETURNING id");
-            $result = pg_execute($this->db, $stmt, [$device_db_id, $user_id]);
+            $result = pg_query_params($this->db, "DELETE FROM device_user_map WHERE device_id = $1 AND user_id = $2 RETURNING id", [$device_db_id, $user_id]);
 
-            if (pg_num_rows($result) === 0) {
+            if (!$result || pg_num_rows($result) === 0) {
                 return ['status' => 'ERROR', 'message' => 'No such device assigned to user'];
             }
 
             // If no other users mapped to this device, delete the device record
-            $stmt = $this->db->prepare("SELECT id FROM device_user_map WHERE device_id = $1 LIMIT 1");
-            $result = pg_execute($this->db, $stmt, [$device_db_id]);
-            if (pg_num_rows($result) === 0) {
-                $stmt = $this->db->prepare("DELETE FROM devices WHERE id = $1");
-                pg_execute($this->db, $stmt, [$device_db_id]);
+            $result = pg_query_params($this->db, "SELECT id FROM device_user_map WHERE device_id = $1 LIMIT 1", [$device_db_id]);
+            if (!$result || pg_num_rows($result) === 0) {
+                pg_query_params($this->db, "DELETE FROM devices WHERE id = $1", [$device_db_id]);
             }
 
             return ['status' => 'SUCCESS', 'message' => 'Device unpaired successfully'];
