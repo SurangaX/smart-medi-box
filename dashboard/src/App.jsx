@@ -2107,6 +2107,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteArticleConfirm, setShowDeleteArticleConfirm] = useState(false);
   const [articleIdToDelete, setArticleIdToDelete] = useState(null);
+  const [deletingArticleId, setDeletingArticleId] = useState(null);
   // Local notification state for doctor dashboard
   const [notificationsDoc, setNotificationsDoc] = useState([]);
   const [notifPanelOpenDoc, setNotifPanelOpenDoc] = useState(false);
@@ -2310,6 +2311,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
     setShowDeleteArticleConfirm(false);
     const articleId = articleIdToDelete;
     setArticleIdToDelete(null);
+    setDeletingArticleId(articleId);
     
     try {
       const response = await fetch(`${API_URL}/index.php/api/articles/delete`, {
@@ -2330,6 +2332,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       }
     } catch (err) {
       window.appNotify({ message: 'Error deleting article: ' + err.message, type: 'error' });
+    } finally {
+      setDeletingArticleId(null);
     }
   };
 
@@ -2554,8 +2558,16 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                           className="btn-danger"
                           style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
                           onClick={() => handleDeleteArticle(article.article_id)}
+                          disabled={deletingArticleId === article.id || deletingArticleId === article.article_id}
                         >
-                          Delete
+                          {deletingArticleId === article.id || deletingArticleId === article.article_id ? (
+                            <>
+                              <span className="spinner-mini" style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete'
+                          )}
                         </button>
                       </div>
                     </div>
@@ -2574,11 +2586,18 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             <h2>Delete Article</h2>
             <p>Are you sure you want to delete this article? This action cannot be undone.</p>
             <div className="modal-buttons">
-              <button className="btn-secondary" onClick={handleCancelDeleteArticle}>
+              <button className="btn-secondary" onClick={handleCancelDeleteArticle} disabled={deletingArticleId !== null}>
                 Cancel
               </button>
-              <button className="btn-danger" onClick={handleConfirmDeleteArticle}>
-                Delete
+              <button className="btn-danger" onClick={handleConfirmDeleteArticle} disabled={deletingArticleId !== null}>
+                {deletingArticleId !== null ? (
+                  <>
+                    <span className="spinner-mini" style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}></span>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>
