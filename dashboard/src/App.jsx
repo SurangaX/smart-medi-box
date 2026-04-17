@@ -3,6 +3,7 @@ import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
+import ScanAppScanner from './ScanAppScanner';
 import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
@@ -1503,7 +1504,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                     />
                   </div>
 
-                  <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}></div>
+                  <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}>
+                    <ScanAppScanner onDetected={(decoded) => {
+                      const mac = String(decoded).trim();
+                      setScannedMac(mac);
+                      setScannerError('');
+                      setScannerStarted(false);
+                      setShowQRScanner(false);
+                      setShowDeviceFound(true);
+                    }} />
+                  </div>
 
                   {scannerStarted && (
                     <button 
