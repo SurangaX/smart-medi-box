@@ -99,31 +99,7 @@ const LoginScreen = ({ onLoginSuccess }) => {
               </div>
             )}
 
-            {showDeviceFound && scannedMac && (
-              <div className="device-found-box">
-                <h3>Device Found</h3>
-                <p>MAC Address: <strong>{scannedMac}</strong></p>
-                <p>Detected device name: <strong>{`Smart Medi Box - ${scannedMac}`}</strong></p>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button
-                    className="btn-primary"
-                    onClick={() => completePairingWithMac(scannedMac)}
-                    disabled={loading}
-                  >
-                    {loading ? 'Pairing...' : 'Pair Device'}
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      setShowDeviceFound(false);
-                      setScannedMac('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+            
 
             <button type="submit" className="btn-primary btn-block" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
