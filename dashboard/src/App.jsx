@@ -490,6 +490,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const articleCacheRef = useRef({});
+  const [isArticleLoading, setIsArticleLoading] = useState(false);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const qrScannerRef = useRef(null);
   const qrInstanceRef = useRef(null);
@@ -762,6 +764,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const handleViewArticle = async (articleId) => {
     try {
+      // If we have a cached full article, use it immediately
+      if (articleCacheRef.current[articleId]) {
+        setSelectedArticle(articleCacheRef.current[articleId]);
+        setIsArticleLoading(false);
+        return;
+      }
+
+      // Show loading state (modal already shows excerpt when opening)
+      setIsArticleLoading(true);
+
       const resp = await fetch(`${API_URL}/index.php/api/articles/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -769,13 +781,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       });
       const data = await resp.json();
       if (data && data.status === 'SUCCESS' && data.article) {
+        // cache and set
+        articleCacheRef.current[articleId] = data.article;
         setSelectedArticle(data.article);
       } else {
-        // no article returned; keep minimal info
         console.warn('Article detail not returned by API, falling back to list item');
       }
     } catch (err) {
       console.error('Failed to track/fetch article detail:', err);
+    } finally {
+      setIsArticleLoading(false);
     }
   };
 
@@ -2027,7 +2042,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               By <strong>{selectedArticle.doctor_name || 'Anonymous'}</strong> • {new Date(selectedArticle.created_at).toLocaleDateString()} • 👁️ {selectedArticle.views || 0} views
             </p>
             <div style={{ color: 'var(--text-primary)', lineHeight: '1.8', fontSize: '15px', whiteSpace: 'pre-wrap' }}>
-              {selectedArticle.content}
+              {isArticleLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="loader" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    Loading full article...
+                    <div style={{ marginTop: 8 }}>{selectedArticle.excerpt || selectedArticle.content || ''}</div>
+                  </div>
+                </div>
+              ) : (
+                (selectedArticle.content && selectedArticle.content.length > 0) ? selectedArticle.content : (selectedArticle.excerpt || '')
+              )}
             </div>
           </div>
         </div>

@@ -788,6 +788,21 @@ button, a { user-select: none; cursor: pointer; }
   display: none;
 }
 
+/* Simple inline loader used when fetching full article */
+.loader {
+  border: 2px solid rgba(255,255,255,0.12);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 600px) {
   .qr-scanner-container {
     max-width: 100%;
