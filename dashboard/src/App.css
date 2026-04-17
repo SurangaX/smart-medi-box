@@ -827,6 +827,11 @@ button, a { user-select: none; cursor: pointer; }
   backdrop-filter: blur(2px);
 }
 
+.modal-loading-overlay .modal-loader {
+  width: 24px !important;
+  height: 24px !important;
+}
+
 @media (max-width: 600px) {
   .qr-scanner-container {
     max-width: 100%;
