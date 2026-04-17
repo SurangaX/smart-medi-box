@@ -70,10 +70,21 @@
 /* Device actions modern style */
 .device-actions { display:flex; gap:8px; }
 .btn-unpair {
-  display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background: linear-gradient(180deg,#fff 0%, #fff 100%); border:1px solid rgba(239,68,68,0.14); color:#ef4444; cursor:pointer; font-weight:600;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  min-height:36px;
+  border-radius:999px;
+  background: #ffffff;
+  border:1px solid rgba(239,68,68,0.14);
+  color:var(--danger,#ef4444);
+  cursor:pointer;
+  font-weight:600;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.04);
 }
-.btn-unpair:hover { background: rgba(239,68,68,0.04); box-shadow: 0 6px 18px rgba(239,68,68,0.06); }
-.btn-unpair:disabled { opacity:0.6; cursor:not-allowed; }
+.btn-unpair:hover { background: rgba(239,68,68,0.04); transform: translateY(-1px); }
+.btn-unpair:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
 
 .confirm-unpair { padding:10px 14px; }
 
