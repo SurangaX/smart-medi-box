@@ -239,20 +239,21 @@ class DoctorPatientManager {
             
             $user_id = $auth['user_id'];
             
-            // Get patient devices from device_registry
+            // Get patient devices (join devices -> device_user_map)
             $query = "
                 SELECT 
-                    device_id,
-                    device_name,
-                    mac_address,
-                    device_type,
-                    status,
-                    created_at
-                FROM device_registry
-                WHERE user_id = $1
-                ORDER BY created_at DESC
+                    d.device_id,
+                    d.device_name,
+                    d.mac_address,
+                    d.device_type,
+                    d.status,
+                    dum.assigned_at
+                FROM devices d
+                JOIN device_user_map dum ON dum.device_id = d.id
+                WHERE dum.user_id = $1
+                ORDER BY dum.assigned_at DESC
             ";
-            
+
             $result = pg_query_params($this->db, $query, [$user_id]);
             if (!$result) {
                 error_log("Device query error: " . pg_last_error($this->db));
@@ -323,13 +324,19 @@ class DoctorPatientManager {
             
             // Get patient's devices
             $stmt = $this->db->prepare(
-                "SELECT device_id, device_name, mac_address, status, last_sync FROM device_registry WHERE user_id = $1"
+                "SELECT d.device_id, d.device_name, d.mac_address, d.status, dum.assigned_at FROM devices d JOIN device_user_map dum ON dum.device_id = d.id WHERE dum.user_id = $1"
             );
             $result = pg_execute($this->db, $stmt, [$patient['user_id']]);
             $devices = [];
-            
+
             while ($row = pg_fetch_assoc($result)) {
-                $devices[] = $row;
+                $devices[] = [
+                    'device_id' => $row['device_id'],
+                    'device_name' => $row['device_name'] ?? 'Smart Medi Box',
+                    'mac_address' => $row['mac_address'],
+                    'status' => $row['status'] ?? 'ACTIVE',
+                    'assigned_at' => $row['assigned_at']
+                ];
             }
             
             // Get latest temperature readings

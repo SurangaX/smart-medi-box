@@ -744,6 +744,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const generatePairingToken = async () => {
     try {
+      // Prevent creating a pairing token if user already has a device (one account -> one device)
+      if (devices && devices.length > 0) {
+        alert('You already have a paired device. Unpair first to pair a new device.');
+        return;
+      }
       const response = await fetch(`${API_URL}/index.php/api/auth/generate-pairing-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

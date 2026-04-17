@@ -70,17 +70,25 @@ CREATE TABLE IF NOT EXISTS pairing_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Device Registry Table (paired devices)
-CREATE TABLE IF NOT EXISTS device_registry (
+-- Devices Table (unique physical devices)
+CREATE TABLE IF NOT EXISTS devices (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) UNIQUE,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     mac_address VARCHAR(20) UNIQUE NOT NULL,
     device_name VARCHAR(100),
     device_type VARCHAR(50),
     status VARCHAR(20) DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Device <-> User mapping (many users can map to one device, but one user -> one device)
+CREATE TABLE IF NOT EXISTS device_user_map (
+    id SERIAL PRIMARY KEY,
+    device_id INT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id)
 );
 
 -- Patient-Doctor Assignments Table

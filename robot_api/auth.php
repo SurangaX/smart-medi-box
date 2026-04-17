@@ -782,35 +782,51 @@ function handleCompletePairing($method) {
         
         error_log("COMPLETE PAIRING: user_id=$user_id");
         
-        // Check if device already exists
-        $check = pg_query_params($conn, "SELECT id FROM device_registry WHERE mac_address = $1", [$mac_address]);
-        if (!$check) {
+        // Ensure user does not already have a device (one account -> one device)
+        $userCheck = pg_query_params($conn, "SELECT id FROM device_user_map WHERE user_id = $1", [$user_id]);
+        if (!$userCheck) {
             throw new Exception(pg_last_error($conn));
         }
-        
-        if (pg_num_rows($check) > 0) {
-            error_log("COMPLETE PAIRING: Device already paired: $mac_address");
-            return errorResponse(409, 'Device already paired');
+
+        if (pg_num_rows($userCheck) > 0) {
+            error_log("COMPLETE PAIRING: User already has a paired device: user_id=$user_id");
+            return errorResponse(409, 'User already has a paired device');
         }
-        
-        // Mark pairing token as used
-        $query = "UPDATE pairing_tokens SET is_used = true, device_mac_address = $1, device_name = $2 
-                  WHERE token = $3";
-        pg_query_params($conn, $query, [$mac_address, $device_name ?? 'Smart Box', $pairing_token]);
-        
-        // Register device
-        $device_id = "DEVICE-" . bin2hex(random_bytes(8));
-        $query = "INSERT INTO device_registry (device_id, user_id, device_name, mac_address, device_type) 
-                  VALUES ($1, $2, $3, $4, $5)";
-        
-        $result = pg_query_params($conn, $query, [$device_id, $user_id, $device_name ?? 'Smart Box', $mac_address, 'SMART_BOX']);
-        
-        if (!$result) {
+
+        // Find existing device by MAC
+        $deviceResult = pg_query_params($conn, "SELECT id, device_id FROM devices WHERE mac_address = $1", [$mac_address]);
+        if (!$deviceResult) {
             throw new Exception(pg_last_error($conn));
         }
-        
+
+        if (pg_num_rows($deviceResult) > 0) {
+            // Device exists; map this user to the existing device
+            $deviceRow = pg_fetch_assoc($deviceResult);
+            $device_db_id = $deviceRow['id'];
+            $device_id = $deviceRow['device_id'];
+        } else {
+            // Create new device entry
+            $device_id = "DEVICE-" . bin2hex(random_bytes(8));
+            $insert = pg_query_params($conn, "INSERT INTO devices (device_id, mac_address, device_name, device_type) VALUES ($1,$2,$3,$4) RETURNING id", [$device_id, $mac_address, $device_name ?? 'Smart Box', 'SMART_BOX']);
+            if (!$insert) {
+                throw new Exception(pg_last_error($conn));
+            }
+            $insertRow = pg_fetch_assoc($insert);
+            $device_db_id = $insertRow['id'];
+        }
+
+        // Mark pairing token as used and record device mac
+        $query = "UPDATE pairing_tokens SET is_used = true, used_at = CURRENT_TIMESTAMP WHERE token = $1";
+        pg_query_params($conn, $query, [$pairing_token]);
+
+        // Map user to device (enforces one device per user via unique constraint on user_id)
+        $mapResult = pg_query_params($conn, "INSERT INTO device_user_map (device_id, user_id) VALUES ($1, $2)", [$device_db_id, $user_id]);
+        if (!$mapResult) {
+            throw new Exception(pg_last_error($conn));
+        }
+
         error_log("DEVICE PAIRED: patient_id=$patient_id, user_id=$user_id, device_id=$device_id, mac=$mac_address");
-        
+
         http_response_code(201);
         echo json_encode([
             'status' => 'SUCCESS',

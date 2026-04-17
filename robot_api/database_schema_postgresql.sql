@@ -113,19 +113,27 @@ CREATE TABLE arduino_commands (
     executed_at TIMESTAMP NULL
 );
 
--- Device Registry Table
-CREATE TABLE device_registry (
+-- Devices table (unique physical devices)
+CREATE TABLE IF NOT EXISTS devices (
     id SERIAL PRIMARY KEY,
-    device_id VARCHAR(50) UNIQUE NOT NULL,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_id VARCHAR(50) UNIQUE,
+    mac_address VARCHAR(20) UNIQUE NOT NULL,
     device_name VARCHAR(100),
     device_type VARCHAR(50),
     firmware_version VARCHAR(20),
-    mac_address VARCHAR(20),
     status device_status DEFAULT 'ACTIVE',
     last_sync TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Mapping table to associate users with devices. Many users -> one device allowed.
+CREATE TABLE IF NOT EXISTS device_user_map (
+    id SERIAL PRIMARY KEY,
+    device_id INT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id)
 );
 
 -- Session Tokens Table (for web authentication)
@@ -216,8 +224,9 @@ CREATE INDEX idx_temperature_logs_user_id ON temperature_logs(user_id);
 CREATE INDEX idx_temperature_logs_timestamp ON temperature_logs(timestamp);
 CREATE INDEX idx_alarm_logs_user_id ON alarm_logs(user_id);
 CREATE INDEX idx_arduino_commands_user_id ON arduino_commands(user_id);
-CREATE INDEX idx_device_registry_user_id ON device_registry(user_id);
-CREATE INDEX idx_device_registry_mac ON device_registry(mac_address);
+CREATE INDEX idx_devices_mac ON devices(mac_address);
+CREATE INDEX idx_device_user_map_user_id ON device_user_map(user_id);
+CREATE INDEX idx_device_user_map_device_id ON device_user_map(device_id);
 CREATE INDEX idx_auth_logs_user_id ON auth_logs(user_id);
 CREATE INDEX idx_auth_logs_created_at ON auth_logs(created_at);
 CREATE INDEX idx_schedule_logs_user_id ON schedule_logs(user_id);
