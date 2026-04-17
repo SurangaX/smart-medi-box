@@ -39,13 +39,15 @@ class DoctorPatientManager {
      * Authenticate user from token
      */
     private function authenticateUser($token) {
-        $query = "SELECT user_id FROM auth_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        // Use session_tokens table (web session tokens) — consistent with other modules
+        $query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $result = pg_query_params($this->db, $query, [$token]);
-        
+
         if (!$result || pg_num_rows($result) === 0) {
+            error_log("authenticateUser: token not found or expired");
             return ['status' => 'ERROR', 'message' => 'Unauthorized'];
         }
-        
+
         $row = pg_fetch_assoc($result);
         return ['status' => 'SUCCESS', 'user_id' => $row['user_id']];
     }
