@@ -729,16 +729,15 @@ button, a { user-select: none; cursor: pointer; }
 
 .qr-scanner-container {
   width: 100%;
-  max-width: 400px;
-}
-
-/* Center the reader and ensure the video fits nicely */
-.qr-scanner-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Default html5-qrcode scanner container (mounted at #html5qr-scanner) */
 #qr-reader {
   display: flex;
   align-items: center;
@@ -750,7 +749,22 @@ button, a { user-select: none; cursor: pointer; }
 #qr-reader video {
   width: 100% !important;
   height: auto !important;
-  max-height: 420px !important;
+  max-height: 60vh !important;
+  object-fit: contain !important;
+}
+
+/* Wrapper for the Html5QrcodeScanner we render into (#html5qr-scanner) */
+#html5qr-scanner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+#html5qr-scanner video,
+#html5qr-scanner canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 60vh !important;
   object-fit: contain !important;
 }
 
@@ -770,6 +784,27 @@ button, a { user-select: none; cursor: pointer; }
 
 .qr-reader canvas {
   display: none;
+}
+
+@media (max-width: 600px) {
+  .qr-scanner-container {
+    max-width: 100%;
+    padding: 0 8px;
+  }
+
+  #html5qr-scanner {
+    max-width: 100%;
+  }
+
+  #html5qr-scanner video,
+  #html5qr-scanner canvas,
+  #qr-reader video {
+    max-height: 50vh !important;
+  }
+
+  .qr-scanner-box {
+    padding: 12px;
+  }
 }
 
 /* Use default html5-qrcode container styles; custom overrides removed to
