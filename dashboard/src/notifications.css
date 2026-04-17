@@ -1,16 +1,38 @@
+:root {
+  --bg: #ffffff;
+  --card-bg: #ffffff;
+  --text: #0f172a;
+  --text-secondary: #6b7280;
+  --muted: #6b7280;
+  --danger: #ef4444;
+  --success: #10b981;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --card-bg: #071024;
+    --text: #e6eef8;
+    --text-secondary: #9aa6b2;
+    --muted: #9aa6b2;
+    --danger: #f87171;
+    --success: #34d399;
+  }
+}
+
 .notif-panel {
   position: fixed;
   right: 16px;
   top: 64px; /* directly below header */
   width: 340px;
   max-height: 60vh;
-  background: var(--card-bg, #ffffff);
-  border: 1px solid rgba(0,0,0,0.06);
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.03);
   box-shadow: 0 12px 40px rgba(2,6,23,0.12);
   border-radius: 10px;
   overflow: auto;
   z-index: 1200;
-  color: var(--text, #0f172a);
+  color: var(--text);
   transform-origin: top right;
   transform: translateY(-6px) scale(0.98);
   opacity: 0;

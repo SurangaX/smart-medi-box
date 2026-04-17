@@ -573,7 +573,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     };
 
     const handler = (e) => {
-      if (e && e.detail) addNotification(e.detail);
+      if (e && e.detail) {
+        // Only add to the notification list when not a toast-only message
+        if (!e.detail.toastOnly) addNotification(e.detail);
+      }
     };
 
     window.addEventListener('app-notification', handler);
@@ -621,7 +624,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const clearNotifications = () => {
     setNotifications([]);
     setNotifPanelOpen(false);
-    window.appNotify({ message: 'Notifications cleared', type: 'info' });
+    // Only show as transient toast; do not re-add to the notifications list
+    window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
   };
 
   const fetchDoctors = async () => {
@@ -1760,7 +1764,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const clearNotificationsDoc = () => {
     setNotificationsDoc([]);
     setNotifPanelOpenDoc(false);
-    window.appNotify({ message: 'Notifications cleared', type: 'info' });
+    window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
   };
 
   const handleLogoutClick = () => {
