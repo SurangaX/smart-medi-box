@@ -1060,6 +1060,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           qrScannerRef.current.innerHTML = '';
         }
       }
+      // Additionally stop any media tracks that might still be attached to video elements
+      try {
+        const vids = document.querySelectorAll('#qr-reader video');
+        vids.forEach(v => {
+          try {
+            const s = v.srcObject;
+            if (s && s.getTracks) s.getTracks().forEach(t => { try { t.stop(); } catch(e) {} });
+            v.srcObject = null;
+          } catch(e) {}
+        });
+      } catch(e) {}
       setScannerStarted(false);
     } catch (error) {
       console.error('Error stopping scanner:', error);
@@ -1067,19 +1078,48 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  // Explicit camera switch helper to ensure clean restart
+  const switchCameraTo = async (camId) => {
+    console.log('Switching camera to', camId);
+    try {
+      await stopQRScanner();
+      // small safety delay
+      await new Promise(r => setTimeout(r, 250));
+
+      // rebuild reader container
+      if (qrScannerRef.current) qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
+      const html5Qr = new Html5Qrcode('qr-reader');
+      qrInstanceRef.current = html5Qr;
+      await html5Qr.start(
+        camId,
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decoded) => {
+          console.log('QR Scanned:', decoded);
+          const mac = String(decoded).trim();
+          setScannedMac(mac);
+          setScannerError('');
+          try { html5Qr.pause(); html5Qr.stop().catch(()=>{}); } catch(e){}
+          qrInstanceRef.current = null;
+          setScannerStarted(false);
+          setShowQRScanner(false);
+          setShowDeviceFound(true);
+        },
+        (err) => { /* ignore */ }
+      );
+      setScannerStarted(true);
+      console.log('Camera switched and started on', camId);
+    } catch (err) {
+      console.error('Failed to switch/start camera', camId, err);
+      setScannerError('Failed to switch camera: ' + (err && err.message));
+    }
+  };
+
   // Restart scanner when selected camera changes
   useEffect(() => {
     if (!showQRScanner) return;
     if (!selectedCameraId) return;
-    const restart = async () => {
-      if (scannerStarted) {
-        await stopQRScanner();
-        // ensure browser releases camera devices
-        await new Promise(r => setTimeout(r, 300));
-      }
-      await startQRScanner();
-    };
-    restart().catch(err => console.error('Error restarting scanner on camera change', err));
+    // Use explicit switch helper to ensure a clean restart
+    switchCameraTo(selectedCameraId).catch(err => console.error('Error switching camera', err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCameraId]);
 
