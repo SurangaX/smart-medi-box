@@ -251,6 +251,8 @@ button, a { user-select: none; cursor: pointer; }
   transition: all 0.3s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 8px;
 }
 
