@@ -539,10 +539,12 @@ function handleDeleteArticle($method) {
         $doctor_id = $doctor_row['id'];
         
         // Permanently remove the article row owned by this doctor
+        error_log("DELETE ARTICLE - Attempting to delete article_id={$article_id} for doctor_id={$doctor_id}");
         $query = "DELETE FROM articles WHERE id = $1 AND doctor_id = $2";
         $result = pg_query_params($conn, $query, array($article_id, $doctor_id));
 
         if ($result === false) {
+            error_log("DELETE ARTICLE - Query failed: " . pg_last_error($conn));
             http_response_code(500);
             echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete article: ' . pg_last_error($conn)]);
             return;

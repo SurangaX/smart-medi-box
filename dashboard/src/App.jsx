@@ -2209,11 +2209,12 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         setArticles(data.articles || []);
       } else {
         console.error('Failed to fetch articles:', data.message);
-        setArticles([]);
+        // Leave existing articles in place; log the error for debugging
+        window.appNotify && window.appNotify({ message: 'Failed to fetch articles: ' + (data.message || 'Unknown'), type: 'error' });
       }
     } catch (err) {
       console.error('Failed to fetch articles:', err);
-      setArticles([]);
+      window.appNotify && window.appNotify({ message: 'Network error fetching articles: ' + err.message, type: 'error' });
     } finally {
       setLoading(false);
     }
