@@ -452,6 +452,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
 const PatientDashboard = ({ profile, token, onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [devices, setDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [tempHistory, setTempHistory] = useState([]);
@@ -519,7 +520,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   }, [activeTab]);
 
   const fetchDevices = async () => {
-    setLoading(true);
+    setDevicesLoading(true);
     try {
       const response = await fetch(`${API_URL}/index.php/api/patient/devices`, {
         method: 'POST',
@@ -537,7 +538,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       console.error('Failed to fetch devices:', err);
       setDevices([]);
     } finally {
-      setLoading(false);
+      setDevicesLoading(false);
     }
   };
 
@@ -1026,15 +1027,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className="section">
             <div className="section-header">
               <h2>Paired Devices</h2>
-              {devices && devices.length === 0 ? (
+              {devicesLoading ? (
+                <div style={{ color: 'var(--text-secondary)' }}>Connecting to device service...</div>
+              ) : (devices && devices.length === 0 ? (
                 <button className="btn-primary" onClick={() => setShowQRScanner(!showQRScanner)}>
                   <Plus size={18} /> {showQRScanner ? 'Cancel Scan' : 'Scan Device QR'}
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={{ alignSelf: 'center', color: 'var(--text-secondary)' }}>1 device paired</span>
+                  <span style={{ alignSelf: 'center', color: 'var(--text-secondary)' }}>{devices.length} device{devices.length !== 1 ? 's' : ''} paired</span>
                 </div>
-              )}
+              ))}
             </div>
 
             {showQRScanner && (
@@ -1112,7 +1115,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               </div>
             )}
 
-            {devices.length === 0 ? (
+            {devicesLoading ? (
+              <p className="empty-state">Connecting to device service...</p>
+            ) : devices.length === 0 ? (
               <p className="empty-state">No devices paired yet. Click "Scan Device QR" to add your first device.</p>
             ) : (
               <div className="devices-list">
