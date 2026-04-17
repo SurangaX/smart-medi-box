@@ -1046,13 +1046,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  const stopQRScanner = () => {
+  const stopQRScanner = async () => {
     try {
       if (qrInstanceRef.current) {
         // Defensive stop for either Html5Qrcode or Html5QrcodeScanner
-        try { if (qrInstanceRef.current.pause) qrInstanceRef.current.pause(); } catch(e) {}
-        try { if (qrInstanceRef.current.stop) qrInstanceRef.current.stop(); } catch(e) {}
-        try { if (qrInstanceRef.current.clear) qrInstanceRef.current.clear(); } catch(e) {}
+        try { if (qrInstanceRef.current.pause) await qrInstanceRef.current.pause(); } catch(e) {}
+        try { if (qrInstanceRef.current.stop) await qrInstanceRef.current.stop(); } catch(e) {}
+        try { if (qrInstanceRef.current.clear) await qrInstanceRef.current.clear(); } catch(e) {}
         qrInstanceRef.current = null;
 
         // Clear the scanner element
@@ -1071,13 +1071,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   useEffect(() => {
     if (!showQRScanner) return;
     if (!selectedCameraId) return;
-    if (scannerStarted) {
-      // restart with new camera
-      stopQRScanner();
-      setTimeout(() => startQRScanner(), 200);
-    } else {
-      startQRScanner();
-    }
+    const restart = async () => {
+      if (scannerStarted) {
+        await stopQRScanner();
+        // ensure browser releases camera devices
+        await new Promise(r => setTimeout(r, 300));
+      }
+      await startQRScanner();
+    };
+    restart().catch(err => console.error('Error restarting scanner on camera change', err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCameraId]);
 
@@ -1097,12 +1099,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   // Auto-start scanner when the scan view is opened, stop when closed
   useEffect(() => {
-    if (showQRScanner) {
-      setScannerError('');
-      startQRScanner();
-    } else {
-      stopQRScanner();
-    }
+    const manage = async () => {
+      if (showQRScanner) {
+        setScannerError('');
+        await startQRScanner();
+      } else {
+        await stopQRScanner();
+      }
+    };
+    manage().catch(e => console.error('Error managing scanner on visibility change', e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQRScanner]);
 
