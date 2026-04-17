@@ -1875,7 +1875,7 @@ button, a { user-select: none; cursor: pointer; }
 
 .article-cover {
   width: 100%;
-  height: 160px;
+  height: 220px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   display: flex;
   align-items: center;
@@ -1888,6 +1888,7 @@ button, a { user-select: none; cursor: pointer; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .article-content {

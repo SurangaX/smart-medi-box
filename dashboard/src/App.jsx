@@ -2432,15 +2432,6 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                   />
                 </div>
                 <div className="article-form-group">
-                  <label>Cover Image URL (optional)</label>
-                  <input
-                    type="url"
-                    value={newArticle.cover_image}
-                    onChange={(e) => setNewArticle({ ...newArticle, cover_image: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
-                <div className="article-form-group">
                   <label>Or upload cover image (optional)</label>
                   <input
                     type="file"
