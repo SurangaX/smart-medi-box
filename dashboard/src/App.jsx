@@ -973,6 +973,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQRScanner]);
 
+  // Ensure scanner stops when user navigates away from Devices tab
+  useEffect(() => {
+    if (activeTab !== 'devices') {
+      if (showQRScanner) setShowQRScanner(false);
+      try { stopQRScanner(); } catch (e) {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   const completePairingWithMac = async (macAddress) => {
     if (!macAddress) {
       setScannerError('Please enter or scan a valid device MAC address');
