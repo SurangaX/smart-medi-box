@@ -1888,7 +1888,8 @@ button, a { user-select: none; cursor: pointer; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  image-rendering: -webkit-optimize-contrast;
+  image-rendering: auto;
+  display: block;
 }
 
 .article-content {

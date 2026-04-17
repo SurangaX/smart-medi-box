@@ -169,6 +169,12 @@ switch ($module) {
         require 'articles.php';
         break;
     
+    case 'image':
+        // Image serving endpoint
+        error_log("INDEX.PHP - Routing to IMAGE module, action: " . $action);
+        require 'image.php';
+        break;
+    
     case 'docs':
         // API documentation
         handleAPIDocs();
