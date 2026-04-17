@@ -813,6 +813,22 @@ button, a { user-select: none; cursor: pointer; }
 #qr-reader > div > div > div[style*="Powered by"],
 #qr-reader a[href*="scanapp.org"] { display: none !important; }
 
+/* Aggressively disable the library-injected inline controls that open native dropdowns
+   (these were causing the large semi-opaque overlay). Use app-level controls instead. */
+#qr-reader__dashboard_section_csr select,
+#qr-reader__dashboard_section_csr option,
+#qr-reader__dashboard_section_csr button,
+#html5-qrcode-button-file-selection,
+#html5-qrcode-private-filescan-input,
+#html5-qrcode-anchor-scan-type-change {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Keep the reader dashboard section layout but hide its children to avoid layout shifts */
+#qr-reader__dashboard_section_csr::before { content: ""; display:block; height:0; }
+
 /* Tame html5-qrcode default controls so they don't create large grey overlays
    Make controls compact, translucent, and inline with dashboard theme. */
 #qr-reader .html5-qrcode-element {
