@@ -1139,9 +1139,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className="section">
             <div className="section-header">
               <h2>Paired Devices</h2>
-              {devicesLoading ? (
-                <div className="loading-inline"><div className="loader" aria-hidden="true"></div><div>Connecting...</div></div>
-              ) : devicesError ? (
+              {devicesLoading ? null : devicesError ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ color: 'var(--danger)', marginRight: 8 }}>Failed to connect: {devicesError}</span>
                   <button className="btn-secondary" onClick={() => fetchDevices()}>Retry</button>
