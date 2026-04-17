@@ -2551,16 +2551,16 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                       <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                         <button
                           className="btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
+                          style={{ padding: '8px 12px', fontSize: '13px', flex: 1, opacity: 0.7 }}
                           onClick={() => {
                             window.appNotify({ message: 'Edit functionality coming soon', type: 'info' });
                           }}
                         >
-                          Edit
+                          ✏️ Edit
                         </button>
                         <button
                           className="btn-danger"
-                          style={{ padding: '6px 12px', fontSize: '12px', flex: 1 }}
+                          style={{ padding: '8px 12px', fontSize: '13px', flex: 1.4, fontWeight: 500 }}
                           onClick={() => handleDeleteArticle(article.article_id)}
                           disabled={deletingArticleId === article.id || deletingArticleId === article.article_id}
                         >
@@ -2570,7 +2570,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                               Deleting...
                             </>
                           ) : (
-                            'Delete'
+                            '🗑️ Delete'
                           )}
                         </button>
                       </div>
