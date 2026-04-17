@@ -1081,6 +1081,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   // Explicit camera switch helper to ensure clean restart
   const switchCameraTo = async (camId) => {
     console.log('Switching camera to', camId);
+    // Guard against undefined/null camera id from mobile selection bugs
+    if (!camId) {
+      console.error('switchCameraTo called with empty camId', { camId, cameras });
+      // try fallback to first available camera
+      if (cameras && cameras.length) {
+        const fallback = cameras[0].id;
+        console.warn('Falling back to first available camera:', fallback);
+        setSelectedCameraId(fallback);
+        // don't continue here; the useEffect watching selectedCameraId will call switchCameraTo again
+      } else {
+        setScannerError('No camera selected and no cameras available');
+      }
+      return;
+    }
     try {
       await stopQRScanner();
       // small safety delay
@@ -1128,7 +1142,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       console.log('Camera switched and started on', camId);
     } catch (err) {
       console.error('Failed to switch/start camera', camId, err);
-      setScannerError('Failed to switch camera: ' + (err && err.message));
+      const message = err && err.message ? err.message : (typeof err === 'string' ? err : JSON.stringify(err || 'unknown'));
+      setScannerError('Failed to switch camera: ' + message);
+      // if camera failed to start, clear selectedCameraId so UI doesn't remain stuck
+      if (selectedCameraId === camId) {
+        setSelectedCameraId(null);
+      }
     }
   };
 
