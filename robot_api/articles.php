@@ -317,6 +317,7 @@ function handleCreateArticle($method) {
     $cover_image_base64 = $input['cover_image_base64'] ?? null;
     $cover_image_mime = $input['cover_image_mime'] ?? null;
     $cover_image_filename = $input['cover_image_filename'] ?? null;
+    $cover_image_data_url = $input['cover_image_data_url'] ?? null;
     
     error_log("CREATE ARTICLE - Token received: " . ($token ? substr($token, 0, 10) . '...' : 'NULL'));
     error_log("CREATE ARTICLE - User ID received: " . ($user_id ?? 'NULL'));
@@ -407,7 +408,13 @@ function handleCreateArticle($method) {
         // Step 2: Insert the article with the correct doctor_id
         error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
 
-        if ($cover_image_base64) {
+        if ($cover_image_data_url) {
+            // Store the full data URL text verbatim in cover_image so it can be returned exactly as uploaded
+            $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
+                      VALUES ($1, $2, $3, $4, true)
+                      RETURNING id";
+            $result = pg_query_params($conn, $query, array($doctor_id, $title, $content, $cover_image_data_url));
+        } elseif ($cover_image_base64) {
             // Store binary data using SQL decode(base64) to avoid sending raw non-UTF8 bytes in params
             $query = "INSERT INTO articles (doctor_id, title, content, cover_image, cover_image_data, cover_image_mime, cover_image_filename, is_published)
                       VALUES ($1, $2, $3, $4, decode($5, 'base64'), $6, $7, true)
