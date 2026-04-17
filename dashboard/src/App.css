@@ -819,6 +819,18 @@ button, a { user-select: none; cursor: pointer; }
 /* Ensure our Stop Scanning control remains visible below scanner */
 .qr-scanner-box > button.btn-secondary { margin-top: 12px; }
 
+/* Extra aggressive: hide any library camera/select/toolbar-like elements inside qr-reader */
+#qr-reader [class*="camera"] { display: none !important; }
+#qr-reader [class*="toolbar"] { display: none !important; }
+#qr-reader [class*="select"] { display: none !important; }
+#qr-reader [class*="button"] { display: none !important; }
+#qr-reader [class*="control"] { display: none !important; }
+#qr-reader [role="toolbar"] { display: none !important; }
+#qr-reader [aria-label*="Camera"] { display: none !important; }
+#qr-reader [aria-label*="Select"] { display: none !important; }
+#qr-reader [title*="Camera"] { display: none !important; }
+#qr-reader select, #qr-reader option { display: none !important; }
+
 .scanned-result {
   background: var(--background);
   border: 2px solid var(--success);
