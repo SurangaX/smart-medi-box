@@ -98,8 +98,9 @@ function handleListArticles($method) {
                     a.id,
                     a.id as article_id,
                     a.title,
-                    a.content,
-                    a.summary,
+                                        a.content,
+                                        a.summary,
+                                        a.cover_image,
                     a.category,
                     a.view_count as views,
                     a.created_at,
@@ -134,7 +135,7 @@ function handleListArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
-                'cover_image' => null,
+                'cover_image' => $row['cover_image'] ?? null,
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
@@ -235,7 +236,7 @@ function handleMyArticles($method) {
                     title,
                     content,
                     summary,
-                    category,
+                                        category,
                     is_published,
                     view_count as views,
                     created_at,
@@ -266,7 +267,7 @@ function handleMyArticles($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
-                'cover_image' => null
+                'cover_image' => $row['cover_image'] ?? null
             ];
         }
         
@@ -390,12 +391,12 @@ function handleCreateArticle($method) {
         
         // Step 2: Insert the article with the correct doctor_id
         error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
-        $query = "INSERT INTO articles (doctor_id, title, content, is_published)
-                  VALUES ($1, $2, $3, true)
+        $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
+                  VALUES ($1, $2, $3, $4, true)
                   RETURNING id";
-        
+
         $result = pg_query_params($conn, $query, 
-            array($doctor_id, $title, $content));
+            array($doctor_id, $title, $content, $cover_image));
         
         if ($result === false) {
             throw new Exception("Failed to insert article: " . pg_last_error($conn));
