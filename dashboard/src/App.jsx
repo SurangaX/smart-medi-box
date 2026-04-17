@@ -2323,16 +2323,20 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Article deleted successfully', type: 'success' });
-        // Immediately remove from UI
+        // Keep spinner visible for 500ms, then remove from UI
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Remove from UI
         setArticles(articles.filter(article => article.id !== articleId && article.article_id !== articleId));
         // Also refresh to be sure
         await fetchArticles();
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete article'), type: 'error' });
+        // Clear deleting state on error
+        setDeletingArticleId(null);
       }
     } catch (err) {
       window.appNotify({ message: 'Error deleting article: ' + err.message, type: 'error' });
-    } finally {
+      // Clear deleting state on error
       setDeletingArticleId(null);
     }
   };
