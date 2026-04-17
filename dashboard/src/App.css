@@ -670,74 +670,76 @@ button, a { user-select: none; cursor: pointer; }
 
 /* ==================== QR Scanner ==================== */
 .qr-scanner-box {
-  background: var(--surface);
-  border: 2px solid var(--accent);
-  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 14px;
   padding: 20px;
-  margin-bottom: 20px;
+  margin: 20px auto;
+  max-width: 520px;
+  box-shadow: 0 18px 40px rgba(2,6,23,0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
 }
 
 .qr-scanner-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  width: 100%;
+  gap: 12px;
+  padding-bottom: 6px;
 }
 
 .qr-scanner-header h3 {
   margin: 0;
   color: var(--text-primary);
+  font-size: 18px;
 }
 
 .close-btn {
-  background: none;
-  border: none;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: 8px;
+  transition: all 0.16s ease;
 }
 
-.close-btn:hover {
-  background: var(--border);
-  color: var(--text-primary);
-}
+.close-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); transform: translateY(-2px); }
 
 .scanner-start-section {
   text-align: center;
-  padding: 30px 20px;
+  padding: 18px 12px;
+  width: 100%;
 }
 
-.scanner-start-section p {
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
+.scanner-start-section p { color: var(--text-secondary); margin-bottom: 12px; }
+
+.btn-start-large { padding: 12px 18px; border-radius: 12px; font-size: 15px; }
 
 .scanner-active-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.qr-scanner-container {
-  width: 100%;
-  max-width: 400px;
-}
+.qr-scanner-container { width: 100%; max-width: 480px; display:flex; justify-content:center; }
 
 .qr-reader {
   width: 100%;
-  border: 2px solid var(--primary);
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   background: #000;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
 }
 
 .qr-reader video {
