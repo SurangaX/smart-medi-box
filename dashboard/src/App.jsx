@@ -1017,10 +1017,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         setScannedMac('');
         setManualMacInput('');
         setScannerError('');
+        setShowDeviceFound(false);
         fetchDevices(); // Refresh device list
         window.appNotify({ message: 'Device paired successfully', type: 'success' });
       } else {
         setScannerError(`Failed to pair device: ${data.message || 'Unknown error'}`);
+        setShowDeviceFound(false);
         console.error('Pairing failed:', data);
       }
     } catch (err) {
@@ -1226,6 +1228,32 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 <div className="code-display">{pairingToken}</div>
                 <p className="hint">Your device can scan this code for pairing</p>
                 <button className="btn-secondary" onClick={() => setShowPairingCode(false)}>Close</button>
+              </div>
+            )}
+
+            {showDeviceFound && scannedMac && (
+              <div className="device-found-box">
+                <h3>Device Found</h3>
+                <p>MAC Address: <strong>{scannedMac}</strong></p>
+                <p>Detected device name: <strong>{`Smart Medi Box - ${scannedMac}`}</strong></p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center' }}>
+                  <button
+                    className="btn-primary"
+                    onClick={() => completePairingWithMac(scannedMac)}
+                    disabled={loading}
+                  >
+                    {loading ? 'Pairing...' : 'Pair Device'}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowDeviceFound(false);
+                      setScannedMac('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
 
