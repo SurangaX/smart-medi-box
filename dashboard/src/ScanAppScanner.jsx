@@ -6,6 +6,19 @@ export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, 
   const containerIdRef = useRef('scanapp-reader-' + Date.now());
   const scannerRef = useRef(null);
 
+  const ensureContainerReady = async (id) => {
+    const start = Date.now();
+    let el = document.getElementById(id);
+    while ((!el || el.clientWidth === 0) && Date.now() - start < 2000) {
+      if (el) {
+        try { el.style.width = el.style.width || '320px'; el.style.height = el.style.height || '240px'; } catch(e){}
+      }
+      await new Promise(r => setTimeout(r, 100));
+      el = document.getElementById(id);
+    }
+    return document.getElementById(id);
+  };
+
   useEffect(() => {
     const id = containerIdRef.current;
     // Create container element
@@ -20,6 +33,7 @@ export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, 
     }
 
     // Create scanner UI
+
     try {
       const scanner = new Html5QrcodeScanner(id, { fps: 10, qrbox: 250 }, /* verbose */ false);
       scannerRef.current = scanner;
@@ -35,6 +49,7 @@ export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, 
         // small delay to allow scanner to initialize
         setTimeout(async () => {
           try {
+            await ensureContainerReady(id);
             const html5Qrcode = scanner.html5Qrcode;
             if (html5Qrcode) {
               await html5Qrcode.start(
@@ -81,6 +96,8 @@ export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, 
       try {
         // stop current scanning if any
         try { await html5Qrcode.stop(); } catch (e) {}
+        // ensure container has layout before starting to avoid clientWidth null
+        try { await ensureContainerReady(containerIdRef.current); } catch (e) { /* ignore */ }
         await html5Qrcode.start(
           selectedCameraId,
           { fps: 10, qrbox: 250 },
