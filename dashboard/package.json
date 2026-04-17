@@ -1,6 +1,6 @@
 {
   "name": "smart-medi-box-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1-bump",
   "description": "Modern React dashboard for Smart Medi Box IoT system",
   "type": "module",
   "scripts": {
