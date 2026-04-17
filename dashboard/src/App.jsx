@@ -1140,7 +1140,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <div className="section-header">
               <h2>Paired Devices</h2>
               {devicesLoading ? (
-                <div style={{ color: 'var(--text-secondary)' }}>Connecting to device service...</div>
+                <div className="loading-inline"><div className="loader" aria-hidden="true"></div><div>Connecting...</div></div>
               ) : devicesError ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ color: 'var(--danger)', marginRight: 8 }}>Failed to connect: {devicesError}</span>
@@ -1233,7 +1233,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             )}
 
             {devicesLoading ? (
-              <p className="empty-state">Connecting to device service...</p>
+              <p className="empty-state"><span className="loading-inline"><div className="loader" aria-hidden="true"></div>Connecting to device service...</span></p>
             ) : devicesError ? (
               <div className="empty-state" style={{ color: 'var(--danger)' }}>
                 <p>Failed to fetch devices: {devicesError}</p>

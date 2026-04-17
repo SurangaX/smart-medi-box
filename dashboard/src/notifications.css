@@ -134,3 +134,22 @@
   .toast-container { left: 8px; right: 8px; bottom: 12px; }
   .toast { width: auto; }
 }
+
+/* Small loading spinner used across dashboard */
+.loading-inline { display:inline-flex; align-items:center; gap:8px; color: var(--text-secondary); }
+.loader {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:3px solid rgba(255,255,255,0.14);
+  border-top-color: rgba(0,0,0,0.18);
+  animation: spin 900ms linear infinite;
+  box-sizing: border-box;
+}
+
+@keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+@media (prefers-color-scheme: dark) {
+  .loader { border:3px solid rgba(255,255,255,0.06); border-top-color: rgba(255,255,255,0.6); }
+}
+
