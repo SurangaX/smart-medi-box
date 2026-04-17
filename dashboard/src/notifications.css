@@ -43,6 +43,24 @@
   .notif-panel { right: 8px; left: 8px; width: auto; top: 64px; }
 }
 
+/* Device actions modern style */
+.device-actions { display:flex; gap:8px; }
+.btn-unpair {
+  display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background: linear-gradient(180deg,#fff 0%, #fff 100%); border:1px solid rgba(239,68,68,0.14); color:#ef4444; cursor:pointer; font-weight:600;
+}
+.btn-unpair:hover { background: rgba(239,68,68,0.04); box-shadow: 0 6px 18px rgba(239,68,68,0.06); }
+.btn-unpair:disabled { opacity:0.6; cursor:not-allowed; }
+
+.confirm-unpair { padding:10px 14px; }
+
+/* Modal confirm alignment */
+.modal-content .btn-unpair { border: none; color: #fff; background: linear-gradient(180deg,#ef4444 0%, #dc2626 100%); }
+
+/* Small polish for clear button */
+.notif-panel-header .btn-link { background: transparent; border: none; color: var(--muted, #6b7280); cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+.notif-panel-header .btn-link:hover { background: rgba(0,0,0,0.04); color: var(--text, #0f172a); }
+
+
 /* Animations */
 @keyframes notifEnter {
   from { transform: translateY(-6px) scale(0.98); opacity: 0; }

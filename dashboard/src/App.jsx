@@ -457,6 +457,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [devicesError, setDevicesError] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const headerRef = useRef(null);
+  const notifPanelRef = useRef(null);
+  const bellBtnRef = useRef(null);
+  const [notifPanelStyle, setNotifPanelStyle] = useState({});
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [tempHistory, setTempHistory] = useState([]);
@@ -577,6 +581,48 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const positionNotifPanel = () => {
+    try {
+      if (!headerRef.current) return setNotifPanelStyle({ top: 64 });
+      const hdr = headerRef.current.getBoundingClientRect();
+      const panelWidth = 340;
+      const top = Math.round(hdr.bottom + window.scrollY + 8);
+      let left = Math.round(hdr.right - panelWidth - 8);
+      if (left < 8) left = 8;
+      if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
+      setNotifPanelStyle({ top: `${top}px`, left: `${left}px`, position: 'fixed' });
+    } catch (e) { console.error('positionNotifPanel error', e); }
+  };
+
+  useEffect(() => {
+    if (!notifPanelOpen) return;
+    positionNotifPanel();
+    const onScroll = () => positionNotifPanel();
+    const onResize = () => positionNotifPanel();
+    const onDocClick = (e) => {
+      const tgt = e.target;
+      if (notifPanelRef.current && bellBtnRef.current) {
+        if (!notifPanelRef.current.contains(tgt) && !bellBtnRef.current.contains(tgt)) {
+          setNotifPanelOpen(false);
+        }
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    document.addEventListener('mousedown', onDocClick);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('mousedown', onDocClick);
+    };
+  }, [notifPanelOpen]);
+
+  const clearNotifications = () => {
+    setNotifications([]);
+    setNotifPanelOpen(false);
+    window.appNotify({ message: 'Notifications cleared', type: 'info' });
+  };
 
   const fetchDoctors = async () => {
     setLoading(true);
@@ -1003,13 +1049,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   return (
     <div className="dashboard patient-dashboard">
-      <div className="dashboard-header">
+      <div className="dashboard-header" ref={headerRef}>
         <div className="header-content">
           <h1>👤 Welcome, {profile.name}</h1>
           <p>NIC: {profile.nic} | ID: {profile.id}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
+          <button className="btn-icon" ref={bellBtnRef} onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
             <Bell size={18} />
             {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
           </button>
@@ -1020,10 +1066,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       </div>
 
       {notifPanelOpen && (
-        <div className="notif-panel">
+        <div className="notif-panel" ref={notifPanelRef} style={notifPanelStyle}>
           <div className="notif-panel-header">
             <strong>Notifications</strong>
-            <button className="btn-link" onClick={() => { setNotifications([]); setNotifPanelOpen(false); }}>Clear</button>
+            <button className="btn-link" onClick={clearNotifications}>Clear</button>
           </div>
           <div className="notif-list">
             {notifications.length === 0 && <div className="notif-empty">No notifications</div>}
@@ -1203,16 +1249,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </p>
                     </div>
                     <div className="device-actions">
-                      <button
-                        className="btn-danger"
-                        title="Unpair device"
-                        onClick={() => {
-                          setDeviceToUnpair(device.device_id);
-                          setShowUnpairConfirm(true);
-                        }}
-                      >
-                        <Trash2 size={16} /> Unpair
-                      </button>
+                        <button
+                          className="btn-unpair"
+                          title="Unpair device"
+                          onClick={() => {
+                            setDeviceToUnpair(device.device_id);
+                            setShowUnpairConfirm(true);
+                          }}
+                        >
+                          <Trash2 size={16} /> Unpair
+                        </button>
                     </div>
                   </div>
                 ))}
@@ -1644,7 +1690,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <h3>Unpair device?</h3>
             <p>Are you sure you want to unpair this device? This will remove it from your account.</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn-danger" onClick={unpairDevice} disabled={loading}>
+              <button className="btn-unpair confirm-unpair" onClick={unpairDevice} disabled={loading}>
                 {loading ? 'Unpairing...' : 'Yes, Unpair'}
               </button>
               <button className="btn-secondary" onClick={() => setShowUnpairConfirm(false)}>Cancel</button>
@@ -1667,6 +1713,55 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  // Local notification state for doctor dashboard
+  const [notificationsDoc, setNotificationsDoc] = useState([]);
+  const [notifPanelOpenDoc, setNotifPanelOpenDoc] = useState(false);
+  const headerRefDoc = useRef(null);
+  const notifPanelRefDoc = useRef(null);
+  const bellBtnRefDoc = useRef(null);
+  const [notifPanelStyleDoc, setNotifPanelStyleDoc] = useState({});
+
+  const positionNotifPanelDoc = () => {
+    try {
+      if (!headerRefDoc.current) return setNotifPanelStyleDoc({ top: 64 });
+      const hdr = headerRefDoc.current.getBoundingClientRect();
+      const panelWidth = 340;
+      const top = Math.round(hdr.bottom + window.scrollY + 8);
+      let left = Math.round(hdr.right - panelWidth - 8);
+      if (left < 8) left = 8;
+      if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
+      setNotifPanelStyleDoc({ top: `${top}px`, left: `${left}px`, position: 'fixed' });
+    } catch (e) { console.error('positionNotifPanelDoc error', e); }
+  };
+
+  useEffect(() => {
+    if (!notifPanelOpenDoc) return;
+    positionNotifPanelDoc();
+    const onScroll = () => positionNotifPanelDoc();
+    const onResize = () => positionNotifPanelDoc();
+    const onDocClick = (e) => {
+      const tgt = e.target;
+      if (notifPanelRefDoc.current && bellBtnRefDoc.current) {
+        if (!notifPanelRefDoc.current.contains(tgt) && !bellBtnRefDoc.current.contains(tgt)) {
+          setNotifPanelOpenDoc(false);
+        }
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    document.addEventListener('mousedown', onDocClick);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('mousedown', onDocClick);
+    };
+  }, [notifPanelOpenDoc]);
+
+  const clearNotificationsDoc = () => {
+    setNotificationsDoc([]);
+    setNotifPanelOpenDoc(false);
+    window.appNotify({ message: 'Notifications cleared', type: 'info' });
+  };
 
   const handleLogoutClick = () => {
     console.log('🚪 Logout button clicked');
@@ -1807,15 +1902,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
 
   return (
     <div className="dashboard doctor-dashboard">
-      <div className="dashboard-header">
+      <div className="dashboard-header" ref={headerRefDoc}>
         <div className="header-content">
           <h1>👨‍⚕️ Welcome, Dr. {profile.name}</h1>
           <p>Specialization: {profile.specialization} | Hospital: {profile.hospital}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
+          <button className="btn-icon" ref={bellBtnRefDoc} onClick={() => setNotifPanelOpenDoc(!notifPanelOpenDoc)} title="Notifications">
             <Bell size={18} />
-            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+            {notificationsDoc.filter(n => !n.read).length > 0 && <span className="notif-badge">{notificationsDoc.filter(n => !n.read).length}</span>}
           </button>
           <button className="btn-secondary" onClick={handleLogoutClick}>
             <LogOut size={18} /> Logout
@@ -1823,15 +1918,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         </div>
       </div>
 
-      {notifPanelOpen && (
-        <div className="notif-panel">
+      {notifPanelOpenDoc && (
+        <div className="notif-panel" ref={notifPanelRefDoc} style={notifPanelStyleDoc}>
           <div className="notif-panel-header">
             <strong>Notifications</strong>
-            <button className="btn-link" onClick={() => { setNotifications([]); setNotifPanelOpen(false); }}>Clear</button>
+            <button className="btn-link" onClick={clearNotificationsDoc}>Clear</button>
           </div>
           <div className="notif-list">
-            {notifications.length === 0 && <div className="notif-empty">No notifications</div>}
-            {notifications.map(n => (
+            {notificationsDoc.length === 0 && <div className="notif-empty">No notifications</div>}
+            {notificationsDoc.map(n => (
               <div key={n.id} className={`notif-item ${n.type || ''}`}>
                 <div className="notif-message">{n.message}</div>
                 <div className="notif-meta">
