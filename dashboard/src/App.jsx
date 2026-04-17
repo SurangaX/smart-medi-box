@@ -1521,43 +1521,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 {/* Scanner auto-starts when the scan view opens; manual start removed */}
 
                 <div style={{ marginBottom: 10, display: showQRScanner ? 'block' : 'none' }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                    <label style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Camera</label>
-                    <select
-                      value={selectedCameraId || ''}
-                      onChange={(e) => setSelectedCameraId(e.target.value)}
-                      className="btn-secondary"
-                      style={{ minWidth: 220 }}
-                    >
-                      {cameras && cameras.length > 0 ? (
-                        cameras.map(c => <option key={c.id} value={c.id}>{c.label || c.id}</option>)
-                      ) : (
-                        <option value="">Detecting cameras...</option>
-                      )}
-                    </select>
-
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                      title="Scan from image file"
-                    >
-                      Scan an Image File
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files && e.target.files[0];
-                        if (f) scanImageFile(f);
-                        // reset value to allow reselecting same file
-                        e.target.value = '';
-                      }}
-                    />
-                  </div>
-
+                  {/* Camera selector and file-scan controls removed to use library default UI */}
                   <div ref={qrScannerRef} id="html5qr-scanner-wrapper" className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}>
                     <div id="html5qr-scanner" style={{ width: '100%' }} />
                   </div>
