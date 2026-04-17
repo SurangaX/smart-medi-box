@@ -94,25 +94,25 @@ function handleListArticles($method) {
     try {
         error_log("LIST ARTICLES - Starting query");
         
-        $query = "SELECT 
-                    a.id,
-                    a.id as article_id,
-                    a.title,
-                                        a.content,
-                                        a.summary,
-                                          a.cover_image,
-                                          a.cover_image_data,
-                                          a.cover_image_mime,
-                                          a.cover_image_filename,
-                    a.category,
-                    a.view_count as views,
-                    a.created_at,
-                    d.name as doctor_name
-                  FROM articles a
-                  JOIN doctors d ON a.doctor_id = d.id
-                  WHERE a.is_published = true
-                  ORDER BY a.created_at DESC
-                  LIMIT 50";
+                $query = "SELECT 
+                                        a.id,
+                                        a.id as article_id,
+                                        a.title,
+                                                                                a.content,
+                                                                                a.summary,
+                                                                                    a.cover_image,
+                                                                                    encode(a.cover_image_data, 'base64') AS cover_image_b64,
+                                                                                    a.cover_image_mime,
+                                                                                    a.cover_image_filename,
+                                        a.category,
+                                        a.view_count as views,
+                                        a.created_at,
+                                        d.name as doctor_name
+                                    FROM articles a
+                                    JOIN doctors d ON a.doctor_id = d.id
+                                    WHERE a.is_published = true
+                                    ORDER BY a.created_at DESC
+                                    LIMIT 50";
         
         error_log("LIST ARTICLES - Query: " . $query);
         
@@ -138,9 +138,9 @@ function handleListArticles($method) {
                 'article_id' => $row['article_id'],
                 'title' => $row['title'],
                 'excerpt' => $excerpt,
-                    // If image binary exists, convert to data URL, otherwise return cover_image link
-                    'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
-                                      ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                    // If image binary exists (returned as base64), convert to data URL, otherwise return cover_image link
+                    'cover_image' => (!empty($row['cover_image_b64'])) ?
+                                      ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . $row['cover_image_b64']) :
                                       ($row['cover_image'] ?? null),
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
@@ -248,7 +248,7 @@ function handleMyArticles($method) {
                                         created_at,
                                         updated_at,
                                         cover_image,
-                                        cover_image_data,
+                                        encode(cover_image_data, 'base64') AS cover_image_b64,
                                         cover_image_mime,
                                         cover_image_filename
                                     FROM articles
@@ -277,8 +277,8 @@ function handleMyArticles($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
-                'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
-                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                'cover_image' => (!empty($row['cover_image_b64'])) ?
+                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . $row['cover_image_b64']) :
                                   ($row['cover_image'] ?? null)
             ];
         }
@@ -408,14 +408,13 @@ function handleCreateArticle($method) {
         error_log("CREATE ARTICLE - Inserting article with doctor_id=" . $doctor_id);
 
         if ($cover_image_base64) {
-            $decoded = base64_decode($cover_image_base64);
-            // Insert with binary data and metadata
+            // Store binary data using SQL decode(base64) to avoid sending raw non-UTF8 bytes in params
             $query = "INSERT INTO articles (doctor_id, title, content, cover_image, cover_image_data, cover_image_mime, cover_image_filename, is_published)
-                      VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+                      VALUES ($1, $2, $3, $4, decode($5, 'base64'), $6, $7, true)
                       RETURNING id";
 
             $result = pg_query_params($conn, $query,
-                array($doctor_id, $title, $content, $cover_image, $decoded, $cover_image_mime, $cover_image_filename));
+                array($doctor_id, $title, $content, $cover_image, $cover_image_base64, $cover_image_mime, $cover_image_filename));
         } else {
             $query = "INSERT INTO articles (doctor_id, title, content, cover_image, is_published)
                       VALUES ($1, $2, $3, $4, true)
@@ -618,7 +617,7 @@ function handleViewArticle($method) {
 
         // return the full article details for the client to render (include image binary if present)
         $detail_query = "SELECT a.id, a.id as article_id, a.title, a.content, a.summary, a.view_count as views, a.created_at, d.name as doctor_name,
-                         a.cover_image, a.cover_image_data, a.cover_image_mime
+                         a.cover_image, encode(a.cover_image_data, 'base64') AS cover_image_b64, a.cover_image_mime
                          FROM articles a
                          JOIN doctors d ON a.doctor_id = d.id
                          WHERE a.id = $1 LIMIT 1";
@@ -635,8 +634,8 @@ function handleViewArticle($method) {
                 'views' => intval($row['views']),
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
-                'cover_image' => (isset($row['cover_image_data']) && $row['cover_image_data'] !== null) ?
-                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . base64_encode(pg_unescape_bytea($row['cover_image_data']))) :
+                'cover_image' => (!empty($row['cover_image_b64'])) ?
+                                  ('data:' . ($row['cover_image_mime'] ?? 'image/jpeg') . ';base64,' . $row['cover_image_b64']) :
                                   ($row['cover_image'] ?? null)
             ]]);
             return;
