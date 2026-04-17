@@ -750,6 +750,58 @@ button, a { user-select: none; cursor: pointer; }
   display: none;
 }
 
+/* Tame html5-qrcode default controls so they don't create large grey overlays
+   Make controls compact, translucent, and inline with dashboard theme. */
+#qr-reader .html5-qrcode-element {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+  max-width: 260px !important;
+  width: auto !important;
+  height: auto !important;
+  color: var(--text-primary) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+#qr-reader .html5-qrcode-camera__wrap,
+#qr-reader .html5-qrcode-camera__select,
+#qr-reader .html5-qrcode-button-area {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+#qr-reader select,
+#qr-reader option,
+#qr-reader button {
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 6px !important;
+  padding: 6px 8px !important;
+  font-size: 13px !important;
+  -webkit-appearance: none !important;
+}
+
+/* Ensure compact camera select doesn't overflow the reader */
+#html5-qrcode-select-camera, #html5-qrcode-select-camera option {
+  max-width: 220px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* If the library injects a file-drop overlay, keep it subtle */
+#qr-reader .html5-qrcode-file-selection, #qr-reader .html5-qrcode-file-selection-button {
+  background: rgba(255,255,255,0.02) !important;
+  border: 1px dashed rgba(255,255,255,0.03) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+}
+
 /* Modern scanner viewport frame */
 #qr-reader {
   width: 100%;
