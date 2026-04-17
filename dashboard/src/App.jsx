@@ -1081,6 +1081,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCameraId]);
 
+  // When cameras list populates, pick the first camera by default
+  useEffect(() => {
+    if (cameras && cameras.length > 0 && !selectedCameraId) {
+      setSelectedCameraId(cameras[0].id);
+    }
+  }, [cameras, selectedCameraId]);
+
   useEffect(() => {
     return () => {
       // Cleanup: stop scanner when component unmounts

@@ -732,6 +732,28 @@ button, a { user-select: none; cursor: pointer; }
   max-width: 400px;
 }
 
+/* Center the reader and ensure the video fits nicely */
+.qr-scanner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#qr-reader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: #000;
+}
+
+#qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 420px !important;
+  object-fit: contain !important;
+}
+
 .qr-reader {
   width: 100%;
   border: 2px solid var(--primary);
