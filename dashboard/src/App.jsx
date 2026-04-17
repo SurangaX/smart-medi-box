@@ -2102,6 +2102,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [assignPatient, setAssignPatient] = useState({ patient_nic: '', notes: '' });
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  const [creatingArticle, setCreatingArticle] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // Local notification state for doctor dashboard
   const [notificationsDoc, setNotificationsDoc] = useState([]);
@@ -2197,7 +2199,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   };
 
   const fetchArticles = async () => {
-    setLoading(true);
+    setArticlesLoading(true);
     try {
       const response = await fetch(`${API_URL}/index.php/api/articles/my`, {
         method: 'POST',
@@ -2216,7 +2218,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       console.error('Failed to fetch articles:', err);
       window.appNotify && window.appNotify({ message: 'Network error fetching articles: ' + err.message, type: 'error' });
     } finally {
-      setLoading(false);
+      setArticlesLoading(false);
     }
   };
 
@@ -2241,6 +2243,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
 
   const handleCreateArticle = async (e) => {
     e.preventDefault();
+    setCreatingArticle(true);
     try {
       // If a raw file was chosen, upload as multipart/form-data to preserve bytes
       let response;
@@ -2282,12 +2285,17 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         window.appNotify({ message: 'Article published successfully', type: 'success' });
         setNewArticle({ title: '', content: '', summary: '', category: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null, cover_file: null });
         setShowNewArticle(false);
-        fetchArticles();
+        setCreatingArticle(false);
+        // Show loading spinner while refreshing articles
+        setArticlesLoading(true);
+        await fetchArticles();
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create article'), type: 'error' });
+        setCreatingArticle(false);
       }
     } catch (err) {
       window.appNotify({ message: 'Error creating article: ' + err.message, type: 'error' });
+      setCreatingArticle(false);
     }
   };
 
@@ -2474,13 +2482,27 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                   />
                 </div>
                 <div className="article-button-group">
-                  <button type="submit" className="btn-primary">Publish Article</button>
-                  <button type="button" className="btn-secondary" onClick={() => setShowNewArticle(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" disabled={creatingArticle}>
+                    {creatingArticle ? (
+                      <>
+                        <span className="spinner-mini" style={{ marginRight: '6px', display: 'inline-block' }}></span>
+                        Publishing...
+                      </>
+                    ) : (
+                      'Publish Article'
+                    )}
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => setShowNewArticle(false)} disabled={creatingArticle}>Cancel</button>
                 </div>
               </form>
             )}
 
-            {articles.length === 0 ? (
+            {articlesLoading ? (
+              <div className="loading-container" style={{ textAlign: 'center', padding: '40px' }}>
+                <div className="spinner" style={{ margin: '0 auto' }}></div>
+                <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Loading articles...</p>
+              </div>
+            ) : articles.length === 0 ? (
               <p className="empty-state">No articles published yet.</p>
             ) : (
               <div className="articles-grid">
