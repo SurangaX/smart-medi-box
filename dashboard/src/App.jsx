@@ -453,6 +453,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [tempHistory, setTempHistory] = useState([]);
@@ -521,22 +522,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const fetchDevices = async () => {
     setDevicesLoading(true);
+    setDevicesError('');
     try {
       const response = await fetch(`${API_URL}/index.php/api/patient/devices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
       });
+      // Network-level errors will throw; handle non-OK responses explicitly
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`API responded with ${response.status}: ${text}`);
+      }
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         setDevices(data.devices || []);
       } else {
         console.error('Fetch devices error:', data.message || 'Unknown error');
         setDevices([]);
+        setDevicesError(data.message || 'Failed to fetch devices');
       }
     } catch (err) {
       console.error('Failed to fetch devices:', err);
       setDevices([]);
+      setDevicesError(err.message || 'Network error');
     } finally {
       setDevicesLoading(false);
     }
@@ -1029,6 +1038,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               <h2>Paired Devices</h2>
               {devicesLoading ? (
                 <div style={{ color: 'var(--text-secondary)' }}>Connecting to device service...</div>
+              ) : devicesError ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ color: 'var(--danger)', marginRight: 8 }}>Failed to connect: {devicesError}</span>
+                  <button className="btn-secondary" onClick={() => fetchDevices()}>Retry</button>
+                </div>
               ) : (devices && devices.length === 0 ? (
                 <button className="btn-primary" onClick={() => setShowQRScanner(!showQRScanner)}>
                   <Plus size={18} /> {showQRScanner ? 'Cancel Scan' : 'Scan Device QR'}
@@ -1117,6 +1131,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
             {devicesLoading ? (
               <p className="empty-state">Connecting to device service...</p>
+            ) : devicesError ? (
+              <div className="empty-state" style={{ color: 'var(--danger)' }}>
+                <p>Failed to fetch devices: {devicesError}</p>
+                <button className="btn-secondary" onClick={() => fetchDevices()}>Retry</button>
+              </div>
             ) : devices.length === 0 ? (
               <p className="empty-state">No devices paired yet. Click "Scan Device QR" to add your first device.</p>
             ) : (
