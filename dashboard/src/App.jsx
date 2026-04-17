@@ -928,41 +928,87 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       qrInstanceRef.current = html5Qr;
 
       // Try to start with the selected camera; if it fails, attempt other cameras sequentially
+      const probeCamera = async (camDeviceId) => {
+        try {
+          const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camDeviceId } } });
+          try { s.getTracks().forEach(t => t.stop()); } catch (e) {}
+          return true;
+        } catch (e1) {
+          try {
+            const s2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { ideal: camDeviceId } } });
+            try { s2.getTracks().forEach(t => t.stop()); } catch (e) {}
+            return true;
+          } catch (e2) {
+            try {
+              const s3 = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+              try { s3.getTracks().forEach(t => t.stop()); } catch (e) {}
+              return true;
+            } catch (e3) {
+              return false;
+            }
+          }
+        }
+      };
+
       const tryCameras = selectedCameraId ? [selectedCameraId, ...devices.filter(d => d.id !== selectedCameraId).map(d => d.id)] : devices.map(d => d.id);
       let started = false;
       for (const camId of tryCameras) {
         try {
-          // Quick permission probe: try getUserMedia with the specific deviceId
-          await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camId } } });
-        } catch (probeErr) {
-          console.warn('Camera probe failed for', camId, probeErr);
-          continue; // try next
-        }
+          const ok = await probeCamera(camId);
+          if (!ok) {
+            console.warn('Camera probe unable to obtain stream for', camId);
+            continue;
+          }
 
-        try {
-          await html5Qr.start(
-            camId,
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-              console.log('QR Scanned:', decodedText);
-              const mac = decodedText.trim();
-              setScannedMac(mac);
-              setScannerError('');
-              try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
-              qrInstanceRef.current = null;
-              setScannerStarted(false);
-              setShowQRScanner(false);
-              setShowDeviceFound(true);
-            },
-            (errorMessage) => { /* ignore minor scan errors */ }
-          );
-          // success
-          setSelectedCameraId(camId);
-          started = true;
-          break;
-        } catch (startErr) {
-          console.warn('Failed to start html5Qr on', camId, startErr);
-          // try next camera
+          try {
+            await html5Qr.start(
+              camId,
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              (decodedText) => {
+                console.log('QR Scanned:', decodedText);
+                const mac = decodedText.trim();
+                setScannedMac(mac);
+                setScannerError('');
+                try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
+                qrInstanceRef.current = null;
+                setScannerStarted(false);
+                setShowQRScanner(false);
+                setShowDeviceFound(true);
+              },
+              (errorMessage) => { /* ignore minor scan errors */ }
+            );
+            setSelectedCameraId(camId);
+            started = true;
+            break;
+          } catch (startErr) {
+            console.warn('Failed to start html5Qr on', camId, startErr);
+            // Try fallback: start with facingMode constraint
+            try {
+              await html5Qr.start(
+                { facingMode: { ideal: 'environment' } },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                  console.log('QR Scanned (fallback):', decodedText);
+                  const mac = decodedText.trim();
+                  setScannedMac(mac);
+                  setScannerError('');
+                  try { html5Qr.pause(); html5Qr.stop().catch(() => {}); } catch (e) {}
+                  qrInstanceRef.current = null;
+                  setScannerStarted(false);
+                  setShowQRScanner(false);
+                  setShowDeviceFound(true);
+                },
+                (errorMessage) => { /* ignore */ }
+              );
+              setSelectedCameraId(camId);
+              started = true;
+              break;
+            } catch (fallbackErr) {
+              console.warn('Fallback start also failed for', camId, fallbackErr);
+            }
+          }
+        } catch (outerErr) {
+          console.warn('Unexpected error while probing/starting camera', camId, outerErr);
         }
       }
 
