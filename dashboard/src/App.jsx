@@ -989,36 +989,35 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     setScannerStarted(false);
 
     // Ensure qr-reader container exists
-    if (!qrScannerRef.current) {
-      setScannerError('Scanner container not found.');
-      return;
-    }
+    // Create a temporary off-DOM container to avoid interfering with live scanner
+    const tempContainerId = 'qr-file-scanner-' + Date.now();
+    const container = document.createElement('div');
+    container.id = tempContainerId;
+    container.style.cssText = 'position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;';
+    document.body.appendChild(container);
 
-    // Create a temporary Html5Qrcode instance to use scanFile if none exists
-    let tempInstance = qrInstanceRef.current;
-    let created = false;
+    const tempInstance = new Html5Qrcode(tempContainerId);
     try {
-      if (!tempInstance) {
-        qrScannerRef.current.innerHTML = '<div id="qr-reader"></div>';
-        tempInstance = new Html5Qrcode('qr-reader');
-        created = true;
-      }
-
       const result = await tempInstance.scanFile(file, true);
       if (result && result.decodedText) {
         const mac = result.decodedText.trim();
         setScannedMac(mac);
         setShowDeviceFound(true);
         setShowQRScanner(false);
+        setScannerError('');
+      } else {
+        setScannerError('No QR code found in the selected image.');
       }
     } catch (err) {
       console.error('Image scan failed:', err);
-      setScannerError('Failed to decode image. Make sure the QR code is clear and try a different image.');
-    } finally {
-      try { if (created && tempInstance) { await tempInstance.clear(); } } catch (e) {}
-      if (created) {
-        qrInstanceRef.current = null;
+      if (err && err.name === 'AbortError') {
+        setScannerError('Image scanning was aborted.');
+      } else {
+        setScannerError('Failed to decode image. Make sure the QR code is clear and try a different image.');
       }
+    } finally {
+      try { await tempInstance.clear(); } catch (e) { /* ignore */ }
+      try { document.body.removeChild(container); } catch (e) { /* ignore */ }
     }
   };
 
