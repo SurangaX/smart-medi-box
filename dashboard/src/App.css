@@ -483,21 +483,33 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 auto;
 }
 
 .status {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
   width: fit-content;
+  box-shadow: none;
 }
 
 .status.active {
-  background: rgba(16, 185, 129, 0.2);
-  color: #86efac;
+  background: var(--success, #10b981);
+  color: #ffffff;
 }
+
+.status.inactive {
+  background: rgba(107,114,128,0.12);
+  color: var(--text-secondary, #6b7280);
+}
+
+/* Make device card layout place status and actions on same row */
+.device-card { display:flex; align-items:center; gap:16px; justify-content:space-between; }
+.device-meta-row { display:flex; gap:12px; align-items:center; }
+.device-actions { display:flex; gap:8px; align-items:center; }
 
 .status.offline {
   background: rgba(239, 68, 68, 0.2);

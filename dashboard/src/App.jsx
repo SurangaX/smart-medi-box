@@ -1243,25 +1243,29 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               <div className="devices-list">
                 {devices.map(device => (
                   <div key={device.device_id} className="device-card">
-                    <div className="device-info">
-                      <h3>{device.device_name || 'Smart Medi Box'}</h3>
-                      <p>MAC: {device.mac_address}</p>
-                      <p className={`status ${device.status ? device.status.toLowerCase() : 'active'}`}>
-                        Status: {device.status || 'Active'}
-                      </p>
-                    </div>
-                    <div className="device-actions">
-                        <button
-                          className="btn-unpair"
-                          title="Unpair device"
-                          onClick={() => {
-                            setDeviceToUnpair(device.device_id);
-                            setShowUnpairConfirm(true);
-                          }}
-                        >
-                          <Trash2 size={16} /> Unpair
-                        </button>
-                    </div>
+                      <div className="device-info">
+                        <h3>{device.device_name || 'Smart Medi Box'}</h3>
+                        <p>MAC: {device.mac_address}</p>
+                      </div>
+                      <div className="device-meta-row">
+                        <div>
+                          <p className={`status ${device.status ? device.status.toLowerCase() : 'active'}`}>
+                            {device.status || 'Active'}
+                          </p>
+                        </div>
+                        <div className="device-actions">
+                          <button
+                            className="btn-unpair"
+                            title="Unpair device"
+                            onClick={() => {
+                              setDeviceToUnpair(device.device_id);
+                              setShowUnpairConfirm(true);
+                            }}
+                          >
+                            <Trash2 size={16} /> Unpair
+                          </button>
+                        </div>
+                      </div>
                   </div>
                 ))}
               </div>
