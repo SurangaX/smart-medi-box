@@ -1983,7 +1983,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <h2 style={{ marginBottom: '20px' }}>📰 Latest Articles</h2>
             
             {articlesLoading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading articles...</p>
+              <div className="loading-container">
+                <div className="spinner"></div>
+                <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Loading articles...</p>
+              </div>
             ) : articles.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)' }}>No articles available yet</p>
             ) : (
@@ -2520,8 +2523,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             )}
 
             {articlesLoading ? (
-              <div className="loading-container" style={{ textAlign: 'center', padding: '40px' }}>
-                <div className="spinner" style={{ margin: '0 auto' }}></div>
+              <div className="loading-container">
+                <div className="spinner"></div>
                 <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Loading articles...</p>
               </div>
             ) : articles.length === 0 ? (
