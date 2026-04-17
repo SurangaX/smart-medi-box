@@ -3,7 +3,6 @@ import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
-import ScanAppScanner from './ScanAppScanner';
 import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
@@ -1226,14 +1225,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  // Restart scanner when selected camera changes
-  useEffect(() => {
-    if (!showQRScanner) return;
-    if (!selectedCameraId) return;
-    // Use explicit switch helper to ensure a clean restart
-    switchCameraTo(selectedCameraId).catch(err => console.error('Error switching camera', err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCameraId]);
+  // When using default Html5QrcodeScanner UI we do not control camera via selectedCameraId
+  // Keep the old switch behavior available for programmatic instance but avoid interfering with library UI
 
   // When cameras list populates, pick the first camera by default
   useEffect(() => {
@@ -1251,12 +1244,45 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   // Auto-start scanner when the scan view is opened, stop when closed
   useEffect(() => {
+    let scannerInstance = null;
     const manage = async () => {
       if (showQRScanner) {
         setScannerError('');
-        await startQRScanner();
+        try {
+          // Use library default UI (Html5QrcodeScanner)
+          const elId = 'html5qr-scanner';
+          // clear any previous content
+          const el = document.getElementById(elId);
+          if (el) el.innerHTML = '';
+          scannerInstance = new Html5QrcodeScanner(elId, { fps: 10, qrbox: 250 }, false);
+          // render with mobile form factor true so library adapts UI
+          scannerInstance.render((decodedText) => {
+            const mac = String(decodedText).trim();
+            setScannedMac(mac);
+            setScannerError('');
+            try { scannerInstance.clear().catch(()=>{}); } catch(e){}
+            setScannerStarted(false);
+            setShowQRScanner(false);
+            setShowDeviceFound(true);
+          }, (errorMessage, error) => {
+            // ignore per-frame scan errors
+          }, true);
+        } catch (e) {
+          console.error('Failed to render Html5QrcodeScanner', e);
+          setScannerError('Failed to start scanner: ' + (e && e.message));
+        }
       } else {
-        await stopQRScanner();
+        try {
+          if (window && window.__Html5QrcodeScannerInstance) {
+            try { window.__Html5QrcodeScannerInstance.clear().catch(()=>{}); } catch(e){}
+            window.__Html5QrcodeScannerInstance = null;
+          }
+          // also attempt to clear local scannerInstance
+          if (scannerInstance) {
+            try { scannerInstance.clear().catch(()=>{}); } catch(e){}
+            scannerInstance = null;
+          }
+        } catch (e) {}
       }
     };
     manage().catch(e => console.error('Error managing scanner on visibility change', e));
@@ -1532,18 +1558,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                     />
                   </div>
 
-                  <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}>
-                    <ScanAppScanner selectedCameraId={selectedCameraId} onCameraError={(e) => {
-                      console.error('ScanAppScanner camera error', e);
-                      setScannerError('Camera error: ' + (e && e.message ? e.message : String(e)));
-                    }} onDetected={(decoded) => {
-                      const mac = String(decoded).trim();
-                      setScannedMac(mac);
-                      setScannerError('');
-                      setScannerStarted(false);
-                      setShowQRScanner(false);
-                      setShowDeviceFound(true);
-                    }} />
+                  <div ref={qrScannerRef} id="html5qr-scanner-wrapper" className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}>
+                    <div id="html5qr-scanner" style={{ width: '100%' }} />
                   </div>
 
                   {scannerStarted && (
