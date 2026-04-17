@@ -1505,7 +1505,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   </div>
 
                   <div ref={qrScannerRef} className="qr-scanner-container" style={{ display: showQRScanner ? 'block' : 'none' }}>
-                    <ScanAppScanner onDetected={(decoded) => {
+                    <ScanAppScanner selectedCameraId={selectedCameraId} onCameraError={(e) => {
+                      console.error('ScanAppScanner camera error', e);
+                      setScannerError('Camera error: ' + (e && e.message ? e.message : String(e)));
+                    }} onDetected={(decoded) => {
                       const mac = String(decoded).trim();
                       setScannedMac(mac);
                       setScannerError('');

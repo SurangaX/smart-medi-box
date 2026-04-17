@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 // Minimal React wrapper around ScanApp-style Html5QrcodeScanner UI
-export default function ScanAppScanner({ onDetected, onClose }) {
+export default function ScanAppScanner({ onDetected, onClose, selectedCameraId, onCameraError }) {
   const containerIdRef = useRef('scanapp-reader-' + Date.now());
   const scannerRef = useRef(null);
 
@@ -27,10 +27,10 @@ export default function ScanAppScanner({ onDetected, onClose }) {
         if (typeof onDetected === 'function') onDetected(decodedText);
       }, (errorMessage, error) => {
         // ignore intermittent scan errors
-        // console.debug('scan error', errorMessage, error);
       }, /* isFormFactorMobile */ true);
     } catch (e) {
       console.error('Failed to initialize ScanAppScanner', e);
+      if (onCameraError) onCameraError(e);
     }
 
     return () => {
@@ -46,6 +46,33 @@ export default function ScanAppScanner({ onDetected, onClose }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Watch for external camera selection changes and instruct internal scanner to switch
+  useEffect(() => {
+    const scanner = scannerRef.current;
+    if (!scanner || !selectedCameraId) return;
+    // html5Qrcode instance is created by Html5QrcodeScanner and attached as html5Qrcode
+    const html5Qrcode = scanner.html5Qrcode;
+    if (!html5Qrcode) return;
+
+    (async () => {
+      try {
+        // stop current scanning if any
+        try { await html5Qrcode.stop(); } catch (e) {}
+        await html5Qrcode.start(
+          selectedCameraId,
+          { fps: 10, qrbox: 250 },
+          (decoded) => { if (onDetected) onDetected(decoded); },
+          (err) => {}
+        );
+        console.log('ScanAppScanner switched to camera', selectedCameraId);
+      } catch (err) {
+        console.error('ScanAppScanner failed to switch camera', selectedCameraId, err);
+        if (onCameraError) onCameraError(err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCameraId]);
 
   return (
     <div id={containerIdRef.current + '-wrapper'} style={{ width: '100%' }} />
