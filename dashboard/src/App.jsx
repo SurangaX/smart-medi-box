@@ -2030,7 +2030,6 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className={`modal-content ${isArticleLoading ? 'loading-blur' : ''}`} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               {isArticleLoading && (
                 <div className="modal-loading-overlay" onClick={e => e.stopPropagation()}>
-                  <div className="loader" aria-hidden="true" style={{ width: 24, height: 24 }} />
                   <div>Loading full article...</div>
                 </div>
               )}
@@ -2048,17 +2047,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               By <strong>{selectedArticle.doctor_name || 'Anonymous'}</strong> • {new Date(selectedArticle.created_at).toLocaleDateString()} • 👁️ {selectedArticle.views || 0} views
             </p>
             <div style={{ color: 'var(--text-primary)', lineHeight: '1.8', fontSize: '15px', whiteSpace: 'pre-wrap' }}>
-              {isArticleLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="loader" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                  <div style={{ color: 'var(--text-secondary)' }}>
-                    Loading full article...
-                    <div style={{ marginTop: 8 }}>{selectedArticle.excerpt || selectedArticle.content || ''}</div>
-                  </div>
-                </div>
-              ) : (
-                (selectedArticle.content && selectedArticle.content.length > 0) ? selectedArticle.content : (selectedArticle.excerpt || '')
-              )}
+              {(selectedArticle.content && !isArticleLoading) ? selectedArticle.content : (selectedArticle.excerpt || '')}
             </div>
           </div>
         </div>
