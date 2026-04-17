@@ -318,6 +318,15 @@ function handleCreateArticle($method) {
     $cover_image_mime = $input['cover_image_mime'] ?? null;
     $cover_image_filename = $input['cover_image_filename'] ?? null;
     $cover_image_data_url = $input['cover_image_data_url'] ?? null;
+    // If request is multipart/form-data, PHP populates $_POST/$_FILES; prefer those values when present
+    if (!empty($_POST)) {
+        $token = $_POST['token'] ?? $token;
+        $user_id = $_POST['user_id'] ?? $user_id;
+        $title = $_POST['title'] ?? $title;
+        $content = $_POST['content'] ?? $content;
+        // allow form to pass cover_image as well
+        $cover_image = $_POST['cover_image'] ?? $cover_image;
+    }
     // Handle multipart file upload
     if (isset($_FILES['cover_file']) && is_uploaded_file($_FILES['cover_file']['tmp_name'])) {
         error_log('CREATE ARTICLE - Received multipart file upload: ' . ($_FILES['cover_file']['name'] ?? 'unknown'));
