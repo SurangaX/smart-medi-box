@@ -1660,7 +1660,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 {doctors.map(doctor => (
                   <div key={doctor.id} className="doctor-card">
                     <h3>{doctor.name}</h3>
-                    <p>Specialization: {doctor.specialization}</p>
+                    <p>Specialization: {doctor.specialty || doctor.specialization}</p>
                     <p>Hospital: {doctor.hospital}</p>
                     <p>Phone: {doctor.phone_number}</p>
                     <p className="assigned-date">Assigned: {new Date(doctor.assigned_at).toLocaleDateString()}</p>
@@ -2354,7 +2354,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       <div className="dashboard-header" ref={headerRefDoc}>
         <div className="header-content">
           <h1>👨‍⚕️ Welcome, Dr. {profile.name}</h1>
-          <p>Specialization: {profile.specialization} | Hospital: {profile.hospital}</p>
+          <p>Specialization: {profile.specialty || profile.specialization} | Hospital: {profile.hospital}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn-icon" ref={bellBtnRefDoc} onClick={() => setNotifPanelOpenDoc(!notifPanelOpenDoc)} title="Notifications">
