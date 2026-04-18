@@ -2101,6 +2101,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   useEffect(() => {
     try {
       console.log('DoctorDashboard profile:', profile);
+      // Also log a serialized version so console expansion/collapse doesn't hide fields
+      console.log('DoctorDashboard profile (JSON):', JSON.stringify(profile, null, 2));
     } catch (e) { }
   }, [profile]);
 
