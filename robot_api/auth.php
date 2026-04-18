@@ -396,6 +396,7 @@ function handleDoctorSignup($method) {
     $license_number = $input['license_number'] ?? null;
     $specialty = $input['specialty'] ?? null;
     $phone = $input['phone'] ?? null;
+    $dob = $input['dob'] ?? null;
     
     // Validate required fields
     $missing = [];
@@ -404,6 +405,7 @@ function handleDoctorSignup($method) {
     if (!$password) $missing[] = 'password';
     if (!$nic) $missing[] = 'nic';
     if (!$license_number) $missing[] = 'license_number';
+    if (!$dob) $missing[] = 'dob';
     
     if (!empty($missing)) {
         error_log("DOCTOR SIGNUP FAILED: Missing fields - " . implode(', ', $missing));
@@ -465,7 +467,7 @@ function handleDoctorSignup($method) {
 
         // Insert into doctors table linking to users
         $dQuery = "INSERT INTO doctors (user_id, nic, name, date_of_birth, specialization, hospital, license_number, phone_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
-        $dResult = pg_query_params($conn, $dQuery, [$user_id, $nic, $name, $input['date_of_birth'] ?? null, $input['specialization'] ?? $specialty, $input['hospital'] ?? null, $license_number, $phone]);
+        $dResult = pg_query_params($conn, $dQuery, [$user_id, $nic, $name, $dob, $input['specialization'] ?? $specialty, $input['hospital'] ?? null, $license_number, $phone]);
         if (!$dResult) {
             $msg = pg_last_error($conn);
             error_log("DOCTOR INSERT FAILED: $msg");
