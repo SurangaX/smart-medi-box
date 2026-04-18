@@ -2712,11 +2712,15 @@ export default function App() {
 
   const handleLoginSuccess = (data) => {
     setCurrentUser(data);
+    // clear any auth hashes from URL and go to dashboard
+    try { window.location.hash = ''; } catch (e) {}
     setCurrentPage(data.role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
   };
 
   const handleSignupSuccess = (data) => {
     setCurrentUser(data);
+    // clear any auth hashes from URL and go to dashboard
+    try { window.location.hash = ''; } catch (e) {}
     setCurrentPage(data.role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
   };
 
@@ -2726,6 +2730,8 @@ export default function App() {
     localStorage.removeItem('role');
     localStorage.removeItem('profile');
     setCurrentUser(null);
+    // keep URL hash in sync so clicking auth links works immediately
+    try { window.location.hash = '#login'; } catch (e) {}
     setCurrentPage('login');
   };
 
