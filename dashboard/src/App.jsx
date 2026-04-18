@@ -2711,6 +2711,14 @@ export default function App() {
   }, [currentUser]);
 
   const handleLoginSuccess = (data) => {
+    // Ensure localStorage is synchronized and log profile for debugging
+    try {
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user_id) localStorage.setItem('user_id', data.user_id);
+      if (data.role) localStorage.setItem('role', data.role);
+      if (data.profile) localStorage.setItem('profile', JSON.stringify(data.profile));
+    } catch (e) { console.error('LocalStorage sync error', e); }
+    console.log('LOGIN SUCCESS profile:', data.profile);
     setCurrentUser(data);
     // clear any auth hashes from URL and go to dashboard
     try { window.location.hash = ''; } catch (e) {}
@@ -2718,6 +2726,14 @@ export default function App() {
   };
 
   const handleSignupSuccess = (data) => {
+    // Ensure localStorage is synchronized and log profile for debugging
+    try {
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user_id) localStorage.setItem('user_id', data.user_id);
+      if (data.role) localStorage.setItem('role', data.role);
+      if (data.profile) localStorage.setItem('profile', JSON.stringify(data.profile));
+    } catch (e) { console.error('LocalStorage sync error', e); }
+    console.log('SIGNUP SUCCESS profile:', data.profile);
     setCurrentUser(data);
     // clear any auth hashes from URL and go to dashboard
     try { window.location.hash = ''; } catch (e) {}
