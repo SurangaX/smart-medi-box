@@ -336,32 +336,38 @@ function handlePatientSignup($method) {
             return;
         }
         
-        // Create auth token
+        // Create session token (used by other API modules)
         $token = bin2hex(random_bytes(32));
         $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
-        
-        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
+
+        $tokenQuery = "INSERT INTO session_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id, $token, $expires_at]);
-        
+
         if (!$tokenResult) {
-            throw new Exception("Failed to create auth token: " . pg_last_error($conn));
+            throw new Exception("Failed to create session token: " . pg_last_error($conn));
         }
-        
+
+        // Build response profile merging users/patient fields
+        $profile = [ 'id' => $user_id, 'email' => $email, 'role' => 'PATIENT' ];
+        try {
+            $uQ = "SELECT name, nic, phone FROM users WHERE id = $1";
+            $uR = pg_query_params($conn, $uQ, [$user_id]);
+            if ($uR && pg_num_rows($uR) > 0) {
+                $uRow = pg_fetch_assoc($uR);
+                $profile = array_merge($profile, [ 'name' => $uRow['name'] ?? null, 'nic' => $uRow['nic'] ?? null, 'phone' => $uRow['phone'] ?? null ]);
+            }
+            $pQ = "SELECT nic, name, date_of_birth, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
+            $pR = pg_query_params($conn, $pQ, [$user_id]);
+            if ($pR && pg_num_rows($pR) > 0) {
+                $pRow = pg_fetch_assoc($pR);
+                $profile = array_merge($profile, [ 'patient_id' => $pRow['id'] ?? null, 'date_of_birth' => $pRow['date_of_birth'] ?? null, 'blood_type' => $pRow['blood_type'] ?? null, 'transplanted_organ' => $pRow['transplanted_organ'] ?? null ]);
+            }
+        } catch (Exception $e) { }
+
         error_log("PATIENT SIGNUP SUCCESS: {$user_id} - $email");
-        
+
         http_response_code(201);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'token' => $token,
-            'user_id' => $user_id,
-            'role' => 'PATIENT',
-            'profile' => [
-                'id' => $user_id,
-                'email' => $email,
-                'nic' => $nic,
-                'role' => 'PATIENT'
-            ]
-        ]);
+        echo json_encode([ 'status' => 'SUCCESS', 'token' => $token, 'user_id' => $user_id, 'role' => 'PATIENT', 'profile' => $profile ]);
     } catch (Exception $e) {
         error_log("PATIENT SIGNUP ERROR: " . $e->getMessage());
         return errorResponse(500, 'Signup failed: ' . $e->getMessage());
@@ -456,34 +462,38 @@ function handleDoctorSignup($method) {
             return errorResponse(400, 'Failed to create doctor record: ' . $msg);
         }
         
-        // Create auth token
+        // Create session token (used by other API modules)
         $token = bin2hex(random_bytes(32));
         $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
-        
-        $tokenQuery = "INSERT INTO auth_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
+
+        $tokenQuery = "INSERT INTO session_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id, $token, $expires_at]);
-        
+
         if (!$tokenResult) {
-            throw new Exception("Failed to create auth token: " . pg_last_error($conn));
+            throw new Exception("Failed to create session token: " . pg_last_error($conn));
         }
-        
+
+        // Build response profile merging users/doctor fields
+        $profile = [ 'id' => $user_id, 'email' => $email, 'role' => 'DOCTOR' ];
+        try {
+            $uQ = "SELECT name, nic, phone FROM users WHERE id = $1";
+            $uR = pg_query_params($conn, $uQ, [$user_id]);
+            if ($uR && pg_num_rows($uR) > 0) {
+                $uRow = pg_fetch_assoc($uR);
+                $profile = array_merge($profile, [ 'name' => $uRow['name'] ?? null, 'nic' => $uRow['nic'] ?? null, 'phone' => $uRow['phone'] ?? null ]);
+            }
+            $dQ = "SELECT id, nic, name, specialization, hospital, license_number, phone_number FROM doctors WHERE user_id = $1";
+            $dR = pg_query_params($conn, $dQ, [$user_id]);
+            if ($dR && pg_num_rows($dR) > 0) {
+                $dRow = pg_fetch_assoc($dR);
+                $profile = array_merge($profile, [ 'doctor_id' => $dRow['id'] ?? null, 'specialization' => $dRow['specialization'] ?? null, 'hospital' => $dRow['hospital'] ?? null, 'license_number' => $dRow['license_number'] ?? null ]);
+            }
+        } catch (Exception $e) { }
+
         error_log("DOCTOR SIGNUP SUCCESS: {$user_id} - $email");
-        
+
         http_response_code(201);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'token' => $token,
-            'user_id' => $user_id,
-            'role' => 'DOCTOR',
-            'profile' => [
-                'id' => $user_id,
-                'email' => $email,
-                'nic' => $nic,
-                'license_number' => $license_number,
-                'specialty' => $specialty,
-                'role' => 'DOCTOR'
-            ]
-        ]);
+        echo json_encode([ 'status' => 'SUCCESS', 'token' => $token, 'user_id' => $user_id, 'role' => 'DOCTOR', 'profile' => $profile ]);
     } catch (Exception $e) {
         error_log("DOCTOR SIGNUP ERROR: " . $e->getMessage());
         return errorResponse(500, 'Signup failed: ' . $e->getMessage());
