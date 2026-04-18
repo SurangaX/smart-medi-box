@@ -344,6 +344,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
                   value={formData.phone_number}
                   onChange={handleInputChange}
                   placeholder="+94 7XX XXX XXX"
+                  required
                 />
               </div>
             </div>
@@ -353,13 +354,13 @@ const SignupScreen = ({ onSignupSuccess }) => {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Blood Type</label>
-                    <select name="blood_type" value={formData.blood_type} onChange={handleInputChange}>
+                    <select name="blood_type" value={formData.blood_type} onChange={handleInputChange} required>
                       {bloodTypes.map(bt => <option key={bt} value={bt}>{bt}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
                     <label>Transplanted Organ</label>
-                    <select name="transplanted_organ" value={formData.transplanted_organ} onChange={handleInputChange}>
+                    <select name="transplanted_organ" value={formData.transplanted_organ} onChange={handleInputChange} required>
                       {organs.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
@@ -373,6 +374,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
                       name="transplantation_date"
                       value={formData.transplantation_date}
                       onChange={handleInputChange}
+                      required
                     />
                   </div>
                 )}
