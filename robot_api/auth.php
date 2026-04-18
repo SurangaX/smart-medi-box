@@ -164,6 +164,24 @@ function handleLogin($method) {
             'role' => $user['role']
         ];
 
+        // Also include any profile-like fields that may be stored on the users table
+        try {
+            $uQuery = "SELECT name, nic, specialty, hospital, phone_number FROM users WHERE id = $1";
+            $uResult = pg_query_params($conn, $uQuery, [$user['id']]);
+            if ($uResult && pg_num_rows($uResult) > 0) {
+                $uRow = pg_fetch_assoc($uResult);
+                $profile = array_merge($profile, [
+                    'name' => $uRow['name'] ?? null,
+                    'nic' => $uRow['nic'] ?? null,
+                    'specialization' => $uRow['specialty'] ?? ($uRow['specialization'] ?? null),
+                    'hospital' => $uRow['hospital'] ?? null,
+                    'phone_number' => $uRow['phone_number'] ?? null
+                ]);
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+
         try {
             if ($user['role'] === 'PATIENT') {
                 $pQuery = "SELECT nic, name, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
