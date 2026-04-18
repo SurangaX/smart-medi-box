@@ -2097,6 +2097,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
 // ==================== Doctor Dashboard ====================
 const DoctorDashboard = ({ profile, token, onLogout }) => {
+  // Debug: show profile shape when doctor dashboard mounts
+  useEffect(() => {
+    try {
+      console.log('DoctorDashboard profile:', profile);
+    } catch (e) { }
+  }, [profile]);
+
+  // Friendly fallbacks for various backend field names
+  const displayName = (profile && (profile.name || profile.full_name || profile.display_name || profile.username || profile.email)) || '';
+  const displaySpecialization = (profile && (profile.specialty || profile.specialization || profile.speciality || profile.field)) || '';
+  const displayHospital = (profile && (profile.hospital || profile.hospital_name || profile.clinic || profile.affiliation)) || '';
   const [activeTab, setActiveTab] = useState('patients');
   const [patients, setPatients] = useState([]);
   const [articles, setArticles] = useState([]);
@@ -2353,8 +2364,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
     <div className="dashboard doctor-dashboard">
       <div className="dashboard-header" ref={headerRefDoc}>
         <div className="header-content">
-          <h1>👨‍⚕️ Welcome, Dr. {profile.name}</h1>
-          <p>Specialization: {profile.specialty || profile.specialization} | Hospital: {profile.hospital}</p>
+          <h1>👨‍⚕️ Welcome, Dr. {displayName}</h1>
+          <p>Specialization: {displaySpecialization} | Hospital: {displayHospital}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn-icon" ref={bellBtnRefDoc} onClick={() => setNotifPanelOpenDoc(!notifPanelOpenDoc)} title="Notifications">
