@@ -295,14 +295,14 @@ function handlePatientSignup($method) {
         
         $password_hash = password_hash($password, PASSWORD_BCRYPT);
         
-        error_log("PATIENT SIGNUP - Inserting: email=$email, nic=$nic, dob=$dob, phone=$phone");
-        
-        // Insert patient user - only use columns that actually exist
-        $query = "INSERT INTO users (email, password_hash, nic, dob, role) 
-                  VALUES ($1, $2, $3, $4, 'PATIENT')
-                  RETURNING id";
-        
-        $result = pg_query_params($conn, $query, [$email, $password_hash, $nic, $dob]);
+        error_log("PATIENT SIGNUP - Creating user and patient records: email=$email, nic=$nic, dob=$dob, phone=$phone");
+
+        // Insert basic user record with name/phone so frontend can read display name from users table
+        $query = "INSERT INTO users (email, password_hash, role, name, phone) 
+              VALUES ($1, $2, 'PATIENT', $3, $4)
+              RETURNING id";
+
+        $result = pg_query_params($conn, $query, [$email, $password_hash, $name, $phone]);
         
         if (!$result) {
             $msg = pg_last_error($conn);
@@ -319,6 +319,22 @@ function handlePatientSignup($method) {
         
         $row = pg_fetch_assoc($result);
         $user_id = $row['id'];
+
+        // Now insert into patients table linked to users
+        $pQuery = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type, phone_number, transplanted_organ, transplantation_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+        $pResult = pg_query_params($conn, $pQuery, [$user_id, $nic, $name, $dob, $input['gender'] ?? null, $input['blood_type'] ?? null, $phone, $input['transplanted_organ'] ?? null, $input['transplantation_date'] ?? null]);
+        if (!$pResult) {
+            $msg = pg_last_error($conn);
+            error_log("PATIENT INSERT FAILED: $msg");
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'ERROR',
+                'message' => 'Failed to create patient record',
+                'error_details' => $msg,
+                'debug' => true
+            ]);
+            return;
+        }
         
         // Create auth token
         $token = bin2hex(random_bytes(32));
@@ -413,12 +429,14 @@ function handleDoctorSignup($method) {
         
         error_log("DOCTOR SIGNUP - Inserting: email=$email, nic=$nic, license=$license_number, specialty=$specialty");
         
-        // Insert doctor user - only use columns that actually exist
-        $query = "INSERT INTO users (email, password_hash, nic, license_number, specialty, role) 
-                  VALUES ($1, $2, $3, $4, $5, 'DOCTOR')
-                  RETURNING id";
-        
-        $result = pg_query_params($conn, $query, [$email, $password_hash, $nic, $license_number, $specialty]);
+        error_log("DOCTOR SIGNUP - Creating user and doctor records: email=$email, nic=$nic, license=$license_number, specialty=$specialty");
+
+        // Insert basic user record with name/phone so frontend can read display name from users table
+        $query = "INSERT INTO users (email, password_hash, role, name, phone) 
+              VALUES ($1, $2, 'DOCTOR', $3, $4)
+              RETURNING id";
+
+        $result = pg_query_params($conn, $query, [$email, $password_hash, $name, $phone]);
         
         if (!$result) {
             $msg = pg_last_error($conn);
@@ -428,6 +446,15 @@ function handleDoctorSignup($method) {
         
         $row = pg_fetch_assoc($result);
         $user_id = $row['id'];
+
+        // Insert into doctors table linking to users
+        $dQuery = "INSERT INTO doctors (user_id, nic, name, date_of_birth, specialization, hospital, license_number, phone_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
+        $dResult = pg_query_params($conn, $dQuery, [$user_id, $nic, $name, $input['date_of_birth'] ?? null, $input['specialization'] ?? $specialty, $input['hospital'] ?? null, $license_number, $phone]);
+        if (!$dResult) {
+            $msg = pg_last_error($conn);
+            error_log("DOCTOR INSERT FAILED: $msg");
+            return errorResponse(400, 'Failed to create doctor record: ' . $msg);
+        }
         
         // Create auth token
         $token = bin2hex(random_bytes(32));
