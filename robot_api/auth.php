@@ -157,17 +157,53 @@ function handleLogin($method) {
         
         error_log("LOGIN SUCCESS: {$user['id']} - $email");
         
+        // Build profile object including extra fields from patients/doctors tables when available
+        $profile = [
+            'id' => $user['id'],
+            'email' => $user['email'],
+            'role' => $user['role']
+        ];
+
+        try {
+            if ($user['role'] === 'PATIENT') {
+                $pQuery = "SELECT nic, name, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
+                $pResult = pg_query_params($conn, $pQuery, [$user['id']]);
+                if ($pResult && pg_num_rows($pResult) > 0) {
+                    $pRow = pg_fetch_assoc($pResult);
+                    $profile = array_merge($profile, [
+                        'nic' => $pRow['nic'] ?? null,
+                        'name' => $pRow['name'] ?? null,
+                        'phone_number' => $pRow['phone_number'] ?? null,
+                        'blood_type' => $pRow['blood_type'] ?? null,
+                        'transplanted_organ' => $pRow['transplanted_organ'] ?? null
+                    ]);
+                }
+            } else if ($user['role'] === 'DOCTOR') {
+                $dQuery = "SELECT nic, name, specialization, hospital, license_number, phone_number FROM doctors WHERE user_id = $1";
+                $dResult = pg_query_params($conn, $dQuery, [$user['id']]);
+                if ($dResult && pg_num_rows($dResult) > 0) {
+                    $dRow = pg_fetch_assoc($dResult);
+                    $profile = array_merge($profile, [
+                        'nic' => $dRow['nic'] ?? null,
+                        'name' => $dRow['name'] ?? null,
+                        'specialization' => $dRow['specialization'] ?? ($dRow['specialty'] ?? null),
+                        'hospital' => $dRow['hospital'] ?? null,
+                        'license_number' => $dRow['license_number'] ?? null,
+                        'phone_number' => $dRow['phone_number'] ?? null
+                    ]);
+                }
+            }
+        } catch (Exception $e) {
+            // ignore extra profile lookup errors
+        }
+
         http_response_code(200);
         echo json_encode([
             'status' => 'SUCCESS',
             'token' => $token,
             'user_id' => $user['id'],
             'role' => $user['role'],
-            'profile' => [
-                'id' => $user['id'],
-                'email' => $user['email'],
-                'role' => $user['role']
-            ]
+            'profile' => $profile
         ]);
     } catch (Exception $e) {
         error_log("LOGIN ERROR: " . $e->getMessage());
