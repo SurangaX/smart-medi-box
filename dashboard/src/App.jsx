@@ -171,6 +171,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
       } else if (role === 'DOCTOR') {
         payload.specialty = formData.specialization;  // Map specialization to specialty
         payload.license_number = formData.license_number;
+        payload.hospital = formData.hospital;
       }
 
       const endpoint = role === 'PATIENT' ? 'patient/signup' : 'doctor/signup';
