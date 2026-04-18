@@ -445,11 +445,11 @@ function handleDoctorSignup($method) {
         error_log("DOCTOR SIGNUP - Creating user and doctor records: email=$email, nic=$nic, license=$license_number, specialty=$specialty");
 
         // Insert basic user record with name/phone so frontend can read display name from users table
-        $query = "INSERT INTO users (email, password_hash, role, name, phone) 
-              VALUES ($1, $2, 'DOCTOR', $3, $4)
+          $query = "INSERT INTO users (email, password_hash, role, name, phone, nic) 
+              VALUES ($1, $2, 'DOCTOR', $3, $4, $5)
               RETURNING id";
 
-        $result = pg_query_params($conn, $query, [$email, $password_hash, $name, $phone]);
+          $result = pg_query_params($conn, $query, [$email, $password_hash, $name, $phone, $nic]);
         
         if (!$result) {
             $msg = pg_last_error($conn);
