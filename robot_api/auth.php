@@ -307,10 +307,11 @@ function handlePatientSignup($method) {
         if (!$result) {
             $msg = pg_last_error($conn);
             error_log("PATIENT SIGNUP INSERT FAILED: $msg");
+            $friendly = mapDbErrorToMessage($msg);
             http_response_code(400);
             echo json_encode([
                 'status' => 'ERROR',
-                'message' => 'Failed to create account',
+                'message' => $friendly['message'],
                 'error_details' => $msg,
                 'debug' => true
             ]);
@@ -326,10 +327,11 @@ function handlePatientSignup($method) {
         if (!$pResult) {
             $msg = pg_last_error($conn);
             error_log("PATIENT INSERT FAILED: $msg");
+            $friendly = mapDbErrorToMessage($msg);
             http_response_code(400);
             echo json_encode([
                 'status' => 'ERROR',
-                'message' => 'Failed to create patient record',
+                'message' => $friendly['message'],
                 'error_details' => $msg,
                 'debug' => true
             ]);
@@ -447,7 +449,15 @@ function handleDoctorSignup($method) {
         if (!$result) {
             $msg = pg_last_error($conn);
             error_log("DOCTOR SIGNUP INSERT FAILED: $msg");
-            return errorResponse(400, 'Failed to create account: ' . $msg);
+            $friendly = mapDbErrorToMessage($msg);
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'ERROR',
+                'message' => $friendly['message'],
+                'error_details' => $msg,
+                'debug' => true
+            ]);
+            return;
         }
         
         $row = pg_fetch_assoc($result);
@@ -459,7 +469,15 @@ function handleDoctorSignup($method) {
         if (!$dResult) {
             $msg = pg_last_error($conn);
             error_log("DOCTOR INSERT FAILED: $msg");
-            return errorResponse(400, 'Failed to create doctor record: ' . $msg);
+            $friendly = mapDbErrorToMessage($msg);
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'ERROR',
+                'message' => $friendly['message'],
+                'error_details' => $msg,
+                'debug' => true
+            ]);
+            return;
         }
         
         // Create session token (used by other API modules)
@@ -942,6 +960,39 @@ function errorResponse($code, $message) {
         'message' => $message,
         'debug' => true
     ]);
+}
+
+/**
+ * Map raw DB error messages to concise user-friendly messages.
+ * Returns an array with keys: 'message' and optional 'debug'.
+ */
+function mapDbErrorToMessage($dbError) {
+    $msg = strtolower($dbError ?? '');
+
+    // Common unique constraint names
+    if (strpos($msg, 'patients_nic_key') !== false || (strpos($msg, 'duplicate key') !== false && strpos($msg, '(nic)') !== false && strpos($msg, 'patients') !== false)) {
+        return ['message' => 'NIC already registered for another patient'];
+    }
+
+    if (strpos($msg, 'doctors_nic_key') !== false || (strpos($msg, 'duplicate key') !== false && strpos($msg, '(nic)') !== false && strpos($msg, 'doctors') !== false)) {
+        return ['message' => 'NIC already registered for another doctor'];
+    }
+
+    if (strpos($msg, 'users_email_key') !== false || strpos($msg, 'users_email') !== false || strpos($msg, 'email already exists') !== false) {
+        return ['message' => 'Email already registered'];
+    }
+
+    if (strpos($msg, 'users_nic_key') !== false || (strpos($msg, 'duplicate key') !== false && strpos($msg, '(nic)') !== false)) {
+        return ['message' => 'NIC already registered'];
+    }
+
+    // Fallback: if it's a duplicate key error mention nic, return NIC message
+    if (strpos($msg, 'duplicate key value violates unique constraint') !== false && strpos($msg, '(nic)') !== false) {
+        return ['message' => 'NIC already registered'];
+    }
+
+    // Default fallback - generic create failure
+    return ['message' => 'Failed to create record'];
 }
 
 function validatePhoneNumber($phone) {
