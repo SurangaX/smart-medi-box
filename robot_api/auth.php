@@ -356,11 +356,11 @@ function handlePatientSignup($method) {
                 $uRow = pg_fetch_assoc($uR);
                 $profile = array_merge($profile, [ 'name' => $uRow['name'] ?? null, 'nic' => $uRow['nic'] ?? null, 'phone' => $uRow['phone'] ?? null ]);
             }
-            $pQ = "SELECT nic, name, date_of_birth, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
+            $pQ = "SELECT id, nic, name, date_of_birth, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
             $pR = pg_query_params($conn, $pQ, [$user_id]);
             if ($pR && pg_num_rows($pR) > 0) {
                 $pRow = pg_fetch_assoc($pR);
-                $profile = array_merge($profile, [ 'patient_id' => $pRow['id'] ?? null, 'date_of_birth' => $pRow['date_of_birth'] ?? null, 'blood_type' => $pRow['blood_type'] ?? null, 'transplanted_organ' => $pRow['transplanted_organ'] ?? null ]);
+                $profile = array_merge($profile, [ 'patient_id' => $pRow['id'] ?? null, 'nic' => $pRow['nic'] ?? null, 'name' => $pRow['name'] ?? null, 'date_of_birth' => $pRow['date_of_birth'] ?? null, 'blood_type' => $pRow['blood_type'] ?? null, 'transplanted_organ' => $pRow['transplanted_organ'] ?? null ]);
             }
         } catch (Exception $e) { }
 
