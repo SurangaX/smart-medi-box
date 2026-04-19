@@ -102,8 +102,6 @@ function handleListArticles($method) {
     }
     
     try {
-        // Clean output buffer to prevent accidental whitespace
-        if (ob_get_level()) { ob_clean(); }
         error_log("LIST ARTICLES - Starting query");
         
                 $query = "SELECT 
@@ -161,11 +159,13 @@ function handleListArticles($method) {
         error_log("LIST ARTICLES - Returning " . count($articles) . " articles");
         
         http_response_code(200);
-        echo json_encode([
+        $out = json_encode([
             'status' => 'SUCCESS',
             'count' => count($articles),
             'articles' => $articles
         ]);
+        error_log("LIST ARTICLES - JSON length: " . ($out === false ? 'encode-failed' : strlen($out)));
+        echo $out;
         flush();
     } catch (Exception $e) {
         error_log("List Articles Error: " . $e->getMessage());
