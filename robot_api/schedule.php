@@ -51,6 +51,9 @@ switch ($action) {
     case 'stats':
         handleGetStats($method);
         break;
+    case 'trigger-due':
+        handleTriggerDueSchedules($method);
+        break;
     default:
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
@@ -625,6 +628,123 @@ function logScheduleCompletion($user_id, $schedule_id) {
               VALUES ($1, $2, 'COMPLETED')";
     
     pg_query_params($conn, $query, array($user_id, $schedule_id));
+}
+
+// ============================================================================
+// TRIGGER DUE SCHEDULES (called by cron / scheduler)
+// Finds schedules due at current time, creates dashboard notification,
+// logs alarm, and queues arduino commands if device is available.
+// ============================================================================
+function handleTriggerDueSchedules($method) {
+    global $conn;
+
+    if ($method !== 'GET' && $method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+
+    // Use server time; allow override for testing via query param
+    $now = new DateTime();
+    $override = $_GET['now'] ?? $_POST['now'] ?? null;
+    if ($override && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $override)) {
+        $now = DateTime::createFromFormat('Y-m-d H:i', $override);
+    }
+
+    $date = $now->format('Y-m-d');
+    $hour = intval($now->format('H'));
+    $minute = intval($now->format('i'));
+
+    try {
+        // Find schedules due now (exact match on hour/minute)
+        $query = "SELECT id, user_id, type, schedule_date, hour, minute, description 
+                  FROM schedules 
+                  WHERE schedule_date = $1 AND hour = $2 AND minute = $3 
+                  AND status = 'ACTIVE' AND is_completed = false";
+
+        $result = pg_query_params($conn, $query, array($date, $hour, $minute));
+
+        if ($result === false) {
+            error_log("TRIGGER_DUE - Query failed: " . pg_last_error($conn));
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Database query failed']);
+            return;
+        }
+
+        $triggered = [];
+        while ($row = pg_fetch_assoc($result)) {
+            $schedule_db_id = $row['id'];
+            $user_db_id = $row['user_id'];
+            $type = $row['type'];
+
+            // Avoid duplicate triggers: check alarm_logs for an existing TRIGGERED for this schedule today
+            $checkAlarm = pg_query_params($conn, "SELECT id FROM alarm_logs WHERE schedule_id = $1 AND DATE(triggered_at) = $2 AND status = 'TRIGGERED' LIMIT 1", array($schedule_db_id, $date));
+            if ($checkAlarm && pg_num_rows($checkAlarm) > 0) {
+                continue; // already triggered today
+            }
+
+            // Create alarm_log
+            $insAlarm = pg_query_params($conn, "INSERT INTO alarm_logs (user_id, schedule_id, triggered_at, status) VALUES ($1, $2, NOW(), 'TRIGGERED') RETURNING id", array($user_db_id, $schedule_db_id));
+            $alarm_id = $insAlarm ? (pg_fetch_assoc($insAlarm)['id'] ?? null) : null;
+
+            // Build notification message
+            $message = "It's time for your " . strtolower($type) . ", please check the box.";
+            if ($type === 'FOOD') $message = "It's time for your meal.";
+            if ($type === 'BLOOD_CHECK') $message = "Time to check your blood sugar.";
+
+            // Insert notification (dashboard)
+            pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, sms_sent, app_sent) VALUES ($1, $2, $3, $4, false, false)", array($user_db_id, $schedule_db_id, 'ALARM_' . $type, $message));
+
+            // Check if user has a paired device and if it's recently synced
+            $devQuery = "SELECT d.id, d.status, d.last_sync 
+                         FROM device_user_map dum 
+                         JOIN devices d ON d.id = dum.device_id 
+                         WHERE dum.user_id = $1 LIMIT 1";
+            $devRes = pg_query_params($conn, $devQuery, array($user_db_id));
+
+            $device_available = false;
+            if ($devRes && pg_num_rows($devRes) > 0) {
+                $dev = pg_fetch_assoc($devRes);
+                // Consider device available if status = ACTIVE and last_sync within last 2 minutes
+                if ($dev['status'] === 'ACTIVE' && $dev['last_sync']) {
+                    $lastSync = new DateTime($dev['last_sync']);
+                    $diff = $now->getTimestamp() - $lastSync->getTimestamp();
+                    if ($diff >= 0 && $diff <= 120) {
+                        $device_available = true;
+                    }
+                }
+            }
+
+            $commands_queued = 0;
+            if ($device_available) {
+                // Queue arduino commands similar to notifications.php
+                $commands = [
+                    "BUZZ:ON",
+                    "DISP:SHOW_" . strtoupper($type),
+                    "SOL:UNLOCK"
+                ];
+                foreach ($commands as $cmd) {
+                    pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_db_id, $cmd));
+                    $commands_queued++;
+                }
+            }
+
+            $triggered[] = [
+                'schedule_id' => intval($schedule_db_id),
+                'user_id' => intval($user_db_id),
+                'alarm_id' => $alarm_id ? intval($alarm_id) : null,
+                'device_available' => $device_available,
+                'commands_queued' => $commands_queued
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode(['status' => 'SUCCESS', 'date' => $date, 'time' => sprintf('%02d:%02d', $hour, $minute), 'triggered_count' => count($triggered), 'details' => $triggered]);
+    } catch (Exception $e) {
+        error_log("TRIGGER_DUE ERROR: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Failed to trigger due schedules']);
+    }
 }
 
 ?>
