@@ -2348,9 +2348,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const handleConfirmDeleteArticle = async () => {
     setShowDeleteArticleConfirm(false);
     const articleId = articleIdToDelete;
-    setArticleIdToDelete(null);
     setDeletingArticleId(articleId);
-    
+
     try {
       const response = await fetch(`${API_URL}/index.php/api/articles/delete`, {
         method: 'POST',
@@ -2358,7 +2357,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         body: JSON.stringify({ token, article_id: articleId })
       });
       const data = await response.json();
-      
+
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Article deleted successfully', type: 'success' });
         // Keep spinner visible for 500ms, then remove from UI
@@ -2369,15 +2368,18 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         await fetchArticles();
         // Clear deleting state so future delete operations work
         setDeletingArticleId(null);
+        setArticleIdToDelete(null);
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete article'), type: 'error' });
         // Clear deleting state on error
         setDeletingArticleId(null);
+        setArticleIdToDelete(null);
       }
     } catch (err) {
       window.appNotify({ message: 'Error deleting article: ' + err.message, type: 'error' });
       // Clear deleting state on error
       setDeletingArticleId(null);
+      setArticleIdToDelete(null);
     }
   };
 

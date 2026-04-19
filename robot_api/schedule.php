@@ -693,7 +693,13 @@ function handleTriggerDueSchedules($method) {
             if ($type === 'BLOOD_CHECK') $message = "Time to check your blood sugar.";
 
             // Insert notification (dashboard)
-            pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, sms_sent, app_sent) VALUES ($1, $2, $3, $4, false, false)", array($user_db_id, $schedule_db_id, 'ALARM_' . $type, $message));
+            $notifResult = pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, sms_sent, app_sent) VALUES ($1, $2, $3, $4, false, false) RETURNING id", array($user_db_id, $schedule_db_id, 'ALARM_' . $type, $message));
+            if (!$notifResult) {
+                error_log("TRIGGER_DUE - Failed to insert notification: " . pg_last_error($conn));
+            } else {
+                $notifId = pg_fetch_assoc($notifResult)['id'] ?? null;
+                error_log("TRIGGER_DUE - Inserted notification ID: " . $notifId . " for user: " . $user_db_id);
+            }
 
             // Check if user has a paired device and if it's recently synced
             $devQuery = "SELECT d.id, d.status, d.last_sync 
