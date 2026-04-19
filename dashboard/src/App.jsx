@@ -749,12 +749,28 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     try {
       setArticlesLoading(true);
       const response = await fetch(`${API_URL}/index.php/api/articles/list`);
-      const data = await response.json();
-      
-      if (data.status === 'SUCCESS') {
+      const raw = await response.text();
+
+      if (!raw) {
+        console.error('Empty articles API response');
+        setArticles([]);
+        return;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (parseErr) {
+        console.error('Failed to parse articles API JSON:', parseErr);
+        console.error('Raw response:', raw);
+        setArticles([]);
+        return;
+      }
+
+      if (data && data.status === 'SUCCESS') {
         setArticles(data.articles || []);
       } else {
-        console.error('Failed to fetch articles:', data.message);
+        console.error('Failed to fetch articles:', data && data.message ? data.message : data);
         setArticles([]);
       }
     } catch (err) {
