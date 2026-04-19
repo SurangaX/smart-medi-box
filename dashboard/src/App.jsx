@@ -2365,6 +2365,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         setArticles(articles.filter(article => article.id !== articleId && article.article_id !== articleId));
         // Also refresh to be sure
         await fetchArticles();
+        // Clear deleting state so future delete operations work
+        setDeletingArticleId(null);
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete article'), type: 'error' });
         // Clear deleting state on error
