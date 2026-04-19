@@ -102,6 +102,8 @@ function handleListArticles($method) {
     }
     
     try {
+        // Clean output buffer to prevent accidental whitespace
+        if (ob_get_level()) { ob_clean(); }
         error_log("LIST ARTICLES - Starting query");
         
                 $query = "SELECT 
@@ -164,6 +166,7 @@ function handleListArticles($method) {
             'count' => count($articles),
             'articles' => $articles
         ]);
+        flush();
     } catch (Exception $e) {
         error_log("List Articles Error: " . $e->getMessage());
         http_response_code(500);
@@ -223,6 +226,7 @@ function handleMyArticles($method) {
     }
     
     try {
+        if (ob_get_level()) { ob_clean(); }
         // Look up the doctor_id for this user_id
         error_log("MY ARTICLES - Looking up doctor_id for user_id: " . $user_id);
         $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
@@ -294,6 +298,7 @@ function handleMyArticles($method) {
             'count' => count($articles),
             'articles' => $articles
         ]);
+        flush();
     } catch (Exception $e) {
         error_log("My Articles Error: " . $e->getMessage());
         http_response_code(500);
@@ -388,6 +393,7 @@ function handleCreateArticle($method) {
     }
     
     try {
+        if (ob_get_level()) { ob_clean(); }
         error_log("CREATE ARTICLE - Starting article creation for user_id: " . $user_id);
         
         // Step 1: Look up the doctor.id for this user_id
@@ -488,6 +494,7 @@ function handleCreateArticle($method) {
             'message' => 'Article created',
             'article_id' => $article_id
         ]);
+        flush();
     } catch (Exception $e) {
         error_log("Create Article Error: " . $e->getMessage());
         http_response_code(500);
@@ -532,6 +539,7 @@ function handleUpdateArticle($method) {
     }
     
     try {
+        if (ob_get_level()) { ob_clean(); }
         // Look up the doctor_id for this user_id
         $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
         $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
@@ -558,6 +566,7 @@ function handleUpdateArticle($method) {
             http_response_code(500);
             echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update article: ' . pg_last_error($conn)]);
         }
+        flush();
     } catch (Exception $e) {
         error_log("Update Article Error: " . $e->getMessage());
         http_response_code(500);
@@ -600,6 +609,7 @@ function handleDeleteArticle($method) {
     }
     
     try {
+        if (ob_get_level()) { ob_clean(); }
         // Look up the doctor_id for this user_id
         $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
         $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
@@ -633,6 +643,7 @@ function handleDeleteArticle($method) {
             http_response_code(404);
             echo json_encode(['status' => 'ERROR', 'message' => 'Article not found or not owned by doctor']);
         }
+        flush();
     } catch (Exception $e) {
         error_log("Delete Article Error: " . $e->getMessage());
         http_response_code(500);
@@ -662,6 +673,7 @@ function handleViewArticle($method) {
     }
     
     try {
+        if (ob_get_level()) { ob_clean(); }
         // increment view count
         $query = "UPDATE articles SET view_count = view_count + 1 WHERE id = $1";
         pg_query_params($conn, $query, array($article_id));
@@ -687,12 +699,14 @@ function handleViewArticle($method) {
                 'doctor_name' => $row['doctor_name'],
                 'cover_image' => getImageUrl($row['id'], $row['cover_image'], $row['cover_image_b64'], $row['cover_image_mime'])
             ]]);
+            flush();
             return;
         }
 
         // fallback: success without article
         http_response_code(200);
         echo json_encode(['status' => 'SUCCESS']);
+        flush();
     } catch (Exception $e) {
         error_log("View Article Error: " . $e->getMessage());
         http_response_code(500);
