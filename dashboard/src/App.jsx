@@ -2007,7 +2007,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Loading articles...</p>
               </div>
             ) : articles.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No articles available yet</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '120px' }}>
+                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No articles available yet</p>
+              </div>
             ) : (
               <div className="articles-grid">
                 {articles.map(article => (
