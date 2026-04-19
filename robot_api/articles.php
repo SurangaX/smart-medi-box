@@ -157,13 +157,16 @@ function handleListArticles($method) {
         }
         
         error_log("LIST ARTICLES - Returning " . count($articles) . " articles");
-        
+
+        // Clean output buffer to prevent interference with JSON output
+        if (ob_get_level()) { ob_clean(); }
+
         http_response_code(200);
         $out = json_encode([
             'status' => 'SUCCESS',
             'count' => count($articles),
             'articles' => $articles
-        ]);
+        ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         error_log("LIST ARTICLES - JSON length: " . ($out === false ? 'encode-failed' : strlen($out)));
         echo $out;
         flush();
