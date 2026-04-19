@@ -536,20 +536,24 @@ function handleUpdateArticle($method) {
     }
     
     if (!$user_id || !$article_id) {
+        if (ob_get_level()) { ob_clean(); }
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        flush();
         return;
     }
-    
+
     try {
         if (ob_get_level()) { ob_clean(); }
         // Look up the doctor_id for this user_id
         $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
         $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
-        
+
         if ($doctor_lookup_result === false || pg_num_rows($doctor_lookup_result) === 0) {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(403);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
             return;
         }
         
@@ -563,13 +567,16 @@ function handleUpdateArticle($method) {
             array($title, $content, $article_id, $doctor_id));
         
         if ($result) {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(200);
-            echo json_encode(['status' => 'SUCCESS', 'message' => 'Article updated']);
+            echo json_encode(['status' => 'SUCCESS', 'message' => 'Article updated'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
         } else {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update article: ' . pg_last_error($conn)]);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update article: ' . pg_last_error($conn)], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
         }
-        flush();
     } catch (Exception $e) {
         error_log("Update Article Error: " . $e->getMessage());
         http_response_code(500);
@@ -606,20 +613,24 @@ function handleDeleteArticle($method) {
     }
     
     if (!$user_id || !$article_id) {
+        if (ob_get_level()) { ob_clean(); }
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        flush();
         return;
     }
-    
+
     try {
         if (ob_get_level()) { ob_clean(); }
         // Look up the doctor_id for this user_id
         $doctor_lookup_query = "SELECT id FROM doctors WHERE user_id = $1";
         $doctor_lookup_result = pg_query_params($conn, $doctor_lookup_query, array($user_id));
-        
+
         if ($doctor_lookup_result === false || pg_num_rows($doctor_lookup_result) === 0) {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(403);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User is not a doctor'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
             return;
         }
         
@@ -640,13 +651,16 @@ function handleDeleteArticle($method) {
 
         $affected = pg_affected_rows($result);
         if ($affected > 0) {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(200);
-            echo json_encode(['status' => 'SUCCESS', 'message' => 'Article deleted']);
+            echo json_encode(['status' => 'SUCCESS', 'message' => 'Article deleted'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
         } else {
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Article not found or not owned by doctor']);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Article not found or not owned by doctor'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            flush();
         }
-        flush();
     } catch (Exception $e) {
         error_log("Delete Article Error: " . $e->getMessage());
         http_response_code(500);
@@ -690,6 +704,7 @@ function handleViewArticle($method) {
         $detail_result = pg_query_params($conn, $detail_query, array($article_id));
         if ($detail_result && pg_num_rows($detail_result) > 0) {
             $row = pg_fetch_assoc($detail_result);
+            if (ob_get_level()) { ob_clean(); }
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'article' => [
                 'id' => intval($row['id']),
@@ -701,18 +716,21 @@ function handleViewArticle($method) {
                 'created_at' => $row['created_at'],
                 'doctor_name' => $row['doctor_name'],
                 'cover_image' => getImageUrl($row['id'], $row['cover_image'], $row['cover_image_b64'], $row['cover_image_mime'])
-            ]]);
+            ]], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             flush();
             return;
         }
 
         // fallback: success without article
+        if (ob_get_level()) { ob_clean(); }
         http_response_code(200);
-        echo json_encode(['status' => 'SUCCESS']);
+        echo json_encode(['status' => 'SUCCESS'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         flush();
     } catch (Exception $e) {
+        if (ob_get_level()) { ob_clean(); }
         error_log("View Article Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Server error']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Server error'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        flush();
     }
 }
