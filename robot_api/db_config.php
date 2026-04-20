@@ -46,5 +46,10 @@ if (!$conn) {
 }
 
 pg_set_client_encoding($conn, 'UTF-8');
+
+// Set global timezone to GMT+5:30 (Asia/Colombo)
+date_default_timezone_set('Asia/Colombo');
+pg_query($conn, "SET TIMEZONE TO 'Asia/Colombo'");
+
 define('DB_CONNECTED', true);
 ?>
