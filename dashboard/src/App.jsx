@@ -468,6 +468,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [notifPanelStyle, setNotifPanelStyle] = useState({});
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
+  const [isDeletingSchedule, setIsDeletingSchedule] = useState(null);
   const [tempHistory, setTempHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [pairingToken, setPairingToken] = useState('');
@@ -532,10 +535,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
       console.log('🔔 Triggering due schedules and fetching notifications...');
       // First, trigger any due schedules using local time
-      await fetch(`${API_URL}/index.php/api/schedule/trigger-due?now=${encodeURIComponent(localTime)}`, { method: 'GET' });
+      await fetchWithRetry(`${API_URL}/index.php/api/schedule/trigger-due?now=${encodeURIComponent(localTime)}`, { method: 'GET' });
 
       // Then fetch pending notifications
-      const response = await fetch(`${API_URL}/index.php/api/notifications/pending?user_id=${profile?.id || profile?.user_id}`, {
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/notifications/pending?user_id=${profile?.id || profile?.user_id}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -713,13 +716,29 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  const fetchWithRetry = async (url, options = {}, retries = 3, backoff = 1000) => {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok && retries > 0) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response;
+    } catch (err) {
+      if (retries > 0) {
+        console.warn(`Fetch failed, retrying... (${retries} left)`, url);
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      }
+      throw err;
+    }
+  };
+
   const fetchSchedules = async (dateFilter = null) => {
     try {
+      setSchedulesLoading(true);
       const filterDate = dateFilter || scheduleFilterDate || new Date().toISOString().split('T')[0];
-      console.log('📅 Fetching schedules for date:', filterDate);
-      console.log('🔑 Token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
       
-      const response = await fetch(`${API_URL}/index.php/api/schedule/today`, {
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/today`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -729,20 +748,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         })
       });
       
-      console.log('📡 Schedule API Response Status:', response.status);
       const data = await response.json();
-      console.log('📊 Schedule API Response Data:', data);
-      
       if (data.status === 'SUCCESS') {
-        console.log('✅ Schedules fetched successfully:', data.schedules?.length || 0, 'items');
         setSchedules(data.schedules || []);
       } else {
-        console.error('❌ Schedule fetch failed:', data.message || 'Unknown error');
         setSchedules([]);
       }
     } catch (err) {
       console.error('🚨 Schedule fetch exception:', err);
       setSchedules([]);
+    } finally {
+      setSchedulesLoading(false);
     }
   };
 
@@ -871,8 +887,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const handleCreateSchedule = async (e) => {
     e.preventDefault();
     try {
+      setIsCreatingSchedule(true);
       console.log('💊 Creating new schedule:', newSchedule);
-      const response = await fetch(`${API_URL}/index.php/api/schedule/create`, {
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -884,57 +901,52 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           description: newSchedule.description
         })
       });
-      console.log('📡 Create Schedule API Response Status:', response.status);
       const data = await response.json();
-      console.log('📊 Create Schedule API Response:', data);
       
       if (data.status === 'SUCCESS') {
-        console.log('✅ Schedule created successfully!');
         window.appNotify({ message: 'Schedule created successfully', type: 'success' });
         const today = new Date().toISOString().split('T')[0];
         setNewSchedule({ type: 'MEDICINE', schedule_date: today, hour: 9, minute: 0, description: '' });
-        // Refresh schedules from the newly created schedule's date
+        setShowAddForm(false);
         fetchSchedules(newSchedule.schedule_date);
       } else {
-        console.error('❌ Schedule creation failed:', data.message);
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create schedule'), type: 'error' });
       }
     } catch (err) {
       console.error('🚨 Schedule creation exception:', err);
       window.appNotify({ message: 'Failed to create schedule: ' + err.message, type: 'error' });
+    } finally {
+      setIsCreatingSchedule(false);
     }
   };
 
   const handleCompleteSchedule = async (scheduleId) => {
     try {
-      console.log('✓ Marking schedule as complete:', scheduleId);
-      const response = await fetch(`${API_URL}/index.php/api/schedule/complete`, {
+      setIsDeletingSchedule(scheduleId); // Reusing as action loading
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, schedule_id: scheduleId })
       });
-      console.log('📡 Complete Schedule API Response Status:', response.status);
       const data = await response.json();
-      console.log('📊 Complete Schedule API Response:', data);
       
       if (data.status === 'SUCCESS') {
-        console.log('✅ Schedule marked as complete!');
         window.appNotify({ message: 'Schedule marked as complete', type: 'success' });
         fetchSchedules();
       } else {
-        console.error('❌ Failed to mark schedule complete:', data.message);
-        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to mark schedule complete'), type: 'error' });
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to update'), type: 'error' });
       }
     } catch (err) {
       console.error('🚨 Complete schedule exception:', err);
-      window.appNotify({ message: 'Failed to mark schedule complete: ' + err.message, type: 'error' });
+    } finally {
+      setIsDeletingSchedule(null);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
     try {
-      console.log('🗑️ Deleting schedule:', scheduleId);
-      const response = await fetch(`${API_URL}/index.php/api/schedule/delete`, {
+      setIsDeletingSchedule(scheduleId);
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -949,11 +961,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         window.appNotify({ message: 'Schedule deleted', type: 'success' });
         fetchSchedules();
       } else {
-        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete schedule'), type: 'error' });
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete'), type: 'error' });
       }
     } catch (err) {
       console.error('Failed to delete schedule:', err);
-      window.appNotify({ message: 'Failed to delete schedule: ' + err.message, type: 'error' });
+    } finally {
+      setIsDeletingSchedule(null);
     }
   };
 
@@ -1956,15 +1969,24 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       />
                     </div>
                   </div>
-                  <button type="submit" className="btn-save-schedule">
-                    Save Reminder
+                  <button type="submit" className="btn-save-schedule" disabled={isCreatingSchedule}>
+                    {isCreatingSchedule ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <div className="spinner-mini"></div> Saving...
+                      </div>
+                    ) : 'Save Reminder'}
                   </button>
                 </form>
               </div>
             )}
 
             <div className="timeline-container">
-              {schedules.length > 0 ? (
+              {schedulesLoading ? (
+                <div className="loading-container" style={{ padding: '40px' }}>
+                  <div className="spinner"></div>
+                  <p style={{ marginTop: '16px' }}>Fetching your schedule...</p>
+                </div>
+              ) : schedules.length > 0 ? (
                 <div className="minimal-timeline">
                   {schedules.map((sched, idx) => (
                     <div key={sched.schedule_id} className={`timeline-item ${sched.is_completed ? 'is-done' : ''}`}>
@@ -1972,7 +1994,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         <span className="time-text">{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</span>
                         <div className="timeline-dot"></div>
                       </div>
-                      <div className="timeline-card">
+                      <div className="timeline-card" style={{ opacity: isDeletingSchedule === sched.schedule_id ? 0.6 : 1 }}>
                         <div className="card-icon">
                           {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
                         </div>
@@ -1986,25 +2008,31 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                           {sched.description && <p className="card-desc">{sched.description}</p>}
                         </div>
                         <div className="card-actions">
-                          {!sched.is_completed && (
-                            <button
-                              className="btn-action-done"
-                              onClick={() => handleCompleteSchedule(sched.schedule_id)}
-                              title="Mark as complete"
-                            >
-                              <Check size={18} />
-                            </button>
+                          {isDeletingSchedule === sched.schedule_id ? (
+                            <div className="spinner-mini" style={{ margin: '0 10px' }}></div>
+                          ) : (
+                            <>
+                              {!sched.is_completed && (
+                                <button
+                                  className="btn-action-done"
+                                  onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                                  title="Mark as complete"
+                                >
+                                  <Check size={18} />
+                                </button>
+                              )}
+                              <button
+                                className="btn-action-delete"
+                                onClick={() => {
+                                  if(window.confirm('Delete this reminder?')) {
+                                    handleDeleteSchedule(sched.schedule_id);
+                                  }
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
                           )}
-                          <button
-                            className="btn-action-delete"
-                            onClick={() => {
-                              if(window.confirm('Delete this reminder?')) {
-                                handleDeleteSchedule(sched.schedule_id);
-                              }
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
                         </div>
                       </div>
                     </div>
