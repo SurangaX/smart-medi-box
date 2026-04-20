@@ -731,9 +731,18 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         body: JSON.stringify({ user_id: profile?.id || profile?.user_id })
       });
       
-      const data = await response.json();
-      if (data.status === 'SUCCESS') {
-        window.appNotify({ message: 'All notifications cleared permanently', type: 'info', toastOnly: true });
+      if (response.ok) {
+        const text = await response.text();
+        if (text) {
+          try {
+            const data = JSON.parse(text);
+            if (data.status === 'SUCCESS') {
+              window.appNotify({ message: 'All notifications cleared permanently', type: 'info', toastOnly: true });
+            }
+          } catch (e) {
+            console.warn('Cleared on server but response was not JSON');
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to clear notifications:', err);
