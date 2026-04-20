@@ -2174,7 +2174,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </div>
                       <div className="timeline-card" style={{ opacity: isDeletingSchedule === sched.schedule_id ? 0.6 : 1 }}>
                         <div className="card-icon">
-                          {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
+                          {sched.photo ? (
+                            <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => setExpandedPhoto(sched.photo)} />
+                          ) : (
+                            sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'
+                          )}
                         </div>
                         <div className="card-info">
                           <div className="card-top">
@@ -2183,17 +2187,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                               {sched.is_completed ? 'Completed' : 'Upcoming'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            {sched.description && <p className="card-desc" style={{ flex: 1 }}>{sched.description}</p>}
-                            {sched.photo && (
-                              <img 
-                                src={sched.photo} 
-                                alt="Meds" 
-                                className="timeline-photo-thumbnail" 
-                                onClick={() => setExpandedPhoto(sched.photo)} 
-                              />
-                            )}
-                          </div>
+                          {sched.description && <p className="card-desc">{sched.description}</p>}
                         </div>
                         <div className="card-actions">
                           {isDeletingSchedule === sched.schedule_id ? (
@@ -2462,13 +2456,24 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <div className="modal-content urgent-content pulse-border">
             <div className="urgent-header">
               <div className="urgent-icon">
-                {activeMedicineAlert.photo ? (
-                  <img src={activeMedicineAlert.photo} alt="Meds" style={{ width: '80px', height: '80px', borderRadius: '15px', objectFit: 'cover', marginBottom: '10px' }} />
-                ) : '💊'}
+                {activeMedicineAlert.rawType === 'ALARM_FOOD' ? '🍽️' : 
+                 activeMedicineAlert.rawType === 'ALARM_BLOOD_CHECK' ? '🩸' : '💊'}
               </div>
               <h2>Medicine Reminder!</h2>
             </div>
             <p className="urgent-message">{activeMedicineAlert.message}</p>
+            
+            {activeMedicineAlert.photo && (
+              <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+                <img 
+                  src={activeMedicineAlert.photo} 
+                  alt="Meds" 
+                  style={{ width: '120px', height: '120px', borderRadius: '15px', objectFit: 'cover', cursor: 'pointer', border: '2px solid var(--border)' }} 
+                  onClick={() => setExpandedPhoto(activeMedicineAlert.photo)}
+                />
+              </div>
+            )}
+
             <p className="urgent-hint">Please take your medicine now and check the Smart Medi Box.</p>
             <div className="modal-buttons">
               <button 
