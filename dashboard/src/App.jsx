@@ -489,11 +489,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const [activeMedicineAlert, setActiveMedicineAlert] = useState(null);
+  
+  // Helper to get current HH:mm
+  const getCurrentTime = () => {
+    const now = new Date();
+    return { hour: now.getHours(), minute: now.getMinutes() };
+  };
+
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'MEDICINE', 
     schedule_date: new Date().toISOString().split('T')[0],
-    hour: 9, 
-    minute: 0, 
+    ...getCurrentTime(), 
     description: '' 
   });
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
