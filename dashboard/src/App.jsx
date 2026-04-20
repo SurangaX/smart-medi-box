@@ -491,6 +491,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     description: '' 
   });
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articleCacheRef = useRef({});
