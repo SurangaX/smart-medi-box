@@ -556,6 +556,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         // Map the backend notifications to the frontend format
         const formattedNotifs = data.notifications.map(n => ({
           id: n.id,
+          schedule_id: n.schedule_id,
           message: n.message,
           type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
           rawType: n.type,
