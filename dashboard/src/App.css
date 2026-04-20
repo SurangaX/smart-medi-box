@@ -715,6 +715,11 @@ button, a { user-select: none; cursor: pointer; }
   transition: border-color 0.2s;
 }
 
+.minimal-form input[type="date"] {
+  cursor: pointer;
+  caret-color: transparent;
+}
+
 .minimal-form select:focus, 
 .minimal-form input:focus {
   border-color: var(--primary);
