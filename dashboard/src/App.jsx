@@ -463,6 +463,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [devicesError, setDevicesError] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [notifsLoading, setNotifsLoading] = useState(false);
   const headerRef = useRef(null);
   const notifPanelRef = useRef(null);
   const bellBtnRef = useRef(null);
@@ -536,6 +537,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const fetchNotifications = async () => {
     try {
+      setNotifsLoading(true);
       // Get current local time in YYYY-MM-DD HH:mm format for the server
       const now = new Date();
       const year = now.getFullYear();
@@ -1689,7 +1691,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <button className="btn-link" onClick={clearNotifications}>Clear</button>
           </div>
           <div className="notif-list">
-            {notifications.length === 0 && <div className="notif-empty">No notifications</div>}
+            {notifsLoading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                <div className="spinner-mini" style={{ borderTopColor: 'var(--primary)' }}></div>
+              </div>
+            )}
+            {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
             {notifications.map(n => (
               <div key={n.id} className={`notif-item ${n.type || ''}`}>
                 <div className="notif-message">{n.message}</div>
@@ -2747,8 +2754,13 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             <button className="btn-link" onClick={clearNotificationsDoc}>Clear</button>
           </div>
           <div className="notif-list">
-            {notificationsDoc.length === 0 && <div className="notif-empty">No notifications</div>}
-            {notificationsDoc.map(n => (
+            {notifsLoading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '15px' }}>
+                <div className="spinner-mini" style={{ borderTopColor: 'var(--primary)' }}></div>
+              </div>
+            )}
+            {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
+            {notifications.map(n => (
               <div key={n.id} className={`notif-item ${n.type || ''}`}>
                 <div className="notif-message">{n.message}</div>
                 <div className="notif-meta">
