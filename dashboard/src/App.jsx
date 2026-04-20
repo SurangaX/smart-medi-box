@@ -931,6 +931,32 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  const handleDeleteSchedule = async (scheduleId) => {
+    try {
+      console.log('🗑️ Deleting schedule:', scheduleId);
+      const response = await fetch(`${API_URL}/index.php/api/schedule/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token, 
+          schedule_id: scheduleId,
+          user_id: profile?.id || profile?.user_id
+        })
+      });
+      
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'Schedule deleted', type: 'success' });
+        fetchSchedules();
+      } else {
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to delete schedule'), type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to delete schedule:', err);
+      window.appNotify({ message: 'Failed to delete schedule: ' + err.message, type: 'error' });
+    }
+  };
+
   const generatePairingToken = async () => {
     try {
       // Prevent creating a pairing token if user already has a device (one account -> one device)
