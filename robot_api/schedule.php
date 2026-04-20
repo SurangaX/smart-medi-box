@@ -309,19 +309,25 @@ function handleCompleteSchedule($method) {
     $schedule_id = $input['schedule_id'] ?? $_POST['schedule_id'] ?? $_GET['schedule_id'] ?? null;
     $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
     $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+
+    error_log("COMPLETE_SCHEDULE - Received: schedule_id=$schedule_id, token=" . ($token ? "YES" : "NO") . ", user_id=$user_id");
     
     // If token is provided, look up the user_id from it
     if ($token && !$user_id) {
         $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
         $token_result = pg_query_params($conn, $token_query, array($token));
         
-        if (pg_num_rows($token_result) > 0) {
+        if ($token_result && pg_num_rows($token_result) > 0) {
             $token_row = pg_fetch_assoc($token_result);
             $user_id = $token_row['user_id'];
+            error_log("COMPLETE_SCHEDULE - Token verified, user_id set to: $user_id");
+        } else {
+            error_log("COMPLETE_SCHEDULE - Token verification failed or expired");
         }
     }
     
     if (!$schedule_id || !$user_id) {
+        error_log("COMPLETE_SCHEDULE - FAILED: schedule_id or user_id missing. schedule_id=$schedule_id, user_id=$user_id");
         http_response_code(400);
         echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: schedule_id and (user_id or token)']);
         return;
