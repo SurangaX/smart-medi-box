@@ -2585,6 +2585,107 @@ button, a { user-select: none; cursor: pointer; }
   color: white;
 }
 
+/* ==================== Schedules Mobile Responsiveness ==================== */
+@media (max-width: 768px) {
+  .schedules-minimal .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .schedules-minimal .header-left h2 {
+    font-size: 20px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .header-actions > * {
+    width: 100%;
+  }
+
+  .filter-date-minimal, 
+  .btn-add-toggle {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+  }
+
+  .minimal-form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .time-picker-minimal input {
+    flex: 1;
+    height: 48px;
+  }
+}
+
+@media (max-width: 600px) {
+  .minimal-timeline::before {
+    left: 20px;
+  }
+
+  .timeline-item {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .timeline-time {
+    width: 45px;
+    padding-top: 12px;
+  }
+
+  .time-text {
+    font-size: 11px;
+  }
+
+  .timeline-dot {
+    left: 14px;
+    top: 16px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .timeline-card {
+    padding: 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    border-radius: 12px;
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .timeline-photo {
+    width: 50px;
+    height: 50px;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    margin-top: 4px;
+    gap: 12px;
+  }
+
+  .btn-action-done, .btn-action-delete {
+    width: 38px;
+    height: 38px;
+  }
+}
+
 @keyframes photoScale {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
