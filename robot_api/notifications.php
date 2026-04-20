@@ -189,6 +189,7 @@ function handleGetPendingNotifications($method) {
         while ($row = pg_fetch_assoc($result)) {
             $notifications[] = [
                 'id' => intval($row['id']),
+                'schedule_id' => $row['schedule_id'] ? intval($row['schedule_id']) : null,
                 'type' => $row['type'],
                 'message' => $row['message'],
                 'sms_sent' => $row['sms_sent'] === 't',

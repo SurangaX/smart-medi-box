@@ -1,3 +1,4 @@
+// Smart Medi Box Dashboard - v1.5.2
 import React, { useState, useEffect, useRef } from 'react';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
