@@ -1856,151 +1856,143 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         )}
 
         {activeTab === 'schedules' && (
-          <div className="section">
-            <div className="schedules-container">
-              <div className="card">
-                <div className="card-header">
-                  <Plus size={24} />
-                  <h3>Schedule New Reminder</h3>
-                </div>
-                <form onSubmit={handleCreateSchedule} className="schedule-form">
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>Type of Reminder</label>
-                      <div className="type-selector">
-                        {['MEDICINE', 'FOOD', 'BLOOD_CHECK'].map(type => (
-                          <button
-                            key={type}
-                            type="button"
-                            className={`type-btn ${newSchedule.type === type ? 'active' : ''}`}
-                            onClick={() => setNewSchedule({...newSchedule, type})}
-                          >
-                            {type === 'MEDICINE' ? '💊' : type === 'FOOD' ? '🍽️' : '🩸'}
-                            <span>{type}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+          <div className="section schedules-minimal">
+            <div className="section-header">
+              <div className="header-left">
+                <h2>Medication Schedule</h2>
+                <p className="subtitle">Keep track of your daily health routines</p>
+              </div>
+              <div className="header-actions">
+                <input
+                  type="date"
+                  value={scheduleFilterDate}
+                  onChange={(e) => {
+                    setScheduleFilterDate(e.target.value);
+                    fetchSchedules(e.target.value);
+                  }}
+                  className="filter-date-minimal"
+                />
+                <button 
+                  className={`btn-add-toggle ${showAddForm ? 'active' : ''}`}
+                  onClick={() => setShowAddForm(!showAddForm)}
+                >
+                  {showAddForm ? <X size={20} /> : <Plus size={20} />}
+                  <span>{showAddForm ? 'Close' : 'Add New'}</span>
+                </button>
+              </div>
+            </div>
 
+            {showAddForm && (
+              <div className="add-schedule-panel animate-slide-down">
+                <form onSubmit={handleCreateSchedule} className="minimal-form">
+                  <div className="minimal-form-grid">
                     <div className="form-group">
-                      <label>Date</label>
-                      <input 
-                        type="date"
-                        value={newSchedule.schedule_date}
-                        onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
-                        required
-                        className="date-input"
-                      />
+                      <label>Type</label>
+                      <select 
+                        value={newSchedule.type} 
+                        onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
+                      >
+                        <option value="MEDICINE">💊 Medicine</option>
+                        <option value="FOOD">🍽️ Food</option>
+                        <option value="BLOOD_CHECK">🩸 Blood Check</option>
+                      </select>
                     </div>
-
                     <div className="form-group">
                       <label>Time</label>
-                      <div className="time-inputs">
-                        <div className="time-field">
-                          <label>Hour</label>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="23"
-                            value={String(newSchedule.hour).padStart(2, '0')}
-                            onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
-                            className="time-input"
-                          />
-                        </div>
-                        <span className="time-separator">:</span>
-                        <div className="time-field">
-                          <label>Min</label>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="59"
-                            value={String(newSchedule.minute).padStart(2, '0')}
-                            onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
-                            className="time-input"
-                          />
-                        </div>
+                      <div className="time-picker-minimal">
+                        <input
+                          type="number"
+                          min="0"
+                          max="23"
+                          placeholder="HH"
+                          value={String(newSchedule.hour).padStart(2, '0')}
+                          onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                        />
+                        <span>:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          placeholder="MM"
+                          value={String(newSchedule.minute).padStart(2, '0')}
+                          onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                        />
                       </div>
                     </div>
-
-                    <div className="form-group form-full">
-                      <label>Notes (Optional)</label>
-                      <input 
+                    <div className="form-group full-width">
+                      <label>Note (Optional)</label>
+                      <input
                         type="text"
-                        placeholder="Add any notes (e.g., take with food)"
+                        placeholder="e.g. Take with water"
                         value={newSchedule.description}
                         onChange={(e) => setNewSchedule({...newSchedule, description: e.target.value})}
-                        className="note-input"
                       />
                     </div>
                   </div>
-
-                  <button type="submit" className="btn-primary btn-large">
-                    <Plus size={18} /> Add Reminder
+                  <button type="submit" className="btn-save-schedule">
+                    Save Reminder
                   </button>
                 </form>
               </div>
+            )}
 
-              <div className="card">
-                <div className="card-header">
-                  <Clock size={24} />
-                  <h3>Your Reminders</h3>
-                  <div className="header-actions">
-                    <input 
-                      type="date"
-                      value={scheduleFilterDate}
-                      onChange={(e) => {
-                        setScheduleFilterDate(e.target.value);
-                        fetchSchedules(e.target.value);
-                      }}
-                      className="filter-date"
-                    />
-                  </div>
-                </div>
-                <div className="schedules-list">
-                  {schedules.length > 0 ? (
-                    schedules.map((sched) => (
-                      <div key={sched.schedule_id} className={`schedule-card ${sched.is_completed ? 'completed' : ''}`}>
-                        <div className="schedule-badge">
+            <div className="timeline-container">
+              {schedules.length > 0 ? (
+                <div className="minimal-timeline">
+                  {schedules.map((sched, idx) => (
+                    <div key={sched.schedule_id} className={`timeline-item ${sched.is_completed ? 'is-done' : ''}`}>
+                      <div className="timeline-time">
+                        <span className="time-text">{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</span>
+                        <div className="timeline-dot"></div>
+                      </div>
+                      <div className="timeline-card">
+                        <div className="card-icon">
                           {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
                         </div>
-                        <div className="schedule-content">
-                          <div className="schedule-main">
+                        <div className="card-info">
+                          <div className="card-top">
                             <h4>{sched.type}</h4>
-                            <p className="schedule-datetime">
-                              {new Date(sched.schedule_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} 
-                              {' '} 
-                              <span className="time-display">{String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}</span>
-                            </p>
-                            {sched.description && <p className="schedule-description">{sched.description}</p>}
+                            <span className={`status-pill ${sched.is_completed ? 'done' : 'pending'}`}>
+                              {sched.is_completed ? 'Completed' : 'Upcoming'}
+                            </span>
                           </div>
-                          <div className="schedule-status-badge">
-                            {sched.is_completed ? '✅ Done' : '⏳ Pending'}
-                          </div>
+                          {sched.description && <p className="card-desc">{sched.description}</p>}
                         </div>
-                        {!sched.is_completed && (
-                          <button 
-                            className="btn-check"
-                            onClick={() => handleCompleteSchedule(sched.schedule_id)}
-                            title="Mark as complete"
+                        <div className="card-actions">
+                          {!sched.is_completed && (
+                            <button
+                              className="btn-action-done"
+                              onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                              title="Mark as complete"
+                            >
+                              <Check size={18} />
+                            </button>
+                          )}
+                          <button
+                            className="btn-action-delete"
+                            onClick={() => {
+                              if(window.confirm('Delete this reminder?')) {
+                                handleDeleteSchedule(sched.schedule_id);
+                              }
+                            }}
                           >
-                            ✓
+                            <Trash2 size={16} />
                           </button>
-                        )}
+                        </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="empty-state">
-                      <Clock size={48} />
-                      <p>No reminders for this date</p>
-                      <small>Create a new reminder to get started</small>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="empty-timeline">
+                  <div className="empty-icon">📅</div>
+                  <p>Your schedule is clear for today</p>
+                  <button className="btn-link" onClick={() => setShowAddForm(true)}>Add your first reminder</button>
+                </div>
+              )}
             </div>
           </div>
         )}
-
         {activeTab === 'temperature' && (
           <div className="section">
             <div className="card card-wide">
