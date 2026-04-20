@@ -566,6 +566,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
           rawType: n.type,
           timestamp: n.created_at,
+          photo: n.photo,
           read: false
         }));
         
@@ -958,16 +959,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       
       if (data.status === 'SUCCESS') {
-        window.appNotify({ message: 'Schedule created successfully', type: 'success' });
-        const today = new Date().toISOString().split('T')[0];
-        setNewSchedule({ 
-          type: 'MEDICINE', 
-          schedule_date: today, 
-          ...getCurrentTime(), 
-          description: '' 
-        });
-        setShowAddForm(false);
-        fetchSchedules(newSchedule.schedule_date);
+      window.appNotify({ message: 'Schedule created successfully', type: 'success' });
+      const today = new Date().toISOString().split('T')[0];
+      setNewSchedule({ 
+        type: 'MEDICINE', 
+        schedule_date: today, 
+        ...getCurrentTime(), 
+        description: '',
+        photo: null
+      });
+      setShowAddForm(false);
+      fetchSchedules(newSchedule.schedule_date);
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create schedule'), type: 'error' });
       }
@@ -2108,6 +2110,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </div>
                     </div>
                     <div className="form-group full-width">
+                      <label>Photo (Optional)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewSchedule(prev => ({ ...prev, photo: reader.result }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="file-input-minimal"
+                      />
+                      {newSchedule.photo && (
+                        <div className="photo-preview-minimal">
+                          <img src={newSchedule.photo} alt="Preview" />
+                          <button type="button" className="btn-remove-photo" onClick={() => setNewSchedule(prev => ({ ...prev, photo: null }))}>✕</button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="form-group full-width">
                       <label>Note (Optional)</label>
                       <input
                         type="text"
@@ -2144,7 +2170,14 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </div>
                       <div className="timeline-card" style={{ opacity: isDeletingSchedule === sched.schedule_id ? 0.6 : 1 }}>
                         <div className="card-icon">
-                          {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
+                          {sched.photo ? (
+                            <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => {
+                              // Optional: click to expand photo
+                              window.open().document.write(`<img src="${sched.photo}" style="max-width:100%">`);
+                            }} />
+                          ) : (
+                            sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'
+                          )}
                         </div>
                         <div className="card-info">
                           <div className="card-top">
@@ -2421,7 +2454,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         <div className="modal-overlay urgent-alert">
           <div className="modal-content urgent-content pulse-border">
             <div className="urgent-header">
-              <div className="urgent-icon">💊</div>
+              <div className="urgent-icon">
+                {activeMedicineAlert.photo ? (
+                  <img src={activeMedicineAlert.photo} alt="Meds" style={{ width: '80px', height: '80px', borderRadius: '15px', objectFit: 'cover', marginBottom: '10px' }} />
+                ) : '💊'}
+              </div>
               <h2>Medicine Reminder!</h2>
             </div>
             <p className="urgent-message">{activeMedicineAlert.message}</p>

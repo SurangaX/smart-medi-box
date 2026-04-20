@@ -178,10 +178,12 @@ function handleGetPendingNotifications($method) {
     
     try {
         // Fetch all non-dismissed notifications from the last 24 hours for the user
-        $query = "SELECT id, schedule_id, type, message, sms_sent, app_sent, is_read, created_at 
-                  FROM notifications 
-                  WHERE user_id = $1 AND is_dismissed = false AND created_at >= NOW() - INTERVAL '24 hours'
-                  ORDER BY created_at DESC
+        // Join with schedules to get the medication photo
+        $query = "SELECT n.id, n.schedule_id, n.type, n.message, n.sms_sent, n.app_sent, n.is_read, n.created_at, s.photo 
+                  FROM notifications n
+                  LEFT JOIN schedules s ON s.id = n.schedule_id
+                  WHERE n.user_id = $1 AND n.is_dismissed = false AND n.created_at >= NOW() - INTERVAL '24 hours'
+                  ORDER BY n.created_at DESC
                   LIMIT 50";
         $result = pg_query_params($conn, $query, [$user_id]);
         
@@ -199,7 +201,8 @@ function handleGetPendingNotifications($method) {
                 'sms_sent' => $row['sms_sent'] === 't',
                 'app_sent' => $row['app_sent'] === 't',
                 'is_read' => $row['is_read'] === 't',
-                'created_at' => $row['created_at']
+                'created_at' => $row['created_at'],
+                'photo' => $row['photo']
             ];
         }
         
