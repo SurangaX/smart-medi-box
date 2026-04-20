@@ -798,6 +798,16 @@ button, a { user-select: none; cursor: pointer; }
   text-transform: uppercase;
 }
 
+.medicine-notes-popup {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+}
+
 @keyframes pulse-soft {
   0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
