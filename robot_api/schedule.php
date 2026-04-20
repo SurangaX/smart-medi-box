@@ -420,14 +420,22 @@ function handleGetTodaySchedules($method) {
     }
     
     try {
-        // Note: $user_id from token lookup is already users.id (the database primary key)
-        $query = "SELECT id, type, schedule_date, hour, minute, description, photo, is_completed 
-                  FROM schedules 
-                  WHERE user_id = $1 
-                  AND status = 'ACTIVE'
-                  AND schedule_date >= $2
-                  AND schedule_date <= $3
-                  ORDER BY schedule_date ASC, hour ASC, minute ASC";
+        // Fetch schedules that are either:
+        // 1. One-time schedules matching the filtered date range
+        // 2. Recurring schedules where the filtered date falls between start_date and end_date
+        $query = "SELECT s.id, s.type, s.medicine_name, s.schedule_date, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date,
+                  (SELECT COUNT(*) > 0 FROM schedule_logs sl 
+                   WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
+                   AND DATE(sl.created_at) = $2) as day_completed
+                  FROM schedules s
+                  WHERE s.user_id = $1 
+                  AND s.status = 'ACTIVE'
+                  AND (
+                      (s.is_recurring = false AND s.schedule_date >= $2 AND s.schedule_date <= $3)
+                      OR
+                      (s.is_recurring = true AND $2 BETWEEN s.schedule_date AND s.end_date)
+                  )
+                  ORDER BY s.hour ASC, s.minute ASC";
         
         error_log("GET TODAY SCHEDULES - Query parameters: user_id=$user_id, start_date=$start_date, end_date=$end_date");
         
@@ -447,13 +455,16 @@ function handleGetTodaySchedules($method) {
             $schedules[] = [
                 'schedule_id' => $row['id'],
                 'type' => $row['type'],
+                'medicine_name' => $row['medicine_name'] ?? $row['type'],
                 'schedule_date' => $row['schedule_date'],
                 'hour' => intval($row['hour']),
                 'minute' => intval($row['minute']),
                 'description' => $row['description'],
                 'photo' => $row['photo'],
-                'is_completed' => $row['is_completed'] === 't' || $row['is_completed'] === true,
-                'datetime' => $row['schedule_date'] . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
+                'is_recurring' => $row['is_recurring'] === 't' || $row['is_recurring'] === true,
+                'end_date' => $row['end_date'],
+                'is_completed' => $row['day_completed'] === 't' || $row['day_completed'] === true,
+                'datetime' => $start_date . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
             ];
         }
         

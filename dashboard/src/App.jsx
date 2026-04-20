@@ -2069,6 +2069,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               <div className="add-schedule-panel animate-slide-down">
                 <form onSubmit={handleCreateSchedule} className="minimal-form">
                   <div className="minimal-form-grid">
+                    <div className="form-group full-width">
+                      <label>Medicine Name / Title *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Aspirin or Morning Meal"
+                        value={newSchedule.medicine_name}
+                        onChange={(e) => setNewSchedule({...newSchedule, medicine_name: e.target.value})}
+                        required
+                      />
+                    </div>
                     <div className="form-group">
                       <label>Type</label>
                       <select 
@@ -2081,7 +2091,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Date</label>
+                      <label>Start Date</label>
                       <input
                         type="date"
                         value={newSchedule.schedule_date}
@@ -2092,6 +2102,32 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                           } catch (err) {}
                         }}
                       />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={newSchedule.is_recurring} 
+                          onChange={(e) => setNewSchedule({...newSchedule, is_recurring: e.target.checked})}
+                          style={{ width: 'auto' }}
+                        /> 
+                        Daily Recurrence
+                      </label>
+                      {newSchedule.is_recurring && (
+                        <div style={{ marginTop: '8px' }}>
+                          <label style={{ fontSize: '11px' }}>End Date</label>
+                          <input
+                            type="date"
+                            value={newSchedule.end_date}
+                            onChange={(e) => setNewSchedule({...newSchedule, end_date: e.target.value})}
+                            onClick={(e) => {
+                              try {
+                                if (e.target.showPicker) e.target.showPicker();
+                              } catch (err) {}
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Time</label>
@@ -2186,10 +2222,18 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         </div>
                         <div className="card-info">
                           <div className="card-top">
-                            <h4>{sched.type}</h4>
+                            <h4>{sched.medicine_name || sched.type}</h4>
                             <span className={`status-pill ${sched.is_completed ? 'done' : 'pending'}`}>
                               {sched.is_completed ? 'Completed' : 'Upcoming'}
                             </span>
+                          </div>
+                          <div className="card-meta-details">
+                            <span className="type-badge">{sched.type}</span>
+                            {sched.is_recurring && (
+                              <span className="recurring-badge">
+                                🔄 Daily until {new Date(sched.end_date).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                           {sched.description && <p className="card-desc">{sched.description}</p>}
                         </div>
