@@ -953,6 +953,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const handleCompleteSchedule = async (scheduleId) => {
     try {
+      console.log('✓ Attempting to complete schedule. ID:', scheduleId, 'Token:', token ? 'EXISTS' : 'MISSING');
       setIsDeletingSchedule(scheduleId); // Reusing as action loading
       const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/complete`, {
         method: 'POST',
@@ -976,6 +977,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const handleSnoozeSchedule = async (scheduleId) => {
     try {
+      console.log('⏰ Attempting to snooze schedule. ID:', scheduleId, 'Token:', token ? 'EXISTS' : 'MISSING');
       setIsCreatingSchedule(true); // Show loading
       const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/snooze`, {
         method: 'POST',
