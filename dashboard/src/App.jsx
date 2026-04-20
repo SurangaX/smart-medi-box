@@ -562,8 +562,16 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           const existingIds = new Set(prev.map(p => p.id));
           const newOnes = formattedNotifs.filter(n => !existingIds.has(n.id));
           
-          // CRITICAL: If there are NEW medicine alarms, trigger the popup
-          const medicineAlarm = newOnes.find(n => n.rawType === 'ALARM_MEDICINE');
+          // CRITICAL: Only trigger popup for VERY RECENT medicine alarms (created in last 60 seconds)
+          // This prevents old history notifications from popping up when logging in
+          const now = new Date();
+          const medicineAlarm = newOnes.find(n => {
+            if (n.rawType !== 'ALARM_MEDICINE') return false;
+            const created = new Date(n.timestamp);
+            const diffSeconds = (now - created) / 1000;
+            return diffSeconds < 60; // Only if created in the last minute
+          });
+          
           if (medicineAlarm) {
             setActiveMedicineAlert(medicineAlarm);
           }
