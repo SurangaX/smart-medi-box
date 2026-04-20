@@ -490,6 +490,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [expandedPhoto, setExpandedPhoto] = useState(null);
   const [activeMedicineAlert, setActiveMedicineAlert] = useState(null);
   const [isCompletingInModal, setIsCompletingInModal] = useState(false);
   const [isSnoozingInModal, setIsSnoozingInModal] = useState(false);
@@ -953,7 +954,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           schedule_date: newSchedule.schedule_date,
           hour: parseInt(newSchedule.hour),
           minute: parseInt(newSchedule.minute),
-          description: newSchedule.description
+          description: newSchedule.description,
+          photo: newSchedule.photo
         })
       });
       const data = await response.json();
