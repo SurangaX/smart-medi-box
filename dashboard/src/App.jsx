@@ -490,6 +490,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const [activeMedicineAlert, setActiveMedicineAlert] = useState(null);
+  const [isCompletingInModal, setIsCompletingInModal] = useState(false);
+  const [isSnoozingInModal, setIsSnoozingInModal] = useState(false);
   
   // Helper to get current HH:mm
   const getCurrentTime = () => {
@@ -952,10 +954,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
-  const handleCompleteSchedule = async (scheduleId) => {
+  const handleCompleteSchedule = async (scheduleId, fromModal = false) => {
     try {
       console.log('✓ Attempting to complete schedule. ID:', scheduleId, 'Token:', token ? 'EXISTS' : 'MISSING');
-      setIsDeletingSchedule(scheduleId); // Reusing as action loading
+      if (fromModal) setIsCompletingInModal(true);
+      else setIsDeletingSchedule(scheduleId);
+
       const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -965,6 +969,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Schedule marked as complete', type: 'success' });
+        if (fromModal) setActiveMedicineAlert(null);
         fetchSchedules();
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to update'), type: 'error' });
@@ -972,6 +977,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     } catch (err) {
       console.error('🚨 Complete schedule exception:', err);
     } finally {
+      setIsCompletingInModal(false);
       setIsDeletingSchedule(null);
     }
   };
@@ -979,7 +985,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const handleSnoozeSchedule = async (scheduleId) => {
     try {
       console.log('⏰ Attempting to snooze schedule. ID:', scheduleId, 'Token:', token ? 'EXISTS' : 'MISSING');
-      setIsCreatingSchedule(true); // Show loading
+      setIsSnoozingInModal(true);
       const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/snooze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -997,7 +1003,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     } catch (err) {
       console.error('🚨 Snooze schedule exception:', err);
     } finally {
-      setIsCreatingSchedule(false);
+      setIsSnoozingInModal(false);
     }
   };
 
@@ -2370,21 +2376,24 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               <button 
                 className="btn-success btn-large" 
                 style={{ flex: 2 }}
-                onClick={() => {
-                  handleCompleteSchedule(activeMedicineAlert.schedule_id);
-                  setActiveMedicineAlert(null);
-                  // Also mark as read in local state
-                  setNotifications(prev => prev.map(n => n.id === activeMedicineAlert.id ? {...n, read: true} : n));
-                }}
+                disabled={isCompletingInModal || isSnoozingInModal}
+                onClick={() => handleCompleteSchedule(activeMedicineAlert.schedule_id, true)}
               >
-                OK, I'm Taking It
+                {isCompletingInModal ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <div className="spinner-mini"></div> Processing...
+                  </div>
+                ) : "OK, I'm Taking It"}
               </button>
               <button 
                 className="btn-secondary btn-large" 
                 style={{ flex: 1 }}
+                disabled={isCompletingInModal || isSnoozingInModal}
                 onClick={() => handleSnoozeSchedule(activeMedicineAlert.schedule_id)}
               >
-                Snooze 5m
+                {isSnoozingInModal ? (
+                  <div className="spinner-mini"></div>
+                ) : "Snooze 5m"}
               </button>
             </div>
           </div>
