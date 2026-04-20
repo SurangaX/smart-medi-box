@@ -518,6 +518,53 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     setShowLogoutConfirm(false);
   };
 
+  const fetchNotifications = async () => {
+    try {
+      // Get current local time in YYYY-MM-DD HH:mm format for the server
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const localTime = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+      console.log('🔔 Triggering due schedules and fetching notifications...');
+      // First, trigger any due schedules using local time
+      await fetch(`${API_URL}/index.php/api/schedule/trigger-due?now=${encodeURIComponent(localTime)}`, { method: 'GET' });
+
+      // Then fetch pending notifications
+      const response = await fetch(`${API_URL}/index.php/api/notifications/pending?user_id=${profile?.id || profile?.user_id}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        // Map the backend notifications to the frontend format
+        const formattedNotifs = data.notifications.map(n => ({
+          id: n.id,
+          message: n.message,
+          type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
+          timestamp: n.created_at,
+          read: false
+        }));
+        
+        // Merge with existing notifications, avoiding duplicates by ID
+        setNotifications(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newOnes = formattedNotifs.filter(n => !existingIds.has(n.id));
+          return [...newOnes, ...prev];
+        });
+        
+        if (formattedNotifs.length > 0) {
+          console.log(`✅ Fetched ${formattedNotifs.length} notifications`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'doctors') {
       fetchDoctors();
@@ -527,6 +574,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       fetchSchedules();
       fetchTemperature();
       fetchStats();
+      fetchNotifications(); // Fetch notifications on dashboard load
     } else if (activeTab === 'schedules') {
       fetchSchedules();
     } else if (activeTab === 'temperature') {
@@ -537,6 +585,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       fetchArticles();
     }
   }, [activeTab]);
+
+  // Set up periodic notification checks
+  useEffect(() => {
+    const interval = setInterval(fetchNotifications, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [profile?.id, token]);
 
   const fetchDevices = async () => {
     setDevicesLoading(true);
@@ -1461,7 +1515,26 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       {notifPanelOpen && (
         <div className="notif-panel" ref={notifPanelRef} style={notifPanelStyle}>
           <div className="notif-panel-header">
-            <strong>Notifications</strong>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <strong>Notifications</strong>
+              <button 
+                className="btn-link" 
+                onClick={async () => {
+                  try {
+                    const btn = document.activeElement;
+                    if (btn) btn.disabled = true;
+                    await fetchNotifications();
+                    if (btn) btn.disabled = false;
+                    window.appNotify({ message: 'Notifications synced', type: 'info', toastOnly: true });
+                  } catch (e) {
+                    console.error('Sync error:', e);
+                  }
+                }}
+                style={{ fontSize: '11px', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}
+              >
+                Sync Now
+              </button>
+            </div>
             <button className="btn-link" onClick={clearNotifications}>Clear</button>
           </div>
           <div className="notif-list">
