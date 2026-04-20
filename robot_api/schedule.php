@@ -198,17 +198,19 @@ function handleCreateSchedule($method) {
         
         $input = json_decode(file_get_contents('php://input'), true) ?? [];
         $photo = $input['photo'] ?? null;
+        $medicine_name = $input['medicine_name'] ?? $_POST['medicine_name'] ?? null;
+        $is_recurring = ($input['is_recurring'] ?? $_POST['is_recurring'] ?? 'false') === 'true' || ($input['is_recurring'] ?? $_POST['is_recurring'] ?? false) === true;
+        $end_date = $input['end_date'] ?? $_POST['end_date'] ?? null;
 
         // Note: $user_id from token lookup is already users.id (the database primary key)
-        // No need to query for it again
         $db_user_id = $user_id;
         
         $query = "INSERT INTO schedules 
-                  (schedule_id, user_id, type, schedule_date, hour, minute, description, photo, status, is_completed) 
-                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', false)";
+                  (schedule_id, user_id, type, medicine_name, schedule_date, end_date, is_recurring, hour, minute, description, photo, status, is_completed) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE', false)";
         
         $result = pg_query_params($conn, $query, 
-            array($schedule_id, $db_user_id, $type, $schedule_date, $hour, $minute, $description, $photo));
+            array($schedule_id, $db_user_id, $type, $medicine_name, $schedule_date, $end_date, $is_recurring ? 't' : 'f', $hour, $minute, $description, $photo));
         
         if ($result) {
             http_response_code(201);
@@ -688,12 +690,17 @@ function handleTriggerDueSchedules($method) {
 
     try {
         // Find schedules due now or earlier today (that haven't been triggered yet today)
-        // This is more robust than exact minute matching in case a poll is missed
-        $query = "SELECT id, user_id, type, schedule_date, hour, minute, description 
+        // Updated to support Recurring schedules (Today is between start_date and end_date)
+        $query = "SELECT id, user_id, type, medicine_name, schedule_date, end_date, is_recurring, hour, minute, description 
                   FROM schedules 
-                  WHERE schedule_date = $1 
-                  AND (hour < $2 OR (hour = $2 AND minute <= $3))
-                  AND status = 'ACTIVE' AND is_completed = false";
+                  WHERE status = 'ACTIVE' 
+                  AND is_completed = false
+                  AND (
+                      (is_recurring = false AND schedule_date = $1)
+                      OR
+                      (is_recurring = true AND $1 BETWEEN schedule_date AND end_date)
+                  )
+                  AND (hour < $2 OR (hour = $2 AND minute <= $3))";
 
         $result = pg_query_params($conn, $query, array($date, $hour, $minute));
 
@@ -713,6 +720,7 @@ function handleTriggerDueSchedules($method) {
             $schedule_db_id = $row['id'];
             $user_db_id = $row['user_id'];
             $type = $row['type'];
+            $med_name = $row['medicine_name'] ?? $type;
 
             // Avoid duplicate triggers: check alarm_logs for an existing TRIGGERED for this schedule today
             $checkAlarm = pg_query_params($conn, "SELECT id FROM alarm_logs WHERE schedule_id = $1 AND DATE(triggered_at) = $2 AND status = 'TRIGGERED' LIMIT 1", array($schedule_db_id, $date));
@@ -724,10 +732,10 @@ function handleTriggerDueSchedules($method) {
             $insAlarm = pg_query_params($conn, "INSERT INTO alarm_logs (user_id, schedule_id, triggered_at, status) VALUES ($1, $2, NOW(), 'TRIGGERED') RETURNING id", array($user_db_id, $schedule_db_id));
             $alarm_id = $insAlarm ? (pg_fetch_assoc($insAlarm)['id'] ?? null) : null;
 
-            // Build notification message
-            $message = "It's time for your " . strtolower($type) . ", please check the box.";
-            if ($type === 'FOOD') $message = "It's time for your meal.";
-            if ($type === 'BLOOD_CHECK') $message = "Time to check your blood sugar.";
+            // Build notification message with Medicine Name
+            $message = "It's time for your $med_name, please check the box.";
+            if ($type === 'FOOD') $message = "It's time for your meal: $med_name.";
+            if ($type === 'BLOOD_CHECK') $message = "Time to check your blood sugar for $med_name.";
 
             // Insert notification (dashboard)
             $notifResult = pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, sms_sent, app_sent) VALUES ($1, $2, $3, $4, false, false) RETURNING id", array($user_db_id, $schedule_db_id, 'ALARM_' . $type, $message));

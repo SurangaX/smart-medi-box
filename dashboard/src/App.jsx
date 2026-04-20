@@ -503,9 +503,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'MEDICINE', 
+    medicine_name: '',
+    is_recurring: false,
     schedule_date: new Date().toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0],
     ...getCurrentTime(), 
-    description: '' 
+    description: '',
+    photo: null
   });
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [showAddForm, setShowAddForm] = useState(false);
