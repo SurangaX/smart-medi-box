@@ -954,6 +954,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     }
   };
 
+  const handleSnoozeSchedule = async (scheduleId) => {
+    try {
+      setIsCreatingSchedule(true); // Show loading
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/snooze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, schedule_id: scheduleId })
+      });
+      const data = await response.json();
+      
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: `Snoozed until ${data.new_time}`, type: 'info' });
+        setActiveMedicineAlert(null); // Close popup
+        fetchSchedules();
+      } else {
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to snooze'), type: 'error' });
+      }
+    } catch (err) {
+      console.error('🚨 Snooze schedule exception:', err);
+    } finally {
+      setIsCreatingSchedule(false);
+    }
+  };
+
   const handleDeleteSchedule = async (scheduleId) => {
     try {
       setIsDeletingSchedule(scheduleId);
@@ -2321,14 +2345,23 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             <p className="urgent-hint">Please take your medicine now and check the Smart Medi Box.</p>
             <div className="modal-buttons">
               <button 
-                className="btn-success btn-large btn-block" 
+                className="btn-success btn-large" 
+                style={{ flex: 2 }}
                 onClick={() => {
+                  handleCompleteSchedule(activeMedicineAlert.schedule_id);
                   setActiveMedicineAlert(null);
                   // Also mark as read in local state
                   setNotifications(prev => prev.map(n => n.id === activeMedicineAlert.id ? {...n, read: true} : n));
                 }}
               >
                 OK, I'm Taking It
+              </button>
+              <button 
+                className="btn-secondary btn-large" 
+                style={{ flex: 1 }}
+                onClick={() => handleSnoozeSchedule(activeMedicineAlert.schedule_id)}
+              >
+                Snooze 5m
               </button>
             </div>
           </div>

@@ -308,8 +308,11 @@ button, a { user-select: none; cursor: pointer; }
 
 .btn-block {
   width: 100%;
-  justify-content: center;
-  padding: 12px;
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
 }
 
 /* ==================== Messages ==================== */

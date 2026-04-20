@@ -54,6 +54,9 @@ switch ($action) {
     case 'trigger-due':
         handleTriggerDueSchedules($method);
         break;
+    case 'snooze':
+        handleSnoozeSchedule($method);
+        break;
     default:
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
@@ -769,6 +772,83 @@ function handleTriggerDueSchedules($method) {
         error_log("TRIGGER_DUE ERROR: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['status' => 'ERROR', 'message' => 'Failed to trigger due schedules']);
+    }
+}
+
+function handleSnoozeSchedule($method) {
+    global $conn;
+
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $schedule_id = $input['schedule_id'] ?? $_POST['schedule_id'] ?? null;
+    $token = $input['token'] ?? $_POST['token'] ?? null;
+
+    if (!$schedule_id || !$token) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing schedule_id or token']);
+        return;
+    }
+
+    try {
+        // 1. Verify token and get user_id
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+
+        if (!$token_result || pg_num_rows($token_result) === 0) {
+            http_response_code(401);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Invalid or expired token']);
+            return;
+        }
+        $user_id = pg_fetch_assoc($token_result)['user_id'];
+
+        // 2. Get current schedule time
+        $query = "SELECT hour, minute FROM schedules WHERE id = $1 AND user_id = $2";
+        $result = pg_query_params($conn, $query, array($schedule_id, $user_id));
+
+        if (!$result || pg_num_rows($result) === 0) {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Schedule not found']);
+            return;
+        }
+
+        $row = pg_fetch_assoc($result);
+        $h = intval($row['hour']);
+        $m = intval($row['minute']);
+
+        // 3. Add 5 minutes
+        $m += 5;
+        if ($m >= 60) {
+            $m -= 60;
+            $h += 1;
+            if ($h >= 24) $h = 0;
+        }
+
+        // 4. Update schedule and reset is_completed/alarm status
+        $update_query = "UPDATE schedules 
+                         SET hour = $1, minute = $2, is_completed = false, updated_at = NOW() 
+                         WHERE id = $3 AND user_id = $4";
+        pg_query_params($conn, $update_query, array($h, $m, $schedule_id, $user_id));
+
+        // 5. Clear current notifications for this schedule today so they don't clutter
+        $clear_notif = "DELETE FROM notifications WHERE schedule_id = $1 AND user_id = $2 AND created_at >= CURRENT_DATE";
+        pg_query_params($conn, $clear_notif, array($schedule_id, $user_id));
+
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'SUCCESS', 
+            'message' => 'Schedule snoozed for 5 minutes',
+            'new_time' => sprintf("%02d:%02d", $h, $m)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Snooze Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }
 }
 
