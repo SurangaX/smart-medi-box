@@ -957,7 +957,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         body: JSON.stringify({
           token,
           type: newSchedule.type,
+          medicine_name: newSchedule.medicine_name,
+          is_recurring: newSchedule.is_recurring,
           schedule_date: newSchedule.schedule_date,
+          end_date: newSchedule.is_recurring ? newSchedule.end_date : newSchedule.schedule_date,
           hour: parseInt(newSchedule.hour),
           minute: parseInt(newSchedule.minute),
           description: newSchedule.description,
@@ -967,17 +970,20 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       
       if (data.status === 'SUCCESS') {
-      window.appNotify({ message: 'Schedule created successfully', type: 'success' });
-      const today = new Date().toISOString().split('T')[0];
-      setNewSchedule({ 
-        type: 'MEDICINE', 
-        schedule_date: today, 
-        ...getCurrentTime(), 
-        description: '',
-        photo: null
-      });
-      setShowAddForm(false);
-      fetchSchedules(newSchedule.schedule_date);
+        window.appNotify({ message: 'Schedule created successfully', type: 'success' });
+        const today = new Date().toISOString().split('T')[0];
+        setNewSchedule({ 
+          type: 'MEDICINE', 
+          medicine_name: '',
+          is_recurring: false,
+          schedule_date: today,
+          end_date: today,
+          ...getCurrentTime(), 
+          description: '',
+          photo: null
+        });
+        setShowAddForm(false);
+        fetchSchedules(newSchedule.schedule_date);
       } else {
         window.appNotify({ message: 'Error: ' + (data.message || 'Failed to create schedule'), type: 'error' });
       }
@@ -2090,36 +2096,14 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         <option value="BLOOD_CHECK">🩸 Blood Check</option>
                       </select>
                     </div>
-                    <div className="form-group">
-                      <label>Start Date</label>
-                      <input
-                        type="date"
-                        value={newSchedule.schedule_date}
-                        onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
-                        onClick={(e) => {
-                          try {
-                            if (e.target.showPicker) e.target.showPicker();
-                          } catch (err) {}
-                        }}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={newSchedule.is_recurring} 
-                          onChange={(e) => setNewSchedule({...newSchedule, is_recurring: e.target.checked})}
-                          style={{ width: 'auto' }}
-                        /> 
-                        Daily Recurrence
-                      </label>
-                      {newSchedule.is_recurring && (
-                        <div style={{ marginTop: '8px' }}>
-                          <label style={{ fontSize: '11px' }}>End Date</label>
+                    <div className="form-group full-width">
+                      <div className="form-row-flex">
+                        <div className="flex-1">
+                          <label>Start Date</label>
                           <input
                             type="date"
-                            value={newSchedule.end_date}
-                            onChange={(e) => setNewSchedule({...newSchedule, end_date: e.target.value})}
+                            value={newSchedule.schedule_date}
+                            onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
                             onClick={(e) => {
                               try {
                                 if (e.target.showPicker) e.target.showPicker();
@@ -2127,7 +2111,33 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                             }}
                           />
                         </div>
-                      )}
+                        <div className="flex-1">
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={newSchedule.is_recurring} 
+                              onChange={(e) => setNewSchedule({...newSchedule, is_recurring: e.target.checked})}
+                              style={{ width: 'auto' }}
+                            /> 
+                            Daily Recurrence
+                          </label>
+                          {newSchedule.is_recurring && (
+                            <div style={{ marginTop: '8px' }}>
+                              <label style={{ fontSize: '11px' }}>End Date</label>
+                              <input
+                                type="date"
+                                value={newSchedule.end_date}
+                                onChange={(e) => setNewSchedule({...newSchedule, end_date: e.target.value})}
+                                onClick={(e) => {
+                                  try {
+                                    if (e.target.showPicker) e.target.showPicker();
+                                  } catch (err) {}
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Time</label>
@@ -2231,7 +2241,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                             <span className="type-badge">{sched.type}</span>
                             {sched.is_recurring && (
                               <span className="recurring-badge">
-                                🔄 Daily until {new Date(sched.end_date).toLocaleDateString()}
+                                🔄 Daily: {new Date(sched.schedule_date).toLocaleDateString()} - {new Date(sched.end_date).toLocaleDateString()}
                               </span>
                             )}
                           </div>
@@ -2270,12 +2280,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               ) : (
                 <div className="empty-timeline">
                   <div className="empty-icon">📅</div>
-                  <p>Your schedule is clear for today</p>
+                  <p>Your schedule is clear for this date</p>
                   <button className="btn-primary" style={{ marginTop: '8px' }} onClick={() => {
                     setNewSchedule(prev => ({ ...prev, schedule_date: scheduleFilterDate }));
                     setShowAddForm(true);
                   }}>
-                    <Plus size={18} /> Add your first reminder
+                    <Plus size={18} /> Add a reminder
                   </button>
                 </div>
               )}

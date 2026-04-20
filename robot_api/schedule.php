@@ -342,7 +342,14 @@ function handleCompleteSchedule($method) {
         // Note: $user_id from token lookup is already users.id (the database primary key)
         $db_user_id = $user_id;
         
-        $query = "UPDATE schedules SET is_completed = true, completed_at = NOW() 
+        // For non-recurring schedules, we mark them as completed in the main table.
+        // For recurring schedules, we DO NOT mark them as completed in the main table, 
+        // because that would prevent them from triggering on future days.
+        // We always log the completion in schedule_logs which is used for daily tracking.
+        $query = "UPDATE schedules SET 
+                  is_completed = (CASE WHEN is_recurring = false THEN true ELSE false END), 
+                  completed_at = (CASE WHEN is_recurring = false THEN NOW() ELSE completed_at END),
+                  updated_at = NOW()
                   WHERE id = $1 AND user_id = $2";
         
         $result = pg_query_params($conn, $query, array($schedule_id, $db_user_id));
@@ -422,20 +429,27 @@ function handleGetTodaySchedules($method) {
     try {
         // Fetch schedules that are either:
         // 1. One-time schedules matching the filtered date range
-        // 2. Recurring schedules where the filtered date falls between start_date and end_date
-        $query = "SELECT s.id, s.type, s.medicine_name, s.schedule_date, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date,
-                  (SELECT COUNT(*) > 0 FROM schedule_logs sl 
-                   WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
-                   AND DATE(sl.created_at) = $2) as day_completed
+        // 2. Recurring schedules where the filtered date range overlaps with the recurrence period
+        // We use generate_series to expand recurring schedules into one entry per day
+        $query = "WITH date_range AS (
+                    SELECT CAST(generate_series(CAST($2 AS DATE), CAST($3 AS DATE), '1 day') AS DATE) as d
+                  )
+                  SELECT 
+                    s.id, s.type, s.medicine_name, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date,
+                    dr.d as current_day,
+                    (SELECT COUNT(*) > 0 FROM schedule_logs sl 
+                     WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
+                     AND DATE(sl.created_at) = dr.d) as day_completed
                   FROM schedules s
+                  CROSS JOIN date_range dr
                   WHERE s.user_id = $1 
                   AND s.status = 'ACTIVE'
                   AND (
-                      (s.is_recurring = false AND s.schedule_date >= $2 AND s.schedule_date <= $3)
+                      (s.is_recurring = false AND s.schedule_date = dr.d)
                       OR
-                      (s.is_recurring = true AND $2 BETWEEN s.schedule_date AND s.end_date)
+                      (s.is_recurring = true AND dr.d BETWEEN s.schedule_date AND s.end_date)
                   )
-                  ORDER BY s.hour ASC, s.minute ASC";
+                  ORDER BY dr.d ASC, s.hour ASC, s.minute ASC";
         
         error_log("GET TODAY SCHEDULES - Query parameters: user_id=$user_id, start_date=$start_date, end_date=$end_date");
         
@@ -456,7 +470,7 @@ function handleGetTodaySchedules($method) {
                 'schedule_id' => $row['id'],
                 'type' => $row['type'],
                 'medicine_name' => $row['medicine_name'] ?? $row['type'],
-                'schedule_date' => $row['schedule_date'],
+                'schedule_date' => $row['current_day'],
                 'hour' => intval($row['hour']),
                 'minute' => intval($row['minute']),
                 'description' => $row['description'],
@@ -464,7 +478,7 @@ function handleGetTodaySchedules($method) {
                 'is_recurring' => $row['is_recurring'] === 't' || $row['is_recurring'] === true,
                 'end_date' => $row['end_date'],
                 'is_completed' => $row['day_completed'] === 't' || $row['day_completed'] === true,
-                'datetime' => $start_date . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
+                'datetime' => $row['current_day'] . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
             ];
         }
         

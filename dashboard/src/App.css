@@ -2498,6 +2498,23 @@ button, a { user-select: none; cursor: pointer; }
   resize: vertical;
 }
 
+.form-row-flex {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .form-row-flex {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
 .article-button-group {
   display: flex;
   gap: 12px;
