@@ -568,6 +568,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           id: n.id,
           schedule_id: n.schedule_id,
           message: n.message,
+          medicine_name: n.medicine_name,
           type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
           rawType: n.type,
           timestamp: n.created_at,
@@ -2517,6 +2518,14 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               </div>
               <h2>Medicine Reminder!</h2>
             </div>
+            
+            {activeMedicineAlert.medicine_name && (
+              <div className="medicine-highlight-box">
+                <div className="medicine-label">MEDICINE</div>
+                <div className="medicine-name-large">{activeMedicineAlert.medicine_name}</div>
+              </div>
+            )}
+            
             <p className="urgent-message">{activeMedicineAlert.message}</p>
             
             {activeMedicineAlert.photo && (

@@ -178,8 +178,8 @@ function handleGetPendingNotifications($method) {
     
     try {
         // Fetch all non-dismissed notifications from the last 24 hours for the user
-        // Join with schedules to get the medication photo
-        $query = "SELECT n.id, n.schedule_id, n.type, n.message, n.sms_sent, n.app_sent, n.is_read, n.created_at, s.photo 
+        // Join with schedules to get the medication photo and medicine name
+        $query = "SELECT n.id, n.schedule_id, n.type, n.message, n.sms_sent, n.app_sent, n.is_read, n.created_at, s.photo, s.medicine_name 
                   FROM notifications n
                   LEFT JOIN schedules s ON s.id = n.schedule_id
                   WHERE n.user_id = $1 AND n.is_dismissed = false AND n.created_at >= NOW() - INTERVAL '24 hours'
@@ -198,6 +198,7 @@ function handleGetPendingNotifications($method) {
                 'schedule_id' => $row['schedule_id'] ? intval($row['schedule_id']) : null,
                 'type' => $row['type'],
                 'message' => $row['message'],
+                'medicine_name' => $row['medicine_name'],
                 'sms_sent' => $row['sms_sent'] === 't',
                 'app_sent' => $row['app_sent'] === 't',
                 'is_read' => $row['is_read'] === 't',

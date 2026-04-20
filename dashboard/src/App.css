@@ -772,6 +772,38 @@ button, a { user-select: none; cursor: pointer; }
   font-size: 18px;
 }
 
+.medicine-highlight-box {
+  background: rgba(59, 130, 246, 0.15);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 15px;
+  margin: 15px 0;
+  text-align: center;
+  animation: pulse-soft 2s infinite;
+}
+
+.medicine-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.medicine-name-large {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+@keyframes pulse-soft {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
 .btn-save-schedule {
   width: 100%;
   background: var(--success);
