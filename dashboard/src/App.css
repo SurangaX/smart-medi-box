@@ -2535,3 +2535,57 @@ button, a { user-select: none; cursor: pointer; }
   justify-content: center;
   min-height: 200px;
 }
+
+/* ==================== Photo Modal ==================== */
+.photo-modal {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  max-width: 90vw !important;
+  max-height: 85vh !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: photoScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.photo-modal img {
+  max-width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.photo-modal .close-btn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 36px;
+  height: 36px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.photo-modal .close-btn:hover {
+  transform: scale(1.1);
+  background: var(--danger);
+  color: white;
+}
+
+@keyframes photoScale {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
