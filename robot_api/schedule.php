@@ -196,16 +196,19 @@ function handleCreateSchedule($method) {
     try {
         $schedule_id = generateScheduleID();
         
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+        $photo = $input['photo'] ?? null;
+
         // Note: $user_id from token lookup is already users.id (the database primary key)
         // No need to query for it again
         $db_user_id = $user_id;
         
         $query = "INSERT INTO schedules 
-                  (schedule_id, user_id, type, schedule_date, hour, minute, description, status, is_completed) 
-                  VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE', false)";
+                  (schedule_id, user_id, type, schedule_date, hour, minute, description, photo, status, is_completed) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', false)";
         
         $result = pg_query_params($conn, $query, 
-            array($schedule_id, $db_user_id, $type, $schedule_date, $hour, $minute, $description));
+            array($schedule_id, $db_user_id, $type, $schedule_date, $hour, $minute, $description, $photo));
         
         if ($result) {
             http_response_code(201);
@@ -416,7 +419,7 @@ function handleGetTodaySchedules($method) {
     
     try {
         // Note: $user_id from token lookup is already users.id (the database primary key)
-        $query = "SELECT id, type, schedule_date, hour, minute, description, is_completed 
+        $query = "SELECT id, type, schedule_date, hour, minute, description, photo, is_completed 
                   FROM schedules 
                   WHERE user_id = $1 
                   AND status = 'ACTIVE'
@@ -446,6 +449,7 @@ function handleGetTodaySchedules($method) {
                 'hour' => intval($row['hour']),
                 'minute' => intval($row['minute']),
                 'description' => $row['description'],
+                'photo' => $row['photo'],
                 'is_completed' => $row['is_completed'] === 't' || $row['is_completed'] === true,
                 'datetime' => $row['schedule_date'] . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
             ];
