@@ -719,11 +719,25 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
     };
   }, [notifPanelOpen]);
 
-  const clearNotifications = () => {
-    setNotifications([]);
-    setNotifPanelOpen(false);
-    // Only show as transient toast; do not re-add to the notifications list
-    window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
+  const clearNotifications = async () => {
+    try {
+      console.log('🧹 Clearing all notifications permanently...');
+      setNotifications([]);
+      setNotifPanelOpen(false);
+      
+      const response = await fetch(`${API_URL}/index.php/api/notifications/dismiss-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: profile?.id || profile?.user_id })
+      });
+      
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'All notifications cleared permanently', type: 'info', toastOnly: true });
+      }
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    }
   };
 
   const fetchDoctors = async () => {
