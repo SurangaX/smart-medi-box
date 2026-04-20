@@ -488,6 +488,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [activeMedicineAlert, setActiveMedicineAlert] = useState(null);
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'MEDICINE', 
     schedule_date: new Date().toISOString().split('T')[0],
@@ -551,6 +552,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           id: n.id,
           message: n.message,
           type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
+          rawType: n.type,
           timestamp: n.created_at,
           read: false
         }));
@@ -559,6 +561,13 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         setNotifications(prev => {
           const existingIds = new Set(prev.map(p => p.id));
           const newOnes = formattedNotifs.filter(n => !existingIds.has(n.id));
+          
+          // CRITICAL: If there are NEW medicine alarms, trigger the popup
+          const medicineAlarm = newOnes.find(n => n.rawType === 'ALARM_MEDICINE');
+          if (medicineAlarm) {
+            setActiveMedicineAlert(medicineAlarm);
+          }
+          
           return [...newOnes, ...prev];
         });
         
@@ -2295,6 +2304,32 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 {loading ? 'Unpairing...' : 'Yes, Unpair'}
               </button>
               <button className="btn-secondary" onClick={() => setShowUnpairConfirm(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Medicine Alert Popup (Urgent) */}
+      {activeMedicineAlert && (
+        <div className="modal-overlay urgent-alert">
+          <div className="modal-content urgent-content pulse-border">
+            <div className="urgent-header">
+              <div className="urgent-icon">💊</div>
+              <h2>Medicine Reminder!</h2>
+            </div>
+            <p className="urgent-message">{activeMedicineAlert.message}</p>
+            <p className="urgent-hint">Please take your medicine now and check the Smart Medi Box.</p>
+            <div className="modal-buttons">
+              <button 
+                className="btn-success btn-large btn-block" 
+                onClick={() => {
+                  setActiveMedicineAlert(null);
+                  // Also mark as read in local state
+                  setNotifications(prev => prev.map(n => n.id === activeMedicineAlert.id ? {...n, read: true} : n));
+                }}
+              >
+                OK, I'm Taking It
+              </button>
             </div>
           </div>
         </div>
