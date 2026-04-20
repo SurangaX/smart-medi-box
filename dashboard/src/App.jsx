@@ -1910,6 +1910,14 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                     setScheduleFilterDate(e.target.value);
                     fetchSchedules(e.target.value);
                   }}
+                  onClick={(e) => {
+                    try {
+                      if (e.target.showPicker) e.target.showPicker();
+                    } catch (err) {
+                      console.log('showPicker not supported');
+                    }
+                  }}
+                  onKeyDown={(e) => e.preventDefault()}
                   className="filter-date-minimal"
                 />
                 <button 

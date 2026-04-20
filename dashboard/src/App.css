@@ -626,6 +626,8 @@ button, a { user-select: none; cursor: pointer; }
   border-radius: 8px;
   font-size: 14px;
   outline: none;
+  cursor: pointer;
+  caret-color: transparent;
 }
 
 .btn-add-toggle {
