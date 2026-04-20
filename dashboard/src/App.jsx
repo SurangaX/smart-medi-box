@@ -599,6 +599,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
+    } finally {
+      setNotifsLoading(false);
     }
   };
 
