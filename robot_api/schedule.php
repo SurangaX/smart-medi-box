@@ -457,47 +457,59 @@ function handleGetTodaySchedules($method) {
 // ============================================================================
 function handleDeleteSchedule($method) {
     global $conn;
-    
+
     if ($method !== 'POST') {
         http_response_code(405);
         echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
-    
+
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $schedule_id = $input['schedule_id'] ?? $_POST['schedule_id'] ?? null;
+    $token = $input['token'] ?? $_POST['token'] ?? null;
     $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
-    
+
+    // If token is provided, look up the user_id from it
+    if ($token && !$user_id) {
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+
+        if ($token_result && pg_num_rows($token_result) > 0) {
+            $token_row = pg_fetch_assoc($token_result);
+            $user_id = $token_row['user_id'];
+        }
+    }
+
     if (!$schedule_id || !$user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: schedule_id and (user_id or token)']);
         return;
     }
-    
+
     try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
+        // If user_id is passed as a string (legacy/direct), we might need to convert it, 
+        // but if it's from token lookup, it's already the numeric primary key.
+        // Let's check if it's numeric. If not, we try to find the numeric ID.
+        $db_user_id = $user_id;
+        if (!is_numeric($user_id)) {
+            // Since there is no user_id column in users table, we check against other fields if needed,
+            // but usually token lookup is preferred.
+            http_response_code(400);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Invalid user ID format']);
             return;
         }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        
-        $query = "UPDATE schedules SET status = 'DELETED', deleted_at = NOW() 
+
+        $query = "UPDATE schedules SET status = 'DELETED', deleted_at = NOW()
                   WHERE id = $1 AND user_id = $2";
-        
+
         $result = pg_query_params($conn, $query, array($schedule_id, $db_user_id));
-        
-        if ($result) {
+
+        if ($result && pg_affected_rows($result) > 0) {
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Schedule deleted']);
         } else {
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to delete schedule']);
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Schedule not found or unauthorized']);
         }
     } catch (Exception $e) {
         error_log("Delete Schedule Error: " . $e->getMessage());
@@ -505,7 +517,6 @@ function handleDeleteSchedule($method) {
         echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }
 }
-
 // ============================================================================
 // GET STATISTICS
 // ============================================================================
