@@ -1924,7 +1924,14 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 />
                 <button 
                   className={`btn-add-toggle ${showAddForm ? 'active' : ''}`}
-                  onClick={() => setShowAddForm(!showAddForm)}
+                  onClick={() => {
+                    const newStatus = !showAddForm;
+                    setShowAddForm(newStatus);
+                    if (newStatus) {
+                      // Sync new schedule date with currently filtered date when opening
+                      setNewSchedule(prev => ({ ...prev, schedule_date: scheduleFilterDate }));
+                    }
+                  }}
                 >
                   {showAddForm ? <X size={20} /> : <Plus size={20} />}
                   <span>{showAddForm ? 'Close' : 'Add New'}</span>
@@ -1946,6 +1953,19 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         <option value="FOOD">🍽️ Food</option>
                         <option value="BLOOD_CHECK">🩸 Blood Check</option>
                       </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Date</label>
+                      <input
+                        type="date"
+                        value={newSchedule.schedule_date}
+                        onChange={(e) => setNewSchedule({...newSchedule, schedule_date: e.target.value})}
+                        onClick={(e) => {
+                          try {
+                            if (e.target.showPicker) e.target.showPicker();
+                          } catch (err) {}
+                        }}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Time</label>
