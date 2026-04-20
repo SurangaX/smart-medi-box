@@ -2175,10 +2175,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       <div className="timeline-card" style={{ opacity: isDeletingSchedule === sched.schedule_id ? 0.6 : 1 }}>
                         <div className="card-icon">
                           {sched.photo ? (
-                            <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => {
-                              // Optional: click to expand photo
-                              window.open().document.write(`<img src="${sched.photo}" style="max-width:100%">`);
-                            }} />
+                            <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => setExpandedPhoto(sched.photo)} />
                           ) : (
                             sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'
                           )}
