@@ -2492,6 +2492,22 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Photo Preview Modal (Full Screen) */}
+      {expandedPhoto && (
+        <div className="modal-overlay" onClick={() => setExpandedPhoto(null)} style={{ zIndex: 3000 }}>
+          <div className="modal-content photo-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', padding: '10px', background: 'transparent', border: 'none' }}>
+            <button 
+              className="close-btn" 
+              onClick={() => setExpandedPhoto(null)}
+              style={{ position: 'absolute', top: '-10px', right: '-10px', color: 'white', background: '#333', borderRadius: '50%', padding: '5px', border: 'none', cursor: 'pointer', display: 'flex' }}
+            >
+              <X size={24} />
+            </button>
+            <img src={expandedPhoto} alt="Medication Full" style={{ width: '100%', borderRadius: '12px', display: 'block', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
