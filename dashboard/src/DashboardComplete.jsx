@@ -105,6 +105,19 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchNotifications = async () => {
     try {
+      // Get current local time in YYYY-MM-DD HH:mm format for the server
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const localTime = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+      // First, trigger any due schedules using local time
+      await fetch(`${API_URL}/index.php/api/schedule/trigger-due?now=${encodeURIComponent(localTime)}`, { method: 'GET' });
+
+      // Then fetch pending notifications
       const response = await fetch(
         `${API_URL}/index.php/api/notifications/pending?user_id=${user?.user_id}`,
         { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }

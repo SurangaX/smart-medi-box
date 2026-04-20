@@ -155,6 +155,15 @@ switch ($module) {
         require 'device.php';
         break;
     
+    case 'notifications':
+    case 'alarm':
+        // Include notifications and alarm module
+        $_GET['action'] = $action;
+        $_GET['subaction'] = $subaction;
+        $_GET['module'] = $module;
+        require 'notifications.php';
+        break;
+    
     case 'status':
         // System status endpoint
         handleSystemStatus();

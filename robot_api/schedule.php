@@ -656,11 +656,15 @@ function handleTriggerDueSchedules($method) {
     $hour = intval($now->format('H'));
     $minute = intval($now->format('i'));
 
+    error_log("TRIGGER_DUE - Checking for schedules at $date $hour:$minute");
+
     try {
-        // Find schedules due now (exact match on hour/minute)
+        // Find schedules due now or earlier today (that haven't been triggered yet today)
+        // This is more robust than exact minute matching in case a poll is missed
         $query = "SELECT id, user_id, type, schedule_date, hour, minute, description 
                   FROM schedules 
-                  WHERE schedule_date = $1 AND hour = $2 AND minute = $3 
+                  WHERE schedule_date = $1 
+                  AND (hour < $2 OR (hour = $2 AND minute <= $3))
                   AND status = 'ACTIVE' AND is_completed = false";
 
         $result = pg_query_params($conn, $query, array($date, $hour, $minute));
@@ -672,8 +676,12 @@ function handleTriggerDueSchedules($method) {
             return;
         }
 
+        $triggered_count = pg_num_rows($result);
+        error_log("TRIGGER_DUE - Found $triggered_count potential schedules");
+
         $triggered = [];
         while ($row = pg_fetch_assoc($result)) {
+            error_log("TRIGGER_DUE - Processing schedule ID: " . $row['id']);
             $schedule_db_id = $row['id'];
             $user_db_id = $row['user_id'];
             $type = $row['type'];
