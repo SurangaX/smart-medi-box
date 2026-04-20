@@ -2071,7 +2071,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 <div className="empty-timeline">
                   <div className="empty-icon">📅</div>
                   <p>Your schedule is clear for today</p>
-                  <button className="btn-link" onClick={() => setShowAddForm(true)}>Add your first reminder</button>
+                  <button className="btn-primary" style={{ marginTop: '8px' }} onClick={() => {
+                    setNewSchedule(prev => ({ ...prev, schedule_date: scheduleFilterDate }));
+                    setShowAddForm(true);
+                  }}>
+                    <Plus size={18} /> Add your first reminder
+                  </button>
                 </div>
               )}
             </div>
