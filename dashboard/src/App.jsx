@@ -931,7 +931,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Schedule created successfully', type: 'success' });
         const today = new Date().toISOString().split('T')[0];
-        setNewSchedule({ type: 'MEDICINE', schedule_date: today, hour: 9, minute: 0, description: '' });
+        setNewSchedule({ 
+          type: 'MEDICINE', 
+          schedule_date: today, 
+          ...getCurrentTime(), 
+          description: '' 
+        });
         setShowAddForm(false);
         fetchSchedules(newSchedule.schedule_date);
       } else {
