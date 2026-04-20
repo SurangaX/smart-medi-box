@@ -196,7 +196,7 @@ const Dashboard = ({ user, onLogout }) => {
           {activeTab === 'schedules' && <SchedulesSection schedules={schedules} onRefresh={fetchSchedules} userId={user?.user_id} />}
           {activeTab === 'temperature' && <TemperatureSection tempData={tempData} currentTemp={currentTemp} targetTemp={targetTemp} setTargetTemp={setTargetTemp} userId={user?.user_id} />}
           {activeTab === 'alarms' && <AlarmsSection alarms={alarms} deviceStatus={deviceStatus} />}
-          {activeTab === 'notifications' && <NotificationsSection notifications={notifications} />}
+          {activeTab === 'notifications' && <NotificationsSection notifications={notifications} onRefresh={fetchNotifications} />}
           {activeTab === 'settings' && <SettingsSection userId={user?.user_id} />}
         </div>
       </div>
@@ -558,10 +558,15 @@ const AlarmsSection = ({ alarms, deviceStatus }) => {
 // Notifications Section
 // ============================================================================
 
-const NotificationsSection = ({ notifications }) => {
+const NotificationsSection = ({ notifications, onRefresh }) => {
   return (
     <div className="section notifications">
-      <h2>Notifications & Alerts</h2>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2>Notifications & Alerts</h2>
+        <button className="btn-secondary" onClick={onRefresh} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Activity size={16} /> Sync Notifications
+        </button>
+      </div>
       {notifications.length === 0 ? (
         <div className="card empty-state">
           <Bell size={32} />
