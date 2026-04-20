@@ -2097,6 +2097,15 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </select>
                     </div>
                     <div className="form-group full-width">
+                      <label className="checkbox-label-large">
+                        <input 
+                          type="checkbox" 
+                          checked={newSchedule.is_recurring} 
+                          onChange={(e) => setNewSchedule({...newSchedule, is_recurring: e.target.checked})}
+                        /> 
+                        <span>Daily Recurrence (Repeat every day)</span>
+                      </label>
+                      
                       <div className="form-row-flex">
                         <div className="flex-1">
                           <label>Start Date</label>
@@ -2111,32 +2120,21 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                             }}
                           />
                         </div>
-                        <div className="flex-1">
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={newSchedule.is_recurring} 
-                              onChange={(e) => setNewSchedule({...newSchedule, is_recurring: e.target.checked})}
-                              style={{ width: 'auto' }}
-                            /> 
-                            Daily Recurrence
-                          </label>
-                          {newSchedule.is_recurring && (
-                            <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '11px' }}>End Date</label>
-                              <input
-                                type="date"
-                                value={newSchedule.end_date}
-                                onChange={(e) => setNewSchedule({...newSchedule, end_date: e.target.value})}
-                                onClick={(e) => {
-                                  try {
-                                    if (e.target.showPicker) e.target.showPicker();
-                                  } catch (err) {}
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
+                        {newSchedule.is_recurring && (
+                          <div className="flex-1">
+                            <label>End Date</label>
+                            <input
+                              type="date"
+                              value={newSchedule.end_date}
+                              onChange={(e) => setNewSchedule({...newSchedule, end_date: e.target.value})}
+                              onClick={(e) => {
+                                try {
+                                  if (e.target.showPicker) e.target.showPicker();
+                                } catch (err) {}
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="form-group">
