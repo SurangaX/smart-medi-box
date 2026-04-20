@@ -486,6 +486,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [showDeviceFound, setShowDeviceFound] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'MEDICINE', 
     schedule_date: new Date().toISOString().split('T')[0],
@@ -2032,9 +2034,8 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                               <button
                                 className="btn-action-delete"
                                 onClick={() => {
-                                  if(window.confirm('Delete this reminder?')) {
-                                    handleDeleteSchedule(sched.schedule_id);
-                                  }
+                                  setScheduleToDelete(sched.schedule_id);
+                                  setShowDeleteConfirm(true);
                                 }}
                               >
                                 <Trash2 size={16} />
@@ -2219,6 +2220,37 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               </button>
               <button className="btn-danger" onClick={handleConfirmLogout}>
                 Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Delete Reminder?</h2>
+            <p>Are you sure you want to remove this medication reminder from your schedule?</p>
+            <div className="modal-buttons">
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setScheduleToDelete(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-danger" 
+                onClick={() => {
+                  handleDeleteSchedule(scheduleToDelete);
+                  setShowDeleteConfirm(false);
+                  setScheduleToDelete(null);
+                }}
+              >
+                Delete
               </button>
             </div>
           </div>
