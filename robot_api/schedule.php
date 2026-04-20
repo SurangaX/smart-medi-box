@@ -343,6 +343,11 @@ function handleCompleteSchedule($method) {
         $result = pg_query_params($conn, $query, array($schedule_id, $db_user_id));
         
         if ($result) {
+            // Also dismiss any existing notifications for this schedule to prevent popups re-appearing
+            $dismiss_query = "UPDATE notifications SET is_dismissed = true, updated_at = NOW() 
+                             WHERE schedule_id = $1 AND user_id = $2 AND is_dismissed = false";
+            pg_query_params($conn, $dismiss_query, array($schedule_id, $db_user_id));
+            
             logScheduleCompletion($db_user_id, $schedule_id);
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Schedule marked as completed']);
