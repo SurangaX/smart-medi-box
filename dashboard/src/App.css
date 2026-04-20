@@ -747,16 +747,25 @@ button, a { user-select: none; cursor: pointer; }
 }
 
 .checkbox-label-large input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin: 0;
   cursor: pointer;
+  /* Reset general input styles */
+  appearance: checkbox;
+  -webkit-appearance: checkbox;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  min-width: 18px;
 }
 
 .checkbox-label-large span {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .time-picker-minimal {
