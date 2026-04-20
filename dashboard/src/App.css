@@ -283,6 +283,24 @@ button, a { user-select: none; cursor: pointer; }
   border-color: var(--text-secondary);
 }
 
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  background: rgba(59, 130, 246, 0.05);
+  color: var(--primary-dark);
+}
+
 .btn-tertiary {
   background: transparent;
   color: var(--text-secondary);
