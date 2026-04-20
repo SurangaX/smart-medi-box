@@ -1977,6 +1977,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                           placeholder="HH"
                           value={String(newSchedule.hour).padStart(2, '0')}
                           onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                          onWheel={(e) => e.target.blur()}
                         />
                         <span>:</span>
                         <input
@@ -1986,6 +1987,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                           placeholder="MM"
                           value={String(newSchedule.minute).padStart(2, '0')}
                           onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                          onWheel={(e) => e.target.blur()}
                         />
                       </div>
                     </div>
