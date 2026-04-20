@@ -644,11 +644,12 @@ function handleTriggerDueSchedules($method) {
         return;
     }
 
-    // Use server time; allow override for testing via query param
-    $now = new DateTime();
+    // Use GMT+5:30 timezone; allow override for testing via query param
+    $timezone = new DateTimeZone('Asia/Kolkata'); // GMT+5:30
+    $now = new DateTime('now', $timezone);
     $override = $_GET['now'] ?? $_POST['now'] ?? null;
     if ($override && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $override)) {
-        $now = DateTime::createFromFormat('Y-m-d H:i', $override);
+        $now = DateTime::createFromFormat('Y-m-d H:i', $override, $timezone);
     }
 
     $date = $now->format('Y-m-d');

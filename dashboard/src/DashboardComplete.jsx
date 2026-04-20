@@ -50,9 +50,18 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchSchedules = async () => {
     try {
+      const today = new Date().toISOString().split('T')[0];
       const response = await fetch(
-        `${API_URL}/index.php/api/device/schedules?user_id=${user?.user_id}`,
-        { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
+        `${API_URL}/index.php/api/schedule/today`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: localStorage.getItem('token'),
+            start_date: today,
+            end_date: today
+          })
+        }
       );
       const data = await response.json();
       if (data.status === 'SUCCESS') {
