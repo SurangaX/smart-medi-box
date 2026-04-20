@@ -2174,11 +2174,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                       </div>
                       <div className="timeline-card" style={{ opacity: isDeletingSchedule === sched.schedule_id ? 0.6 : 1 }}>
                         <div className="card-icon">
-                          {sched.photo ? (
-                            <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => setExpandedPhoto(sched.photo)} />
-                          ) : (
-                            sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'
-                          )}
+                          {sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}
                         </div>
                         <div className="card-info">
                           <div className="card-top">
@@ -2187,7 +2183,17 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                               {sched.is_completed ? 'Completed' : 'Upcoming'}
                             </span>
                           </div>
-                          {sched.description && <p className="card-desc">{sched.description}</p>}
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            {sched.description && <p className="card-desc" style={{ flex: 1 }}>{sched.description}</p>}
+                            {sched.photo && (
+                              <img 
+                                src={sched.photo} 
+                                alt="Meds" 
+                                className="timeline-photo-thumbnail" 
+                                onClick={() => setExpandedPhoto(sched.photo)} 
+                              />
+                            )}
+                          </div>
                         </div>
                         <div className="card-actions">
                           {isDeletingSchedule === sched.schedule_id ? (
