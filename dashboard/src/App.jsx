@@ -1629,7 +1629,31 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           <p>NIC: {profile.nic} | ID: {profile.id}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" ref={bellBtnRef} onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
+          <button 
+            className="btn-icon" 
+            ref={bellBtnRef} 
+            onClick={async () => {
+              const newOpen = !notifPanelOpen;
+              setNotifPanelOpen(newOpen);
+              
+              if (newOpen && notifications.some(n => !n.read)) {
+                // Mark all as read locally
+                setNotifications(prev => prev.map(n => ({...n, read: true})));
+                
+                // Tell server these are seen
+                try {
+                  await fetch(`${API_URL}/index.php/api/notifications/mark-read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: profile?.id || profile?.user_id })
+                  });
+                } catch (e) {
+                  console.error('Failed to sync read status:', e);
+                }
+              }
+            }} 
+            title="Notifications"
+          >
             <Bell size={18} />
             {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
           </button>

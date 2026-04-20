@@ -52,6 +52,8 @@ switch ($action) {
             handleMarkNotificationSent($method);
         } elseif ($subaction === 'dismiss-all') {
             handleDismissAllNotifications($method);
+        } elseif ($subaction === 'mark-read') {
+            handleMarkNotificationsRead($method);
         }
         break;
     
@@ -176,7 +178,7 @@ function handleGetPendingNotifications($method) {
     
     try {
         // Fetch all non-dismissed notifications from the last 24 hours for the user
-        $query = "SELECT id, schedule_id, type, message, sms_sent, app_sent, created_at 
+        $query = "SELECT id, schedule_id, type, message, sms_sent, app_sent, is_read, created_at 
                   FROM notifications 
                   WHERE user_id = $1 AND is_dismissed = false AND created_at >= NOW() - INTERVAL '24 hours'
                   ORDER BY created_at DESC
@@ -196,6 +198,7 @@ function handleGetPendingNotifications($method) {
                 'message' => $row['message'],
                 'sms_sent' => $row['sms_sent'] === 't',
                 'app_sent' => $row['app_sent'] === 't',
+                'is_read' => $row['is_read'] === 't',
                 'created_at' => $row['created_at']
             ];
         }
@@ -244,6 +247,40 @@ function handleDismissAllNotifications($method) {
     } catch (Exception $e) {
         error_log("DISMISS_ALL_NOTIFICATIONS ERROR: " . $e->getMessage());
         return errorResponse(500, 'Failed to dismiss notifications: ' . $e->getMessage());
+    }
+}
+
+// ============================================================================
+// HANDLER: Mark All Notifications as Read
+// ============================================================================
+function handleMarkNotificationsRead($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        return errorResponse(405, 'Method not allowed');
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $user_id = $input['user_id'] ?? null;
+    
+    if (!$user_id) {
+        return errorResponse(400, 'user_id required');
+    }
+    
+    try {
+        $updateQuery = "UPDATE notifications SET is_read = true, updated_at = NOW() 
+                       WHERE user_id = $1 AND is_read = false AND is_dismissed = false";
+        pg_query_params($conn, $updateQuery, [$user_id]);
+        
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Notifications marked as read'
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("MARK_READ_NOTIFICATIONS ERROR: " . $e->getMessage());
+        return errorResponse(500, 'Failed to mark notifications as read: ' . $e->getMessage());
     }
 }
 
