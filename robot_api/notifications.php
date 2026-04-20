@@ -173,11 +173,12 @@ function handleGetPendingNotifications($method) {
     }
     
     try {
+        // Fetch all notifications from the last 24 hours for the user
         $query = "SELECT id, type, message, sms_sent, app_sent, created_at 
                   FROM notifications 
-                  WHERE user_id = $1 AND (sms_sent = false OR app_sent = false)
+                  WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'
                   ORDER BY created_at DESC
-                  LIMIT 20";
+                  LIMIT 50";
         $result = pg_query_params($conn, $query, [$user_id]);
         
         if (!$result) {
