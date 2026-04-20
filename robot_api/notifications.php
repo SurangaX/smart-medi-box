@@ -50,8 +50,6 @@ switch ($action) {
             handleGetPendingNotifications($method);
         } elseif ($subaction === 'mark-sent') {
             handleMarkNotificationSent($method);
-        } elseif ($subaction === 'dismiss-all') {
-            handleDismissAllNotifications($method);
         }
         break;
     
@@ -175,10 +173,10 @@ function handleGetPendingNotifications($method) {
     }
     
     try {
-        // Fetch all non-dismissed notifications from the last 24 hours for the user
+        // Fetch all notifications from the last 24 hours for the user
         $query = "SELECT id, schedule_id, type, message, sms_sent, app_sent, created_at 
                   FROM notifications 
-                  WHERE user_id = $1 AND is_dismissed = false AND created_at >= NOW() - INTERVAL '24 hours'
+                  WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'
                   ORDER BY created_at DESC
                   LIMIT 50";
         $result = pg_query_params($conn, $query, [$user_id]);
@@ -210,40 +208,6 @@ function handleGetPendingNotifications($method) {
     } catch (Exception $e) {
         error_log("GET_PENDING_NOTIFICATIONS ERROR: " . $e->getMessage());
         return errorResponse(500, 'Failed to fetch notifications: ' . $e->getMessage());
-    }
-}
-
-// ============================================================================
-// HANDLER: Dismiss All Notifications
-// ============================================================================
-function handleDismissAllNotifications($method) {
-    global $conn;
-    
-    if ($method !== 'POST') {
-        return errorResponse(405, 'Method not allowed');
-    }
-    
-    $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $user_id = $input['user_id'] ?? null;
-    
-    if (!$user_id) {
-        return errorResponse(400, 'user_id required');
-    }
-    
-    try {
-        $updateQuery = "UPDATE notifications SET is_dismissed = true, updated_at = NOW() 
-                       WHERE user_id = $1 AND is_dismissed = false";
-        pg_query_params($conn, $updateQuery, [$user_id]);
-        
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'message' => 'All notifications dismissed'
-        ]);
-        
-    } catch (Exception $e) {
-        error_log("DISMISS_ALL_NOTIFICATIONS ERROR: " . $e->getMessage());
-        return errorResponse(500, 'Failed to dismiss notifications: ' . $e->getMessage());
     }
 }
 
