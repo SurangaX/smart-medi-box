@@ -2579,10 +2579,6 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 {isSnoozingInModal ? <div className="spinner-mini" style={{ margin: '0 auto' }}></div> : "Snooze 5m"}
               </button>
             </div>
-                  <div className="spinner-mini"></div>
-                ) : "Snooze 5m"}
-              </button>
-            </div>
           </div>
         </div>
       )}
