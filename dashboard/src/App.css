@@ -798,15 +798,15 @@ button, a { user-select: none; cursor: pointer; }
 
 /* Urgent Alert Photo Thumbnail */
 .urgent-photo-wrapper {
-  margin: 15px 0;
+  margin: 8px 0;
   display: flex;
   justify-content: center;
 }
 
 .urgent-photo-img {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
+  width: 70px;
+  height: 70px;
+  border-radius: 10px;
   object-fit: cover;
   cursor: pointer;
   border: 2px solid var(--border);
@@ -822,44 +822,44 @@ button, a { user-select: none; cursor: pointer; }
 .medicine-highlight-box {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%);
   border: 3px solid var(--primary);
-  border-radius: 16px;
-  padding: 20px;
-  margin: 20px 0;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
   text-align: center;
   animation: pulse-soft 2s infinite;
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
 
 .medicine-label {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 800;
   color: var(--primary);
   text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
+  letter-spacing: 1.2px;
+  margin-bottom: 2px;
   opacity: 0.9;
 }
 
 .medicine-name-large {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 900;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 1px;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .medicine-notes-popup {
-  margin-top: 15px;
-  padding: 12px;
+  margin-top: 8px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  border-left: 4px solid var(--warning);
-  font-size: 16px;
+  border-radius: 6px;
+  border-left: 3px solid var(--warning);
+  font-size: 13px;
   color: var(--text-primary);
   font-weight: 500;
   text-align: left;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 @keyframes pulse-soft {
@@ -1169,32 +1169,33 @@ button, a { user-select: none; cursor: pointer; }
 }
 
 .urgent-header {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .urgent-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: 8px;
   animation: shake 0.5s ease-in-out infinite;
   display: inline-block;
 }
 
 .urgent-content h2 {
   color: var(--danger);
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 24px;
+  margin-bottom: 4px;
 }
 
 .urgent-message {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .urgent-hint {
   color: var(--text-secondary);
-  margin-bottom: 32px;
+  margin-bottom: 20px;
+  font-size: 14px;
 }
 
 .pulse-border {
