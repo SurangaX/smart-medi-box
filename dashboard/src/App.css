@@ -2281,8 +2281,14 @@ button, a { user-select: none; cursor: pointer; }
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   animation: slideIn 0.3s ease;
   position: relative;
-  max-height: calc(100vh - 40px); /* Prevent full screen height */
-  overflow-y: auto; /* Internal scroll if content is too long */
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  scrollbar-width: none; /* Hide for Firefox */
+  -ms-overflow-style: none; /* Hide for IE/Edge */
+}
+
+.modal-content::-webkit-scrollbar {
+  display: none; /* Hide for Chrome/Safari */
 }
 
 @keyframes slideIn {
