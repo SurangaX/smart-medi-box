@@ -61,7 +61,7 @@ button, a { user-select: none; cursor: pointer; }
 
 .auth-container {
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
 }
 
@@ -71,21 +71,23 @@ button, a { user-select: none; cursor: pointer; }
   padding: 40px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border);
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .auth-box-wide {
-  max-width: 700px;
+  max-width: 800px;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
   user-select: none;
 }
 
 .app-logo {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: 20px;
   display: inline-block;
   animation: pulse 2s infinite;
   user-select: none;
@@ -97,30 +99,31 @@ button, a { user-select: none; cursor: pointer; }
 }
 
 .auth-header h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 32px;
+  margin-bottom: 10px;
   color: var(--text-primary);
   user-select: none;
 }
 
 .auth-header p {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 15px;
   user-select: none;
 }
 
 /* ==================== Form Styles ==================== */
 .auth-form {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .auth-form .btn-primary {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .signup-form {
-  display: flex;
-  flex-direction: column;
   gap: 20px;
 }
 
@@ -133,7 +136,7 @@ button, a { user-select: none; cursor: pointer; }
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
   user-select: none;
 }
 
@@ -149,12 +152,12 @@ button, a { user-select: none; cursor: pointer; }
 .form-group input,
 .form-group textarea,
 .form-group select {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--background);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 15px;
   transition: all 0.3s;
   user-select: text;
 }
@@ -181,6 +184,7 @@ button, a { user-select: none; cursor: pointer; }
 
 .password-input-group input {
   flex: 1;
+  padding-right: 45px;
   user-select: text;
 }
 
@@ -198,7 +202,6 @@ button, a { user-select: none; cursor: pointer; }
   align-items: center;
   justify-content: center;
   user-select: none;
-}
 }
 
 .password-toggle:hover {
@@ -346,9 +349,11 @@ button, a { user-select: none; cursor: pointer; }
 .auth-footer {
   text-align: center;
   color: var(--text-secondary);
-  font-size: 14px;
-  margin-top: 20px;
+  font-size: 15px;
+  margin-top: 32px;
   user-select: none;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
 
 .auth-footer p {
@@ -361,10 +366,12 @@ button, a { user-select: none; cursor: pointer; }
   font-weight: 600;
   user-select: text;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .auth-footer a:hover {
   text-decoration: underline;
+  color: var(--accent);
 }
 
 .auth-switch {
