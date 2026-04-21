@@ -2218,12 +2218,11 @@ button, a { user-select: none; cursor: pointer; }
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: flex-start; /* Changed from center to allow margin-top to work */
+  align-items: center; /* Center vertically */
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.3s ease;
-  overflow-y: auto; /* Allow scrolling if content is long */
-  padding: 20px 0; /* Add spacing at the very top/bottom of screen */
+  padding: 20px; /* Force margin from screen edges on all sides */
 }
 
 /* When we only want to blur the modal content, disable the overlay's backdrop blur */
@@ -2245,13 +2244,14 @@ button, a { user-select: none; cursor: pointer; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 40px;
+  padding: 30px;
   max-width: 420px;
-  width: 90%;
+  width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   animation: slideIn 0.3s ease;
-  margin: 40px auto; /* Added significant top/bottom margin */
   position: relative;
+  max-height: calc(100vh - 40px); /* Prevent full screen height */
+  overflow-y: auto; /* Internal scroll if content is too long */
 }
 
 @keyframes slideIn {
