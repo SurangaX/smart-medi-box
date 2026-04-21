@@ -61,7 +61,7 @@ button, a { user-select: none; cursor: pointer; }
 
 .auth-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -71,23 +71,21 @@ button, a { user-select: none; cursor: pointer; }
   padding: 40px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border);
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 .auth-box-wide {
-  max-width: 800px;
+  max-width: 700px;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   user-select: none;
 }
 
 .app-logo {
-  font-size: 56px;
-  margin-bottom: 20px;
+  font-size: 48px;
+  margin-bottom: 16px;
   display: inline-block;
   animation: pulse 2s infinite;
   user-select: none;
@@ -99,15 +97,15 @@ button, a { user-select: none; cursor: pointer; }
 }
 
 .auth-header h1 {
-  font-size: 32px;
-  margin-bottom: 10px;
+  font-size: 28px;
+  margin-bottom: 8px;
   color: var(--text-primary);
   user-select: none;
 }
 
 .auth-header p {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 14px;
   user-select: none;
 }
 
@@ -116,11 +114,11 @@ button, a { user-select: none; cursor: pointer; }
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .auth-form .btn-primary {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .signup-form {
@@ -136,7 +134,7 @@ button, a { user-select: none; cursor: pointer; }
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 16px;
   user-select: none;
 }
 
@@ -152,12 +150,12 @@ button, a { user-select: none; cursor: pointer; }
 .form-group input,
 .form-group textarea,
 .form-group select {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--background);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 14px;
   transition: all 0.3s;
   user-select: text;
 }
@@ -184,7 +182,7 @@ button, a { user-select: none; cursor: pointer; }
 
 .password-input-group input {
   flex: 1;
-  padding-right: 45px;
+  padding-right: 40px;
   user-select: text;
 }
 
@@ -349,11 +347,9 @@ button, a { user-select: none; cursor: pointer; }
 .auth-footer {
   text-align: center;
   color: var(--text-secondary);
-  font-size: 15px;
-  margin-top: 32px;
+  font-size: 14px;
+  margin-top: 20px;
   user-select: none;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
 }
 
 .auth-footer p {
@@ -366,12 +362,10 @@ button, a { user-select: none; cursor: pointer; }
   font-weight: 600;
   user-select: text;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .auth-footer a:hover {
   text-decoration: underline;
-  color: var(--accent);
 }
 
 .auth-switch {
