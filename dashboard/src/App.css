@@ -779,6 +779,7 @@ button, a { user-select: none; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 12px;
+  max-width: 180px; /* Prevent stretching on mobile */
 }
 
 .time-picker-minimal input {
@@ -786,6 +787,36 @@ button, a { user-select: none; cursor: pointer; }
   width: 70px;
   font-weight: 700;
   font-size: 18px;
+  -moz-appearance: textfield; /* Remove arrows in Firefox */
+}
+
+.time-picker-minimal input::-webkit-outer-spin-button,
+.time-picker-minimal input::-webkit-inner-spin-button {
+  -webkit-appearance: none; /* Remove arrows in Chrome/Safari */
+  margin: 0;
+}
+
+/* Urgent Alert Photo Thumbnail */
+.urgent-photo-wrapper {
+  margin: 15px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.urgent-photo-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.urgent-photo-img:hover {
+  transform: scale(1.05);
+  border-color: var(--primary);
 }
 
 .medicine-highlight-box {
