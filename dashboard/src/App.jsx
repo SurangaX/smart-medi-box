@@ -2153,29 +2153,40 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                     </div>
                     <div className="form-group">
                       <label>Time</label>
-                      <div className="time-picker-minimal">
+                      {typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '') ? (
                         <input
-                          type="number"
-                          min="0"
-                          max="23"
-                          placeholder="HH"
-                          value={String(newSchedule.hour).padStart(2, '0')}
-                          onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
-                          onWheel={(e) => e.target.blur()}
+                          type="time"
+                          className="minimal-form-input native-time-picker"
+                          value={`${String(newSchedule.hour).padStart(2, '0')}:${String(newSchedule.minute).padStart(2, '0')}`}
+                          onChange={(e) => {
+                            const [h, m] = e.target.value.split(':');
+                            setNewSchedule({...newSchedule, hour: parseInt(h) || 0, minute: parseInt(m) || 0});
+                          }}
                         />
-                        <span>:</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="59"
-                          placeholder="MM"
-                          value={String(newSchedule.minute).padStart(2, '0')}
-                          onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
-                          onWheel={(e) => e.target.blur()}
-                        />
-                      </div>
-                    </div>
-                    <div className="form-group full-width">
+                      ) : (
+                        <div className="time-picker-minimal">
+                          <input
+                            type="number"
+                            min="0"
+                            max="23"
+                            placeholder="HH"
+                            value={String(newSchedule.hour).padStart(2, '0')}
+                            onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                            onWheel={(e) => e.target.blur()}
+                          />
+                          <span>:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            placeholder="MM"
+                            value={String(newSchedule.minute).padStart(2, '0')}
+                            onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                            onWheel={(e) => e.target.blur()}
+                          />
+                        </div>
+                      )}
+                    </div>                    <div className="form-group full-width">
                       <label>Photo (Optional)</label>
                       <input
                         type="file"

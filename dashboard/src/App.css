@@ -796,6 +796,24 @@ button, a { user-select: none; cursor: pointer; }
   margin: 0;
 }
 
+.native-time-picker {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.native-time-picker:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
 /* Urgent Alert Photo Thumbnail */
 .urgent-photo-wrapper {
   margin: 8px 0;
