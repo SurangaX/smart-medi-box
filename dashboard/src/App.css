@@ -779,7 +779,35 @@ button, a { user-select: none; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 180px; /* Prevent stretching on mobile */
+}
+
+.time-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-adj-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  width: 40px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.time-adj-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .time-picker-minimal input {
@@ -787,12 +815,20 @@ button, a { user-select: none; cursor: pointer; }
   width: 70px;
   font-weight: 700;
   font-size: 18px;
-  -moz-appearance: textfield; /* Remove arrows in Firefox */
+  margin: 0;
+  padding: 8px !important;
+  -moz-appearance: textfield;
+}
+
+.time-sep {
+  font-weight: 800;
+  font-size: 20px;
+  margin-top: 28px; /* Align with inputs */
 }
 
 .time-picker-minimal input::-webkit-outer-spin-button,
 .time-picker-minimal input::-webkit-inner-spin-button {
-  -webkit-appearance: none; /* Remove arrows in Chrome/Safari */
+  -webkit-appearance: none;
   margin: 0;
 }
 

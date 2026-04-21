@@ -2165,27 +2165,36 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                         />
                       ) : (
                         <div className="time-picker-minimal">
-                          <input
-                            type="number"
-                            min="0"
-                            max="23"
-                            placeholder="HH"
-                            value={String(newSchedule.hour).padStart(2, '0')}
-                            onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
-                            onWheel={(e) => e.target.blur()}
-                          />
-                          <span>:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="59"
-                            placeholder="MM"
-                            value={String(newSchedule.minute).padStart(2, '0')}
-                            onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
-                            onWheel={(e) => e.target.blur()}
-                          />
-                        </div>
-                      )}
+                          <div className="time-input-container">
+                            <button type="button" className="time-adj-btn" onClick={() => setNewSchedule(prev => ({...prev, hour: (prev.hour + 1) % 24}))}>▲</button>
+                            <input
+                              type="number"
+                              min="0"
+                              max="23"
+                              placeholder="HH"
+                              value={String(newSchedule.hour).padStart(2, '0')}
+                              onChange={(e) => setNewSchedule({...newSchedule, hour: parseInt(e.target.value) || 0})}
+                              onWheel={(e) => e.target.blur()}
+                            />
+                            <button type="button" className="time-adj-btn" onClick={() => setNewSchedule(prev => ({...prev, hour: (prev.hour - 1 + 24) % 24}))}>▼</button>
+                          </div>
+
+                          <span className="time-sep">:</span>
+
+                          <div className="time-input-container">
+                            <button type="button" className="time-adj-btn" onClick={() => setNewSchedule(prev => ({...prev, minute: (prev.minute + 1) % 60}))}>▲</button>
+                            <input
+                              type="number"
+                              min="0"
+                              max="59"
+                              placeholder="MM"
+                              value={String(newSchedule.minute).padStart(2, '0')}
+                              onChange={(e) => setNewSchedule({...newSchedule, minute: parseInt(e.target.value) || 0})}
+                              onWheel={(e) => e.target.blur()}
+                            />
+                            <button type="button" className="time-adj-btn" onClick={() => setNewSchedule(prev => ({...prev, minute: (prev.minute - 1 + 60) % 60}))}>▼</button>
+                          </div>
+                        </div>                      )}
                     </div>                    <div className="form-group full-width">
                       <label>Photo (Optional)</label>
                       <input
