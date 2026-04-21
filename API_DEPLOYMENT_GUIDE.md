@@ -9,7 +9,7 @@
 - **RAM:** 512 MB
 - **Disk:** 1 GB available space
 
-### Recommended Requirements
+### Recommended Requirements 
 - **PHP:** 8.1+
 - **MySQL:** 8.0+
 - **Web Server:** Apache with mod_rewrite OR Nginx
