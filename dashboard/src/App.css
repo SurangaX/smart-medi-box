@@ -789,38 +789,45 @@ button, a { user-select: none; cursor: pointer; }
 }
 
 .medicine-highlight-box {
-  background: rgba(59, 130, 246, 0.15);
-  border: 2px solid var(--primary);
-  border-radius: 12px;
-  padding: 15px;
-  margin: 15px 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%);
+  border: 3px solid var(--primary);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px 0;
   text-align: center;
   animation: pulse-soft 2s infinite;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
 
 .medicine-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--primary);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  opacity: 0.9;
 }
 
 .medicine-name-large {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 900;
   color: var(--text-primary);
   text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.2;
 }
 
 .medicine-notes-popup {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-style: italic;
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  border-left: 4px solid var(--warning);
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: left;
   line-height: 1.4;
 }
 

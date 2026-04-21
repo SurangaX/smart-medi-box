@@ -564,18 +564,30 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         // Map the backend notifications to the frontend format
-        const formattedNotifs = data.notifications.map(n => ({
-          id: n.id,
-          schedule_id: n.schedule_id,
-          message: n.message,
-          medicine_name: n.medicine_name,
-          description: n.description,
-          type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
-          rawType: n.type,
-          timestamp: n.created_at,
-          photo: n.photo,
-          read: false
-        }));
+        const formattedNotifs = data.notifications.map(n => {
+          let medName = n.medicine_name;
+          
+          // Fallback: If medicine_name is missing but it's an alarm, try to extract from message
+          if (!medName && n.message && n.type.startsWith('ALARM_')) {
+            const match = n.message.match(/It's time for your (.*?) , please check the box/i) || 
+                          n.message.match(/It's time for your meal: (.*)/i) ||
+                          n.message.match(/Time to check your blood sugar for (.*)/i);
+            if (match && match[1]) medName = match[1].trim();
+          }
+
+          return {
+            id: n.id,
+            schedule_id: n.schedule_id,
+            message: n.message,
+            medicine_name: medName,
+            description: n.description,
+            type: n.type.toLowerCase().includes('alarm') ? 'error' : 'info',
+            rawType: n.type,
+            timestamp: n.created_at,
+            photo: n.photo,
+            read: false
+          };
+        });
         
         // Merge with existing notifications, avoiding duplicates by ID
         setNotifications(prev => {
@@ -586,7 +598,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           // This prevents old history notifications from popping up when logging in
           const now = new Date();
           const medicineAlarm = newOnes.find(n => {
-            if (n.rawType !== 'ALARM_MEDICINE') return false;
+            if (!n.rawType.startsWith('ALARM_')) return false;
             const created = new Date(n.timestamp);
             const diffSeconds = (now - created) / 1000;
             return diffSeconds < 60; // Only if created in the last minute
