@@ -2534,7 +2534,10 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             
             {activeMedicineAlert.medicine_name && (
               <div className="medicine-highlight-box">
-                <div className="medicine-label">MEDICINE</div>
+                <div className="medicine-label">
+                  {activeMedicineAlert.rawType === 'ALARM_FOOD' ? 'Diet / Food' : 
+                   activeMedicineAlert.rawType === 'ALARM_BLOOD_CHECK' ? 'Measurement' : 'Medication'}
+                </div>
                 <div className="medicine-name-large">{activeMedicineAlert.medicine_name}</div>
                 {activeMedicineAlert.description && (
                   <div className="medicine-notes-popup">
@@ -2544,40 +2547,38 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
               </div>
             )}
             
-            <p className="urgent-message">{activeMedicineAlert.message}</p>
-            
             {activeMedicineAlert.photo && (
-              <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+              <div className="urgent-photo-wrapper">
                 <img 
                   src={activeMedicineAlert.photo} 
                   alt="Meds" 
-                  style={{ width: '120px', height: '120px', borderRadius: '15px', objectFit: 'cover', cursor: 'pointer', border: '2px solid var(--border)' }} 
+                  className="urgent-photo-img" 
                   onClick={() => setExpandedPhoto(activeMedicineAlert.photo)}
                 />
               </div>
             )}
 
             <p className="urgent-hint">Please take your medicine now and check the Smart Medi Box.</p>
-            <div className="modal-buttons">
+            <div className="modal-buttons" style={{ marginTop: '20px' }}>
               <button 
-                className="btn-success btn-large" 
-                style={{ flex: 2 }}
+                className="btn-success" 
+                style={{ flex: 1, padding: '14px', borderRadius: '12px' }}
                 disabled={isCompletingInModal || isSnoozingInModal}
                 onClick={() => handleCompleteSchedule(activeMedicineAlert.schedule_id, true)}
               >
                 {isCompletingInModal ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <div className="spinner-mini"></div> Processing...
-                  </div>
+                  <div className="spinner-mini" style={{ margin: '0 auto' }}></div>
                 ) : "OK, I'm Taking It"}
               </button>
               <button 
-                className="btn-secondary btn-large" 
-                style={{ flex: 1 }}
+                className="btn-secondary" 
+                style={{ flex: 1, padding: '14px', borderRadius: '12px' }}
                 disabled={isCompletingInModal || isSnoozingInModal}
                 onClick={() => handleSnoozeSchedule(activeMedicineAlert.schedule_id)}
               >
-                {isSnoozingInModal ? (
+                {isSnoozingInModal ? <div className="spinner-mini" style={{ margin: '0 auto' }}></div> : "Snooze 5m"}
+              </button>
+            </div>
                   <div className="spinner-mini"></div>
                 ) : "Snooze 5m"}
               </button>
