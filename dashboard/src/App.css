@@ -360,7 +360,7 @@ button, a { user-select: none; cursor: pointer; }
   color: var(--primary);
   text-decoration: none;
   font-weight: 600;
-  user-select: text;
+  user-select: none;
   cursor: pointer;
 }
 
