@@ -106,7 +106,7 @@ const ChatSection = ({ user, token }) => {
         </div>
         <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
           <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Users size={20} /></button>
+            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Menu size={20} /></button>
             {selectedContact ? (
               <>
                 <div className="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>{selectedContact.name?.[0]}</div>
