@@ -2109,20 +2109,23 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                 <div className="card-content">
                   {schedules.length > 0 ? (
                     <div className="schedule-list">
-                      {schedules.slice(0, 5).map((sched) => (
-                        <div key={sched.schedule_id} className="schedule-item">
-                          <div className="schedule-time">
-                            {String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}
-                          </div>
-                          <div className="schedule-details">
-                            <div className="schedule-type">{sched.type}</div>
-                            <div className="schedule-status">
-                              {sched.is_completed ? <CheckCircle2 size={16} /> : <Clock size={16} />}
-                              {sched.is_completed ? 'Completed' : 'Pending'}
+                      {schedules.slice(0, 5).map((sched) => {
+                        const isDone = sched.is_completed === true || sched.is_completed === 't' || sched.is_completed === 'true';
+                        return (
+                          <div key={sched.schedule_id} className="schedule-item">
+                            <div className="schedule-time">
+                              {String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}
+                            </div>
+                            <div className="schedule-details">
+                              <div className="schedule-type">{sched.medicine_name || sched.type}</div>
+                              <div className="schedule-status">
+                                {isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                                {isDone ? 'Completed' : 'Pending'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="placeholder">No schedules for today</p>
@@ -2784,10 +2787,13 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [unassigningId, setUnassigningId] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isAssigningId, setIsAssigningId] = useState(null);
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
     if (!query) { setSearchResults([]); return; }
+    setIsSearching(true);
     try {
       const response = await fetch(`${API_URL}/index.php/api/doctor/search-patients`, {
         method: 'POST',
@@ -2796,10 +2802,11 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') setSearchResults(data.patients || []);
-    } catch (err) { console.error('Search error:', err); }
+    } catch (err) { console.error('Search error:', err); } finally { setIsSearching(false); }
   };
 
   const assignPatientFromSearch = async (nic) => {
+    setIsAssigningId(nic);
     try {
       const response = await fetch(`${API_URL}/index.php/api/doctor/assign-patient`, {
         method: 'POST',
@@ -2816,7 +2823,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       } else {
         window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
       }
-    } catch (err) { console.error('Assignment error:', err); }
+    } catch (err) { console.error('Assignment error:', err); } finally { setIsAssigningId(null); }
   };
 
   const viewPatientSchedules = async (patient) => {
@@ -3183,25 +3190,37 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                   />
                 </div>
                 
-                {searchResults.length > 0 && (
-                  <div className="search-results-dropdown" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
-                    {searchResults.map(p => (
-                      <div key={p.id} className="search-result-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="avatar-mini" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                            {p.name?.[0]}
+                {isSearching ? (
+                  <LoadingSpinner />
+                ) : (
+                  <>
+                    {searchResults.length > 0 && (
+                      <div className="search-results-dropdown" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                        {searchResults.map(p => (
+                          <div key={p.id} className="search-result-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div className="avatar-mini" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                {p.name?.[0]}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 'bold' }}>{p.name}</div>
+                                <div style={{ fontSize: '12px', opacity: 0.6 }}>NIC: {p.nic}</div>
+                              </div>
+                            </div>
+                            <button 
+                              className="btn-secondary btn-sm" 
+                              onClick={() => assignPatientFromSearch(p.nic)}
+                              disabled={isAssigningId === p.nic}
+                            >
+                              {isAssigningId === p.nic ? 'Assigning...' : 'Assign'}
+                            </button>
                           </div>
-                          <div>
-                            <div style={{ fontWeight: 'bold' }}>{p.name}</div>
-                            <div style={{ fontSize: '12px', opacity: 0.6 }}>NIC: {p.nic}</div>
-                          </div>
-                        </div>
-                        <button className="btn-secondary btn-sm" onClick={() => assignPatientFromSearch(p.nic)}>Assign</button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    {searchQuery && searchResults.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5 }}>No patients found.</p>}
+                  </>
                 )}
-                {searchQuery && searchResults.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5 }}>No patients found.</p>}
               </div>
             )}
 
@@ -3233,14 +3252,14 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                       </div>
                       <button 
                         className="btn-link" 
-                        style={{ color: 'var(--danger)', padding: '4px', background: 'none', border: 'none', fontSize: '16px' }}
+                        style={{ color: 'var(--danger)', padding: '4px 8px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', fontSize: '11px', borderRadius: '4px' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           unassignPatient(p.id);
                         }}
-                        title="Unassign Patient"
+                        disabled={unassigningId === p.id}
                       >
-                        {unassigningId === p.id ? '...' : '✕'}
+                        {unassigningId === p.id ? '...' : 'Unassign'}
                       </button>
                     </div>
                   ))
