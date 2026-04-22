@@ -100,7 +100,9 @@ const ChatSection = ({ user, token }) => {
         <div className={`contacts-sidebar ${showSidebar ? 'show' : 'hide'}`}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, fontSize: '16px' }}>Messages</h3>
-            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>
+            {window.innerWidth <= 768 && (
+              <button className="mobile-only btn-icon" onClick={() => setShowSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>
+            )}
           </div>
           <div className="contacts-list" style={{ flex: 1, overflowY: 'auto' }}>
             {loadingContacts ? <LoadingSpinner /> : contacts.length === 0 ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No contacts yet.</p> : contacts.map(c => (
@@ -116,7 +118,9 @@ const ChatSection = ({ user, token }) => {
         </div>
         <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
           <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Menu size={20} /></button>
+            {window.innerWidth <= 768 && (
+              <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Menu size={20} /></button>
+            )}
             {selectedContact ? (
               <>
                 <div className="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>{selectedContact.name?.[0]}</div>
