@@ -23,6 +23,7 @@ const ChatSection = ({ user, token }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   useEffect(() => { fetchContacts(); }, []);
   useEffect(() => {
@@ -31,6 +32,8 @@ const ChatSection = ({ user, token }) => {
       setMessages([]);
       fetchMessages(true);
       interval = setInterval(() => fetchMessages(false), 5000);
+      // On mobile, hide sidebar when contact is selected
+      if (window.innerWidth <= 768) setShowSidebar(false);
     }
     return () => clearInterval(interval);
   }, [selectedContact]);
@@ -82,10 +85,13 @@ const ChatSection = ({ user, token }) => {
   };
 
   return (
-    <div className="chat-section card" style={{ height: '550px', display: 'flex', flexDirection: 'column' }}>
+    <div className="chat-section card" style={{ height: '600px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
       <div className="chat-container" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div className="contacts-sidebar" style={{ width: '240px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ padding: '16px', borderBottom: '1px solid var(--border)', margin: 0, fontSize: '16px' }}>Messages</h3>
+        <div className={`contacts-sidebar ${showSidebar ? 'show' : 'hide'}`}>
+          <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '16px' }}>Messages</h3>
+            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>
+          </div>
           <div className="contacts-list" style={{ flex: 1, overflowY: 'auto' }}>
             {loadingContacts ? <LoadingSpinner /> : contacts.length === 0 ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No contacts yet.</p> : contacts.map(c => (
               <div key={c.user_id} className={`contact-item ${selectedContact?.user_id === c.user_id ? 'active' : ''}`} onClick={() => setSelectedContact(c)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -99,15 +105,20 @@ const ChatSection = ({ user, token }) => {
           </div>
         </div>
         <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
-          {selectedContact ? (
-            <>
-              <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Users size={20} /></button>
+            {selectedContact ? (
+              <>
                 <div className="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>{selectedContact.name?.[0]}</div>
                 <div>
                   <strong style={{ display: 'block', fontSize: '14px' }}>{selectedContact.name}</strong>
                   <small style={{ fontSize: '10px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (selectedContact.specialty || selectedContact.specialization || 'Doctor')}</small>
                 </div>
-              </div>
+              </>
+            ) : <strong>Chat</strong>}
+          </div>
+          {selectedContact ? (
+            <>
               <div className="messages-display" style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {loadingMessages ? <LoadingSpinner /> : messages.length === 0 ? <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}><Bell size={48} /><p>Say hi!</p></div> : messages.map((m, idx) => (
                   <div key={idx} className={`message-bubble ${m.sender_id === (user.id || user.user_id) ? 'sent' : 'received'}`} style={{ alignSelf: m.sender_id === (user.id || user.user_id) ? 'flex-end' : 'flex-start', background: m.sender_id === (user.id || user.user_id) ? 'var(--primary)' : 'var(--surface)', color: m.sender_id === (user.id || user.user_id) ? 'white' : 'var(--text-primary)', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%', fontSize: '14px' }}>
@@ -1891,12 +1902,6 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
           🌡️ Temperature
         </button>
         <button
-          className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
-          📈 Stats
-        </button>
-        <button
           className={`tab-btn ${activeTab === 'articles' ? 'active' : ''}`}
           onClick={() => setActiveTab('articles')}
         >
@@ -2059,7 +2064,9 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         {activeTab === 'doctors' && (
           <div className="section">
             <h2>Your Doctors</h2>
-            {doctors.length === 0 ? (
+            {loading ? (
+              <LoadingSpinner />
+            ) : doctors.length === 0 ? (
               <p className="empty-state">No doctors assigned yet. Wait for a doctor to assign you.</p>
             ) : (
               <div className="doctors-list">

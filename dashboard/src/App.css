@@ -3012,16 +3012,59 @@ button, a { user-select: none; cursor: pointer; }
 
 .empty-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.4; }
 
-/* Mobile Header Stacked */
-.schedules-header-stacked {
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-  padding: 16px !important;
-  background: var(--surface);
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  margin-bottom: 20px;
+/* Sliding Chat Menu */
+.contacts-sidebar {
+  transition: transform 0.3s ease, width 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .contacts-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 280px;
+    background: var(--surface);
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  }
+  
+  .contacts-sidebar.hide {
+    transform: translateX(-100%);
+  }
+  
+  .contacts-sidebar.show {
+    transform: translateX(0);
+  }
+  
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
+.mobile-only {
+  display: none;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Ensure chat area doesn't shrink when sidebar is visible on desktop */
+.chat-container {
+  position: relative;
 }
 
 .header-row-1 h2 {
