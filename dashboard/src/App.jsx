@@ -2837,6 +2837,15 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [unassigningId, setUnassigningId] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isAssigningId, setIsAssigningId] = useState(null);
+  const [showPatientSidebar, setShowPatientSidebar] = useState(window.innerWidth > 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) setShowPatientSidebar(true);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
