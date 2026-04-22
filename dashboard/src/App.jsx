@@ -2369,10 +2369,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
             <div className="timeline-container">
               {schedulesLoading ? (
-                <div className="loading-container" style={{ padding: '40px' }}>
-                  <div className="spinner"></div>
-                  <p style={{ marginTop: '16px' }}>Fetching your schedule...</p>
-                </div>
+                <LoadingSpinner />
               ) : schedules.length > 0 ? (
                 <div className="minimal-timeline">
                   {schedules.map((sched, idx) => (
