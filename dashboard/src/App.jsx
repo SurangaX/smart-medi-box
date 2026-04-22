@@ -609,6 +609,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
   const [notifications, setNotifications] = useState([]);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [notifsLoading, setNotifsLoading] = useState(false);
+
   const headerRef = useRef(null);
   const notifPanelRef = useRef(null);
   const bellBtnRef = useRef(null);
@@ -2923,12 +2924,52 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   };
 
   // Local notification state for doctor dashboard
-  const [notificationsDoc, setNotificationsDoc] = useState([]);
-  const [notifPanelOpenDoc, setNotifPanelOpenDoc] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [notifsLoading, setNotifsLoading] = useState(false);
+
   const headerRefDoc = useRef(null);
   const notifPanelRefDoc = useRef(null);
   const bellBtnRefDoc = useRef(null);
   const [notifPanelStyleDoc, setNotifPanelStyleDoc] = useState({});
+
+  const fetchNotificationsDoc = async () => {
+    try {
+      setNotifsLoading(true);
+      const now = new Date();
+      const localTime = now.toISOString().slice(0, 16).replace('T', ' ');
+      
+      // Trigger due schedules (shared logic)
+      await fetch(`${API_URL}/index.php/api/schedule/trigger-due?now=${encodeURIComponent(localTime)}`);
+
+      // Fetch doctor's notifications
+      const response = await fetch(`${API_URL}/index.php/api/notifications/pending?user_id=${profile?.id || profile?.user_id}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        const formatted = (data.notifications || []).map(n => ({
+          id: n.id, message: n.message, type: 'info', timestamp: n.created_at, read: false
+        }));
+        setNotifications(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newOnes = formatted.filter(n => !existingIds.has(n.id));
+          return [...newOnes, ...prev];
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch doctor notifications:', err);
+    } finally {
+      setNotifsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotificationsDoc();
+    const interval = setInterval(fetchNotificationsDoc, 30000);
+    return () => clearInterval(interval);
+  }, [profile?.id, token]);
 
   const positionNotifPanelDoc = () => {
     try {
@@ -2944,7 +2985,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   };
 
   useEffect(() => {
-    if (!notifPanelOpenDoc) return;
+    if (!notifPanelOpen) return;
     positionNotifPanelDoc();
     const onScroll = () => positionNotifPanelDoc();
     const onResize = () => positionNotifPanelDoc();
@@ -2952,7 +2993,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       const tgt = e.target;
       if (notifPanelRefDoc.current && bellBtnRefDoc.current) {
         if (!notifPanelRefDoc.current.contains(tgt) && !bellBtnRefDoc.current.contains(tgt)) {
-          setNotifPanelOpenDoc(false);
+          setNotifPanelOpen(false);
         }
       }
     };
@@ -2964,11 +3005,11 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       window.removeEventListener('resize', onResize);
       document.removeEventListener('mousedown', onDocClick);
     };
-  }, [notifPanelOpenDoc]);
+  }, [notifPanelOpen]);
 
   const clearNotificationsDoc = () => {
-    setNotificationsDoc([]);
-    setNotifPanelOpenDoc(false);
+    setNotifications([]);
+    setNotifPanelOpen(false);
     window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
   };
 
@@ -3172,9 +3213,9 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
           <p>Specialization: {displaySpecialization} | Hospital: {displayHospital}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" ref={bellBtnRefDoc} onClick={() => setNotifPanelOpenDoc(!notifPanelOpenDoc)} title="Notifications">
+          <button className="btn-icon" ref={bellBtnRefDoc} onClick={() => setNotifPanelOpen(!notifPanelOpen)} title="Notifications">
             <Bell size={18} />
-            {notificationsDoc.filter(n => !n.read).length > 0 && <span className="notif-badge">{notificationsDoc.filter(n => !n.read).length}</span>}
+            {notifications.filter(n => !n.read).length > 0 && <span className="notif-badge">{notifications.filter(n => !n.read).length}</span>}
           </button>
           <button className="btn-secondary" onClick={handleLogoutClick}>
             <LogOut size={18} /> Logout
@@ -3182,7 +3223,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         </div>
       </div>
 
-      {notifPanelOpenDoc && (
+      {notifPanelOpen && (
         <div className="notif-panel" ref={notifPanelRefDoc} style={notifPanelStyleDoc}>
           <div className="notif-panel-header">
             <strong>Notifications</strong>
