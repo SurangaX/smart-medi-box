@@ -2437,15 +2437,33 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                   ))}
                 </div>
               ) : (
-                <div className="empty-timeline">
-                  <div className="empty-icon">📅</div>
-                  <p>Your schedule is clear for this date</p>
-                  <button className="btn-primary" style={{ marginTop: '8px' }} onClick={() => {
-                    setNewSchedule(prev => ({ ...prev, schedule_date: scheduleFilterDate }));
-                    setShowAddForm(true);
-                  }}>
-                    <Plus size={18} /> Add a reminder
-                  </button>
+                <div className="minimal-timeline">
+                  <div className="timeline-item">
+                    <div className="timeline-time">
+                      <span className="time-text">--:--</span>
+                      <div className="timeline-dot" style={{ background: 'var(--border)' }}></div>
+                    </div>
+                    <div className="timeline-card" style={{ borderStyle: 'dashed', opacity: 0.8 }}>
+                      <div className="card-icon">📅</div>
+                      <div className="card-info">
+                        <h4>No reminders set</h4>
+                        <p className="card-desc">Your schedule is clear for this date</p>
+                      </div>
+                      <div className="card-actions">
+                        <button 
+                          className="btn-action-done" 
+                          style={{ background: 'var(--primary)', color: 'white' }}
+                          title="Add new reminder"
+                          onClick={() => {
+                            setNewSchedule(prev => ({ ...prev, schedule_date: scheduleFilterDate }));
+                            setShowAddForm(true);
+                          }}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
