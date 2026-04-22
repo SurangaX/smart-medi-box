@@ -3271,31 +3271,37 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                       <div className="schedules-timeline">
                         {(() => {
                           const today = new Date().toISOString().split('T')[0];
-                          const filtered = patientSchedules.filter(s => showHistory ? true : (s.schedule_date >= today && !s.is_completed));
+                          const filtered = patientSchedules.filter(s => {
+                            const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                            return showHistory ? true : (!isDone && s.schedule_date >= today);
+                          });
 
                           if (filtered.length === 0) {
                             return <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No {showHistory ? 'history' : 'upcoming'} schedules found.</p>;
                           }
 
-                          return filtered.map(s => (
-                            <div key={s.id} style={{ 
-                              display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
-                              borderLeft: '4px solid ' + (s.is_completed ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
-                              background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
-                            }}>
-                              <div style={{ minWidth: '80px' }}>
-                                <div style={{ fontWeight: 'bold' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
-                                <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 'bold' }}>{s.medicine_name || s.type}</div>
-                                {s.description && <div style={{ fontSize: '13px', opacity: 0.8 }}>{s.description}</div>}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px', color: s.is_completed ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
-                                  {s.is_completed ? '✓ Completed' : (s.schedule_date < today ? '✕ Missed' : 'Upcoming')}
+                          return filtered.map(s => {
+                            const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                            return (
+                              <div key={s.id} style={{ 
+                                display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
+                                borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
+                                background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
+                              }}>
+                                <div style={{ minWidth: '80px' }}>
+                                  <div style={{ fontWeight: 'bold' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
+                                  <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 'bold' }}>{s.medicine_name || s.type}</div>
+                                  {s.description && <div style={{ fontSize: '13px', opacity: 0.8 }}>{s.description}</div>}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px', color: isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
+                                    {isDone ? '✓ Completed' : (s.schedule_date < today ? '✕ Missed' : 'Upcoming')}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ));
+                            );
+                          });
                         })()}
                       </div>
                     )}
