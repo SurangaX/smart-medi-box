@@ -177,8 +177,15 @@ switch ($module) {
         error_log("INDEX.PHP - Set GET[action] to: " . $action);
         require 'articles.php';
         break;
-    
-    case 'image':
+
+    case 'chat':
+        // Chat module
+        $_GET['action'] = 'chat/' . $action;
+        require 'doctor_patient_management.php';
+        break;
+
+    case 'schedule':
+
         // Image serving endpoint
         error_log("INDEX.PHP - Routing to IMAGE module, action: " . $action);
         require 'image.php';

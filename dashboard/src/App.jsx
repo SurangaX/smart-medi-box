@@ -8,6 +8,126 @@ import './App.css';
 
 const API_URL = 'https://smart-medi-box.onrender.com';
 
+// ==================== Components ====================
+const LoadingSpinner = ({ size = 24, color = 'var(--primary)' }) => (
+  <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+    <div className="spinner-mini" style={{ width: size, height: size, borderTopColor: color }}></div>
+  </div>
+);
+
+// ==================== Chat Section ====================
+const ChatSection = ({ user, token }) => {
+  const [contacts, setContacts] = useState([]);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  useEffect(() => { fetchContacts(); }, []);
+  useEffect(() => {
+    let interval;
+    if (selectedContact) {
+      setMessages([]);
+      fetchMessages(true);
+      interval = setInterval(() => fetchMessages(false), 5000);
+    }
+    return () => clearInterval(interval);
+  }, [selectedContact]);
+
+  const fetchContacts = async () => {
+    setLoadingContacts(true);
+    const action = user.role === 'DOCTOR' ? 'doctor/patients' : 'patient/doctors';
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        const list = user.role === 'DOCTOR' ? data.patients : data.doctors;
+        setContacts(list || []);
+      }
+    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(false); }
+  };
+
+  const fetchMessages = async (showSpinner = false) => {
+    if (!selectedContact) return;
+    if (showSpinner) setLoadingMessages(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/chat/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, other_user_id: selectedContact.user_id })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setMessages(data.messages || []);
+    } catch (err) { console.error('Error fetching messages:', err); } finally { if (showSpinner) setLoadingMessages(false); }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedContact) return;
+    const msg = newMessage;
+    setNewMessage('');
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/chat/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, receiver_id: selectedContact.user_id, message: msg })
+      });
+      if (response.ok) fetchMessages(false);
+    } catch (err) { console.error('Error sending message:', err); }
+  };
+
+  return (
+    <div className="chat-section card" style={{ height: '550px', display: 'flex', flexDirection: 'column' }}>
+      <div className="chat-container" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div className="contacts-sidebar" style={{ width: '240px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ padding: '16px', borderBottom: '1px solid var(--border)', margin: 0, fontSize: '16px' }}>Messages</h3>
+          <div className="contacts-list" style={{ flex: 1, overflowY: 'auto' }}>
+            {loadingContacts ? <LoadingSpinner /> : contacts.length === 0 ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No contacts yet.</p> : contacts.map(c => (
+              <div key={c.user_id} className={`contact-item ${selectedContact?.user_id === c.user_id ? 'active' : ''}`} onClick={() => setSelectedContact(c)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div className="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>{c.name?.[0]}</div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                  <div style={{ fontSize: '11px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (c.specialty || c.specialization || 'Doctor')}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+          {selectedContact ? (
+            <>
+              <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>{selectedContact.name?.[0]}</div>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '14px' }}>{selectedContact.name}</strong>
+                  <small style={{ fontSize: '10px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (selectedContact.specialty || selectedContact.specialization || 'Doctor')}</small>
+                </div>
+              </div>
+              <div className="messages-display" style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {loadingMessages ? <LoadingSpinner /> : messages.length === 0 ? <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}><Bell size={48} /><p>Say hi!</p></div> : messages.map((m, idx) => (
+                  <div key={idx} className={`message-bubble ${m.sender_id === (user.id || user.user_id) ? 'sent' : 'received'}`} style={{ alignSelf: m.sender_id === (user.id || user.user_id) ? 'flex-end' : 'flex-start', background: m.sender_id === (user.id || user.user_id) ? 'var(--primary)' : 'var(--surface)', color: m.sender_id === (user.id || user.user_id) ? 'white' : 'var(--text-primary)', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%', fontSize: '14px' }}>
+                    <div>{m.message}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7, textAlign: 'right', marginTop: '4px' }}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                ))}
+              </div>
+              <form className="chat-input" onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', background: 'var(--surface)' }}>
+                <input type="text" placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', fontSize: '14px' }} />
+                <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>Send</button>
+              </form>
+            </>
+          ) : <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}><Bell size={64} /><p>Select a contact to chat</p></div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Debug: Log API URL on startup
 if (typeof window !== 'undefined') {
   console.log('🌐 API URL:', API_URL);
@@ -449,6 +569,116 @@ const SignupScreen = ({ onSignupSuccess }) => {
           <div className="auth-footer">
             <p>Already have an account? <a href="#login" onClick={(e) => { e.preventDefault(); window.location.hash = '#login'; }}>Sign in</a></p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== Chat Section ====================
+const ChatSection = ({ user, token }) => {
+  const [contacts, setContacts] = useState([]);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  useEffect(() => { fetchContacts(); }, []);
+  useEffect(() => {
+    let interval;
+    if (selectedContact) {
+      setMessages([]);
+      fetchMessages(true);
+      interval = setInterval(() => fetchMessages(false), 5000);
+    }
+    return () => clearInterval(interval);
+  }, [selectedContact]);
+
+  const fetchContacts = async () => {
+    setLoadingContacts(true);
+    const action = user.role === 'DOCTOR' ? 'doctor/patients' : 'patient/doctors';
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        const list = user.role === 'DOCTOR' ? data.patients : data.doctors;
+        setContacts(list || []);
+      }
+    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(false); }
+  };
+
+  const fetchMessages = async (showSpinner = false) => {
+    if (!selectedContact) return;
+    if (showSpinner) setLoadingMessages(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/chat/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, other_user_id: selectedContact.user_id })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setMessages(data.messages || []);
+    } catch (err) { console.error('Error fetching messages:', err); } finally { if (showSpinner) setLoadingMessages(false); }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedContact) return;
+    const msg = newMessage;
+    setNewMessage('');
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/chat/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, receiver_id: selectedContact.user_id, message: msg })
+      });
+      if (response.ok) fetchMessages(false);
+    } catch (err) { console.error('Error sending message:', err); }
+  };
+
+  return (
+    <div className="chat-section card" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+      <div className="chat-container" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div className="contacts-sidebar" style={{ width: '260px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ padding: '16px', borderBottom: '1px solid var(--border)', margin: 0 }}>Messages</h3>
+          <div className="contacts-list" style={{ flex: 1, overflowY: 'auto' }}>
+            {loadingContacts ? <LoadingSpinner /> : contacts.length === 0 ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No contacts yet.</p> : contacts.map(c => (
+              <div key={c.user_id} className={`contact-item ${selectedContact?.user_id === c.user_id ? 'active' : ''}`} onClick={() => setSelectedContact(c)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div className="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{c.name?.[0]}</div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                  <div style={{ fontSize: '11px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (c.specialty || c.specialization || 'Doctor')}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+          {selectedContact ? (
+            <>
+              <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                <strong style={{ display: 'block' }}>{selectedContact.name}</strong>
+                <small style={{ fontSize: '11px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (selectedContact.specialty || selectedContact.specialization || 'Doctor')}</small>
+              </div>
+              <div className="messages-display" style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {loadingMessages ? <LoadingSpinner /> : messages.length === 0 ? <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}><Bell size={48} /><p>Say hi!</p></div> : messages.map((m, idx) => (
+                  <div key={idx} className={`message-bubble ${m.sender_id === (user.id || user.user_id) ? 'sent' : 'received'}`} style={{ alignSelf: m.sender_id === (user.id || user.user_id) ? 'flex-end' : 'flex-start', background: m.sender_id === (user.id || user.user_id) ? 'var(--primary)' : 'var(--surface)', color: m.sender_id === (user.id || user.user_id) ? 'white' : 'var(--text-primary)', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%' }}>
+                    <div>{m.message}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7, textAlign: 'right', marginTop: '4px' }}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                ))}
+              </div>
+              <form className="chat-input" onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', background: 'var(--surface)' }}>
+                <input type="text" placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)' }} />
+                <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>Send</button>
+              </form>
+            </>
+          ) : <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}><Bell size={64} /><p>Select a contact to chat</p></div>}
         </div>
       </div>
     </div>
@@ -1782,6 +2012,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
         >
           📰 Articles
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          💬 Chat
+        </button>
       </div>
 
       <div className="dashboard-content">
@@ -2045,12 +2281,12 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 
         {activeTab === 'schedules' && (
           <div className="section schedules-minimal">
-            <div className="section-header">
-              <div className="header-left">
+            <div className="section-header schedules-header-stacked">
+              <div className="header-row-1">
                 <h2>Medication Schedule</h2>
                 <p className="subtitle">Keep track of your daily health routines</p>
               </div>
-              <div className="header-actions">
+              <div className="header-row-2">
                 <input
                   type="date"
                   value={scheduleFilterDate}
@@ -2440,6 +2676,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             )}
           </div>
         )}
+        {activeTab === 'chat' && <ChatSection user={{ role: 'PATIENT', id: profile.id, user_id: profile.user_id }} token={token} />}
       </div>
 
       {/* Article Detail Modal */}
@@ -2650,6 +2887,83 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
   const [showDeleteArticleConfirm, setShowDeleteArticleConfirm] = useState(false);
   const [articleIdToDelete, setArticleIdToDelete] = useState(null);
   const [deletingArticleId, setDeletingArticleId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patientSchedules, setPatientSchedules] = useState([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [unassigningId, setUnassigningId] = useState(null);
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query) { setSearchResults([]); return; }
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/search-patients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, query })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setSearchResults(data.patients || []);
+    } catch (err) { console.error('Search error:', err); }
+  };
+
+  const assignPatientFromSearch = async (nic) => {
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/assign-patient`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_nic: nic, notes: 'Assigned via search' })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        setShowAssignForm(false);
+        setSearchQuery('');
+        setSearchResults([]);
+        fetchPatients();
+        window.appNotify({ message: 'Patient assigned successfully', type: 'success' });
+      } else {
+        window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
+      }
+    } catch (err) { console.error('Assignment error:', err); }
+  };
+
+  const viewPatientSchedules = async (patient) => {
+    setSelectedPatient(patient);
+    setSchedulesLoading(true);
+    setShowHistory(false);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/patient-schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_id: patient.id })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setPatientSchedules(data.schedules || []);
+    } catch (err) { console.error('Error fetching schedules:', err); } finally { setSchedulesLoading(false); }
+  };
+
+  const unassignPatient = async (patientId) => {
+    if (!window.confirm('Are you sure you want to unassign this patient?')) return;
+    setUnassigningId(patientId);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/unassign-patient`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_id: patientId })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'Patient unassigned successfully', type: 'success' });
+        setSelectedPatient(null);
+        fetchPatients();
+      } else {
+        window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
+      }
+    } catch (err) { console.error('Unassign error:', err); } finally { setUnassigningId(null); }
+  };
+
   // Local notification state for doctor dashboard
   const [notificationsDoc, setNotificationsDoc] = useState([]);
   const [notifPanelOpenDoc, setNotifPanelOpenDoc] = useState(false);
@@ -2948,63 +3262,162 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
         >
           📄 Articles
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          💬 Chat
+        </button>
       </div>
 
       <div className="dashboard-content">
         {activeTab === 'patients' && (
           <div className="section">
             <div className="section-header">
-              <h2>Assigned Patients</h2>
+              <h2>My Patients</h2>
               <button className="btn-primary" onClick={() => setShowAssignForm(!showAssignForm)}>
-                <Plus size={18} /> Assign Patient
+                <Plus size={18} /> {showAssignForm ? 'Close Search' : 'Assign New Patient'}
               </button>
             </div>
 
             {showAssignForm && (
-              <form onSubmit={handleAssignPatient} className="form-card">
-                <div className="form-group">
-                  <label>Patient NIC</label>
-                  <input
-                    type="text"
-                    value={assignPatient.patient_nic}
-                    onChange={(e) => setAssignPatient({ ...assignPatient, patient_nic: e.target.value })}
-                    placeholder="Enter patient NIC"
-                    required
+              <div className="card search-card" style={{ marginBottom: '20px', padding: '16px' }}>
+                <h3>Search Patient by Name or NIC</h3>
+                <div style={{ display: 'flex', gap: '8px', margin: '12px 0' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Search name or NIC..." 
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)' }}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Notes</label>
-                  <textarea
-                    value={assignPatient.notes}
-                    onChange={(e) => setAssignPatient({ ...assignPatient, notes: e.target.value })}
-                    placeholder="Add notes about this assignment"
-                  />
-                </div>
-                <div className="form-buttons">
-                  <button type="submit" className="btn-primary">Assign</button>
-                  <button type="button" className="btn-secondary" onClick={() => setShowAssignForm(false)}>Cancel</button>
-                </div>
-              </form>
-            )}
-
-            {patients.length === 0 ? (
-              <p className="empty-state">No patients assigned yet.</p>
-            ) : (
-              <div className="patients-list">
-                {patients.map(patient => (
-                  <div key={patient.id} className="patient-card">
-                    <div className="patient-header">
-                      <h3>{patient.name}</h3>
-                      <span className="age-badge">{patient.age} years</span>
-                    </div>
-                    <p>NIC: {patient.nic}</p>
-                    <p>Blood Type: {patient.blood_type}</p>
-                    <p>Phone: {patient.phone_number}</p>
-                    <p className="assigned-date">Assigned: {new Date(patient.assigned_at).toLocaleDateString()}</p>
+                
+                {searchResults.length > 0 && (
+                  <div className="search-results-dropdown" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                    {searchResults.map(p => (
+                      <div key={p.id} className="search-result-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="avatar-mini" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                            {p.name?.[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 'bold' }}>{p.name}</div>
+                            <div style={{ fontSize: '12px', opacity: 0.6 }}>NIC: {p.nic}</div>
+                          </div>
+                        </div>
+                        <button className="btn-secondary btn-sm" onClick={() => assignPatientFromSearch(p.nic)}>Assign</button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+                {searchQuery && searchResults.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5 }}>No patients found.</p>}
               </div>
             )}
+
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px' }}>
+              <div className="patients-list-sidebar card" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong>Assigned ({patients.length})</strong>
+                  {loading && <div className="spinner-mini"></div>}
+                </div>
+                {patients.length === 0 && !loading ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No patients assigned yet.</p> : (
+                  patients.map(p => (
+                    <div 
+                      key={p.id} 
+                      className={`patient-list-item ${selectedPatient?.id === p.id ? 'active' : ''}`}
+                      onClick={() => viewPatientSchedules(p)}
+                      style={{ 
+                        display: 'flex', gap: '12px', padding: '12px', cursor: 'pointer', 
+                        borderBottom: '1px solid var(--border)',
+                        background: selectedPatient?.id === p.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div className="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
+                        {p.name?.[0]}
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                        <div style={{ fontSize: '11px', opacity: 0.6 }}>{p.nic}</div>
+                      </div>
+                      <button 
+                        className="btn-link" 
+                        style={{ color: 'var(--danger)', padding: '4px', background: 'none', border: 'none', fontSize: '16px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unassignPatient(p.id);
+                        }}
+                        title="Unassign Patient"
+                      >
+                        {unassigningId === p.id ? '...' : '✕'}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="patient-detail-view card" style={{ padding: '20px', minHeight: '400px' }}>
+                {selectedPatient ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
+                      <div>
+                        <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>NIC: {selectedPatient.nic} | Phone: {selectedPatient.phone_number}</p>
+                      </div>
+                      <button 
+                        className="btn-secondary btn-sm" 
+                        onClick={() => setShowHistory(!showHistory)}
+                        style={{ height: 'fit-content' }}
+                      >
+                        {showHistory ? 'Hide History' : 'View History'}
+                      </button>
+                    </div>
+
+                    <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>{showHistory ? 'Full Schedule History' : 'Upcoming Schedules'}</h3>
+                    {schedulesLoading ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <div className="schedules-timeline">
+                        {(() => {
+                          const today = new Date().toISOString().split('T')[0];
+                          const filtered = patientSchedules.filter(s => showHistory ? true : (s.schedule_date >= today && !s.is_completed));
+
+                          if (filtered.length === 0) {
+                            return <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No {showHistory ? 'history' : 'upcoming'} schedules found.</p>;
+                          }
+
+                          return filtered.map(s => (
+                            <div key={s.id} style={{ 
+                              display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
+                              borderLeft: '4px solid ' + (s.is_completed ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
+                              background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
+                            }}>
+                              <div style={{ minWidth: '80px' }}>
+                                <div style={{ fontWeight: 'bold' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
+                                <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 'bold' }}>{s.medicine_name || s.type}</div>
+                                {s.description && <div style={{ fontSize: '13px', opacity: 0.8 }}>{s.description}</div>}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px', color: s.is_completed ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
+                                  {s.is_completed ? '✓ Completed' : (s.schedule_date < today ? '✕ Missed' : 'Upcoming')}
+                                </div>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.3 }}>
+                    <Users size={64} style={{ marginBottom: '16px' }} />
+                    <p>Select a patient to view details</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -3132,6 +3545,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             )}
           </div>
         )}
+        {activeTab === 'chat' && <ChatSection user={{ role: 'DOCTOR', id: profile.id, user_id: profile.user_id }} token={token} />}
       </div>
 
       {/* Delete Article Confirmation Modal */}
