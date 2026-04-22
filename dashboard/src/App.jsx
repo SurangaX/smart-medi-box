@@ -32,8 +32,10 @@ const ChatSection = ({ user, token }) => {
       setMessages([]);
       fetchMessages(true);
       interval = setInterval(() => fetchMessages(false), 5000);
-      // On mobile, hide sidebar when contact is selected
-      if (window.innerWidth <= 768) setShowSidebar(false);
+      // ONLY hide sidebar on mobile when contact is selected
+      if (window.innerWidth <= 768) {
+        setShowSidebar(false);
+      }
     }
     return () => clearInterval(interval);
   }, [selectedContact]);
