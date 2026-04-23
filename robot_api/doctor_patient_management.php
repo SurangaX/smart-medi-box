@@ -97,7 +97,8 @@ class DoctorPatientManager {
             $user_id = $auth['user_id'];
 
             $result = pg_query_params($this->db, "SELECT id FROM doctors WHERE user_id = $1", [$user_id]);
-            $doctor = pg_fetch_array($result);
+            $doctor = pg_fetch_assoc($result);
+            if (!$doctor) return ['status' => 'ERROR', 'message' => 'Doctor record not found'];
 
             $query = "SELECT p.*, pda.assigned_at, pda.notes, 
                       (SELECT COUNT(*) FROM messages WHERE sender_id = p.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count
@@ -122,7 +123,8 @@ class DoctorPatientManager {
             $user_id = $auth['user_id'];
 
             $result = pg_query_params($this->db, "SELECT id FROM patients WHERE user_id = $1", [$user_id]);
-            $patient = pg_fetch_array($result);
+            $patient = pg_fetch_assoc($result);
+            if (!$patient) return ['status' => 'ERROR', 'message' => 'Patient record not found'];
 
             $query = "SELECT d.*, pda.assigned_at, pda.notes, 
                       (SELECT COUNT(*) FROM messages WHERE sender_id = d.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count

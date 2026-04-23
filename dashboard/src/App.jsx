@@ -85,11 +85,14 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         body: JSON.stringify({ token })
       });
       const data = await response.json();
+      console.log('Contacts fetched:', data);
       if (data.status === 'SUCCESS') {
         const list = user.role === 'DOCTOR' ? data.patients : data.doctors;
         setContacts(list || []);
+      } else {
+        console.error('Failed to fetch contacts:', data.message);
       }
-    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(true); }
+    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(false); }
   };
 
   const fetchMessages = async (showSpinner = false) => {
