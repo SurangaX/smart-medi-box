@@ -432,7 +432,10 @@ const SignupScreen = ({ onSignupSuccess }) => {
 
       // Add role-specific fields
       if (role === 'PATIENT') {
-        // Patient doesn't need extra fields for basic signup
+        payload.blood_type = formData.blood_type;
+        payload.transplanted_organ = formData.transplanted_organ;
+        payload.transplantation_date = formData.transplantation_date;
+        payload.emergency_contact = formData.emergency_contact;
       } else if (role === 'DOCTOR') {
         payload.specialty = formData.specialization;  // Map specialization to specialty
         payload.license_number = formData.license_number;

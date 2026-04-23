@@ -184,7 +184,7 @@ function handleLogin($method) {
 
         try {
             if ($user['role'] === 'PATIENT') {
-                $pQuery = "SELECT nic, name, phone_number, blood_type, transplanted_organ FROM patients WHERE user_id = $1";
+                $pQuery = "SELECT nic, name, phone_number, blood_type, transplanted_organ, emergency_contact, gender, transplantation_date, date_of_birth FROM patients WHERE user_id = $1";
                 $pResult = pg_query_params($conn, $pQuery, [$user['id']]);
                 if ($pResult && pg_num_rows($pResult) > 0) {
                     $pRow = pg_fetch_assoc($pResult);
@@ -193,7 +193,11 @@ function handleLogin($method) {
                         'name' => $pRow['name'] ?? null,
                         'phone_number' => $pRow['phone_number'] ?? null,
                         'blood_type' => $pRow['blood_type'] ?? null,
-                        'transplanted_organ' => $pRow['transplanted_organ'] ?? null
+                        'transplanted_organ' => $pRow['transplanted_organ'] ?? null,
+                        'emergency_contact' => $pRow['emergency_contact'] ?? null,
+                        'gender' => $pRow['gender'] ?? null,
+                        'transplantation_date' => $pRow['transplantation_date'] ?? null,
+                        'date_of_birth' => $pRow['date_of_birth'] ?? null
                     ]);
                 }
             } else if ($user['role'] === 'DOCTOR') {
@@ -323,8 +327,8 @@ function handlePatientSignup($method) {
         $user_id = $row['id'];
 
         // Now insert into patients table linked to users
-        $pQuery = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type, phone_number, transplanted_organ, transplantation_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
-        $pResult = pg_query_params($conn, $pQuery, [$user_id, $nic, $name, $dob, $input['gender'] ?? null, $input['blood_type'] ?? null, $phone, $input['transplanted_organ'] ?? null, $input['transplantation_date'] ?? null]);
+        $pQuery = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type, phone_number, transplanted_organ, transplantation_date, emergency_contact) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
+        $pResult = pg_query_params($conn, $pQuery, [$user_id, $nic, $name, $dob, $input['gender'] ?? null, $input['blood_type'] ?? null, $phone, $input['transplanted_organ'] ?? null, $input['transplantation_date'] ?? null, $input['emergency_contact'] ?? null]);
         if (!$pResult) {
             $msg = pg_last_error($conn);
             error_log("PATIENT INSERT FAILED: $msg");

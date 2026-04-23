@@ -100,7 +100,7 @@ class DoctorPatientManager {
             $doctor = pg_fetch_assoc($result);
             if (!$doctor) return ['status' => 'ERROR', 'message' => 'Doctor record not found'];
 
-            $query = "SELECT p.*, u.email, pda.assigned_at, pda.notes, 
+            $query = "SELECT p.*, p.blood_type, p.transplanted_organ, p.emergency_contact, p.transplantation_date, u.email, pda.assigned_at, pda.notes, 
                       (SELECT COUNT(*) FROM messages WHERE sender_id = p.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count
                       FROM patients p 
                       JOIN users u ON p.user_id = u.id
@@ -149,12 +149,12 @@ class DoctorPatientManager {
             if ($auth['status'] !== 'SUCCESS') return $auth;
             
             if (empty($query)) {
-                $q = "SELECT p.id, p.user_id, p.nic, p.name, p.profile_photo, u.email 
+                $q = "SELECT p.*, u.email 
                       FROM patients p JOIN users u ON p.user_id = u.id 
                       ORDER BY p.name ASC LIMIT 50";
                 $result = pg_query($this->db, $q);
             } else {
-                $q = "SELECT p.id, p.user_id, p.nic, p.name, p.profile_photo, u.email 
+                $q = "SELECT p.*, u.email 
                       FROM patients p JOIN users u ON p.user_id = u.id 
                       WHERE p.name ILIKE $1 OR p.nic ILIKE $1 
                       ORDER BY p.name ASC LIMIT 50";
