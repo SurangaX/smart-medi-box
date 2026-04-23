@@ -1010,24 +1010,32 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
     };
   }, [notifPanelOpen]);
 
-  const clearNotifications = async () => {
+  const clearNotifications = async (type = null) => {
     try {
-      console.log('🧹 Clearing all notifications permanently...');
-      setNotifications([]);
-      setNotifPanelOpen(false);
-      
+      console.log(type ? `🧹 Clearing ${type} notifications...` : '🧹 Clearing all notifications permanently...');
+
+      if (type) {
+        setNotifications(prev => prev.filter(n => n.rawType !== type));
+      } else {
+        setNotifications([]);
+        setNotifPanelOpen(false);
+      }
+
       const response = await fetch(`${API_URL}/index.php/api/notifications/dismiss-all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: profile?.id || profile?.user_id })
+        body: JSON.stringify({ 
+          user_id: profile?.id || profile?.user_id,
+          type: type 
+        })
       });
-      
+
       if (response.ok) {
         const text = await response.text();
         if (text) {
           try {
             const data = JSON.parse(text);
-            if (data.status === 'SUCCESS') {
+            if (data.status === 'SUCCESS' && !type) {
               window.appNotify({ message: 'All notifications cleared permanently', type: 'info', toastOnly: true });
             }
           } catch (e) {
@@ -1039,7 +1047,6 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
       console.error('Failed to clear notifications:', err);
     }
   };
-
   const fetchDoctors = async () => {
     setLoading(true);
     try {
@@ -2056,8 +2063,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
             setActiveTab('chat');
             // Dismiss message notifications when opening chat
             if (notifications.some(n => n.rawType === 'NEW_MESSAGE')) {
-              if (typeof clearNotifications === 'function') clearNotifications();
-              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc();
+              if (typeof clearNotifications === 'function') clearNotifications('NEW_MESSAGE');
+              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc('NEW_MESSAGE');
             }
           }}
         >
@@ -3337,10 +3344,30 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
     };
   }, [notifPanelOpen]);
 
-  const clearNotificationsDoc = () => {
-    setNotifications([]);
-    setNotifPanelOpen(false);
-    window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
+  const clearNotificationsDoc = async (type = null) => {
+    try {
+      if (type) {
+        setNotifications(prev => prev.filter(n => n.rawType !== type));
+      } else {
+        setNotifications([]);
+        setNotifPanelOpen(false);
+      }
+
+      await fetch(`${API_URL}/index.php/api/notifications/dismiss-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: profile?.id || profile?.user_id,
+          type: type
+        })
+      });
+
+      if (!type) {
+        window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
+      }
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    }
   };
 
   const handleLogoutClick = () => {
@@ -3598,8 +3625,8 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
             setActiveTab('chat');
             // Dismiss message notifications when opening chat
             if (notifications.some(n => n.rawType === 'NEW_MESSAGE')) {
-              if (typeof clearNotifications === 'function') clearNotifications();
-              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc();
+              if (typeof clearNotifications === 'function') clearNotifications('NEW_MESSAGE');
+              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc('NEW_MESSAGE');
             }
           }}
         >

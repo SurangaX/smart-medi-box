@@ -234,20 +234,27 @@ function handleDismissAllNotifications($method) {
     
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $user_id = $input['user_id'] ?? null;
+    $type = $input['type'] ?? null;
     
     if (!$user_id) {
         return errorResponse(400, 'user_id required');
     }
     
     try {
-        $updateQuery = "UPDATE notifications SET is_dismissed = true, updated_at = NOW() 
-                       WHERE user_id = $1 AND is_dismissed = false";
-        pg_query_params($conn, $updateQuery, [$user_id]);
+        if ($type) {
+            $updateQuery = "UPDATE notifications SET is_dismissed = true, updated_at = NOW() 
+                           WHERE user_id = $1 AND type = $2 AND is_dismissed = false";
+            pg_query_params($conn, $updateQuery, [$user_id, $type]);
+        } else {
+            $updateQuery = "UPDATE notifications SET is_dismissed = true, updated_at = NOW() 
+                           WHERE user_id = $1 AND is_dismissed = false";
+            pg_query_params($conn, $updateQuery, [$user_id]);
+        }
         
         http_response_code(200);
         echo json_encode([
             'status' => 'SUCCESS',
-            'message' => 'All notifications dismissed'
+            'message' => $type ? "Notifications of type $type dismissed" : 'All notifications dismissed'
         ]);
         
     } catch (Exception $e) {
