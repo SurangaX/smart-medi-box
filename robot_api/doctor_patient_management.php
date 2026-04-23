@@ -94,38 +94,51 @@ class DoctorPatientManager {
         try {
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') return $auth;
-            
-            $result = pg_query_params($this->db, "SELECT id FROM doctors WHERE user_id = $1", [$auth['user_id']]);
+            $user_id = $auth['user_id'];
+
+            $result = pg_query_params($this->db, "SELECT id FROM doctors WHERE user_id = $1", [$user_id]);
             $doctor = pg_fetch_array($result);
-            
-            $query = "SELECT p.*, pda.assigned_at, pda.notes FROM patients p JOIN patient_doctor_assignments pda ON p.id = pda.patient_id WHERE pda.doctor_id = $1 AND pda.is_active = TRUE ORDER BY pda.assigned_at DESC";
-            $result = pg_query_params($this->db, $query, [$doctor['id']]);
+
+            $query = "SELECT p.*, pda.assigned_at, pda.notes, 
+                      (SELECT COUNT(*) FROM messages WHERE sender_id = p.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count
+                      FROM patients p JOIN patient_doctor_assignments pda ON p.id = pda.patient_id 
+                      WHERE pda.doctor_id = $1 AND pda.is_active = TRUE ORDER BY pda.assigned_at DESC";
+            $result = pg_query_params($this->db, $query, [$doctor['id'], $user_id]);
             $patients = [];
-            while ($row = pg_fetch_assoc($result)) $patients[] = $row;
+            while ($row = pg_fetch_assoc($result)) {
+                $row['unread_count'] = (int)$row['unread_count'];
+                $patients[] = $row;
+            }
             return ['status' => 'SUCCESS', 'patients' => $patients];
         } catch (Exception $e) {
             return ['status' => 'ERROR', 'message' => $e->getMessage()];
         }
     }
-    
+
     public function getPatientDoctors($token) {
         try {
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') return $auth;
-            
-            $result = pg_query_params($this->db, "SELECT id FROM patients WHERE user_id = $1", [$auth['user_id']]);
+            $user_id = $auth['user_id'];
+
+            $result = pg_query_params($this->db, "SELECT id FROM patients WHERE user_id = $1", [$user_id]);
             $patient = pg_fetch_array($result);
-            
-            $query = "SELECT d.*, pda.assigned_at, pda.notes FROM doctors d JOIN patient_doctor_assignments pda ON d.id = pda.doctor_id WHERE pda.patient_id = $1 AND pda.is_active = TRUE ORDER BY pda.assigned_at DESC";
-            $result = pg_query_params($this->db, $query, [$patient['id']]);
+
+            $query = "SELECT d.*, pda.assigned_at, pda.notes, 
+                      (SELECT COUNT(*) FROM messages WHERE sender_id = d.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count
+                      FROM doctors d JOIN patient_doctor_assignments pda ON d.id = pda.doctor_id 
+                      WHERE pda.patient_id = $1 AND pda.is_active = TRUE ORDER BY pda.assigned_at DESC";
+            $result = pg_query_params($this->db, $query, [$patient['id'], $user_id]);
             $doctors = [];
-            while ($row = pg_fetch_assoc($result)) $doctors[] = $row;
+            while ($row = pg_fetch_assoc($result)) {
+                $row['unread_count'] = (int)$row['unread_count'];
+                $doctors[] = $row;
+            }
             return ['status' => 'SUCCESS', 'doctors' => $doctors];
         } catch (Exception $e) {
             return ['status' => 'ERROR', 'message' => $e->getMessage()];
         }
     }
-
     public function searchPatients($token, $query = '') {
         try {
             $auth = $this->authenticateUser($token);

@@ -62,6 +62,11 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         setMessages([]);
         fetchMessages(true);
         lastContactIdRef.current = contactId;
+        
+        // Clear unread count locally when selecting contact
+        setContacts(prev => prev.map(c => 
+          (c.user_id === contactId || c.id === contactId) ? { ...c, unread_count: 0 } : c
+        ));
       }
       
       interval = setInterval(() => fetchMessages(false), 5000);
@@ -84,7 +89,7 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         const list = user.role === 'DOCTOR' ? data.patients : data.doctors;
         setContacts(list || []);
       }
-    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(false); }
+    } catch (err) { console.error('Error fetching contacts:', err); } finally { setLoadingContacts(true); }
   };
 
   const fetchMessages = async (showSpinner = false) => {
@@ -157,12 +162,36 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
           </div>
           <div className="contacts-list" style={{ flex: 1, overflowY: 'auto' }}>
             {loadingContacts ? <LoadingSpinner /> : contacts.length === 0 ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No contacts yet.</p> : contacts.map(c => (
-              <div key={c.user_id} className={`contact-item ${selectedContact?.user_id === c.user_id ? 'active' : ''}`} onClick={() => setSelectedContact(c)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div key={c.user_id} className={`contact-item ${selectedContact?.user_id === c.user_id ? 'active' : ''}`} onClick={() => setSelectedContact(c)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
                 <div className="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>{c.name?.[0]}</div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                <div style={{ overflow: 'hidden', flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {c.name}
+                    {c.unread_count > 0 && selectedContact?.user_id !== c.user_id && (
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        background: 'var(--danger)',
+                        borderRadius: '50%',
+                        display: 'inline-block',
+                        boxShadow: '0 0 5px rgba(239, 68, 68, 0.5)'
+                      }}></span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '11px', opacity: 0.6 }}>{user.role === 'DOCTOR' ? 'Patient' : (c.specialty || c.specialization || 'Doctor')}</div>
                 </div>
+                {c.unread_count > 0 && selectedContact?.user_id !== c.user_id && (
+                  <div style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 'bold'
+                  }}>
+                    {c.unread_count}
+                  </div>
+                )}
               </div>
             ))}
           </div>
