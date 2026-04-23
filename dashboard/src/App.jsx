@@ -3961,8 +3961,8 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
       {/* Unassign Confirmation Modal */}
       {showUnassignConfirm && (
-        <div className="modal-overlay" onClick={() => setShowUnassignConfirm(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+        <div className="unassign-confirm-overlay" onClick={() => setShowUnassignConfirm(false)}>
+          <div className="unassign-confirm-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div style={{ textAlign: 'center', padding: '10px' }}>
               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}>
                 <AlertCircle size={32} />
