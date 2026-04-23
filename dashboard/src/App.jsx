@@ -2051,9 +2051,30 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
         </button>
         <button
           className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
+          style={{ position: 'relative' }}
+          onClick={() => {
+            setActiveTab('chat');
+            // Dismiss message notifications when opening chat
+            if (notifications.some(n => n.rawType === 'NEW_MESSAGE')) {
+              if (typeof clearNotifications === 'function') clearNotifications();
+              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc();
+            }
+          }}
         >
           💬 Chat
+          {notifications.some(n => n.rawType === 'NEW_MESSAGE') && activeTab !== 'chat' && (
+            <span style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              width: '10px',
+              height: '10px',
+              background: 'var(--danger)',
+              borderRadius: '50%',
+              border: '2px solid var(--surface)',
+              boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+            }}></span>
+          )}
         </button>
       </div>
 
@@ -3243,7 +3264,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         const formatted = (data.notifications || []).map(n => ({
-          id: n.id, message: n.message, type: 'info', timestamp: n.created_at, read: false
+          id: n.id, message: n.message, type: 'info', rawType: n.type, timestamp: n.created_at, read: false
         }));
         setNotifications(prev => {
           const existingIds = new Set(prev.map(p => p.id));
@@ -3572,9 +3593,30 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         </button>
         <button
           className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
+          style={{ position: 'relative' }}
+          onClick={() => {
+            setActiveTab('chat');
+            // Dismiss message notifications when opening chat
+            if (notifications.some(n => n.rawType === 'NEW_MESSAGE')) {
+              if (typeof clearNotifications === 'function') clearNotifications();
+              else if (typeof clearNotificationsDoc === 'function') clearNotificationsDoc();
+            }
+          }}
         >
           💬 Chat
+          {notifications.some(n => n.rawType === 'NEW_MESSAGE') && activeTab !== 'chat' && (
+            <span style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              width: '10px',
+              height: '10px',
+              background: 'var(--danger)',
+              borderRadius: '50%',
+              border: '2px solid var(--surface)',
+              boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+            }}></span>
+          )}
         </button>
       </div>
 
