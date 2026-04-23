@@ -3136,3 +3136,102 @@ button, a { user-select: none; cursor: pointer; }
   border: none !important;
   white-space: nowrap;
 }
+
+/* ==================== Patient Detail View & Reports ==================== */
+.detail-tabs {
+  margin-bottom: 20px;
+}
+
+.tab-btn-sm {
+  padding: 6px 12px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.tab-btn-sm:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.tab-btn-sm.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.patient-list-item.active {
+  border-left: 4px solid var(--primary);
+}
+
+.report-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: var(--primary);
+}
+
+.patients-list-sidebar {
+  transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .patients-list-sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 280px;
+    transform: translateX(-100%);
+  }
+  
+  .patients-list-sidebar.show {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  }
+}
+
+.spinner-mini {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.info-item label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.info-item strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.icon-circle {
+  transition: transform 0.2s;
+}
+
+.report-card:hover .icon-circle {
+  transform: scale(1.1);
+}
+

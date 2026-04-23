@@ -207,6 +207,66 @@ class DoctorPatientManager {
             return ['status' => 'SUCCESS', 'message' => 'Unpaired'];
         } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
     }
+
+    public function uploadReport($token, $patient_id, $title, $notes) {
+        try {
+            $auth = $this->authenticateUser($token);
+            if ($auth['status'] !== 'SUCCESS') return $auth;
+            $doctor_id = $auth['user_id'];
+
+            // Handle file upload
+            $file_data = null;
+            $file_mime = null;
+            $file_name = null;
+
+            if (isset($_FILES['report_file']) && is_uploaded_file($_FILES['report_file']['tmp_name'])) {
+                $fileTmp = $_FILES['report_file']['tmp_name'];
+                $file_name = $_FILES['report_file']['name'];
+                $file_mime = $_FILES['report_file']['type'];
+                $file_data = file_get_contents($fileTmp);
+            }
+
+            if (!$file_data) return ['status' => 'ERROR', 'message' => 'No file uploaded'];
+
+            $query = "INSERT INTO patient_reports (patient_id, doctor_id, title, notes, file_data, file_mime, file_name) 
+                      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id";
+            $result = pg_query_params($this->db, $query, [$patient_id, $doctor_id, $title, $notes, pg_escape_bytea($file_data), $file_mime, $file_name]);
+            
+            if (!$result) throw new Exception(pg_last_error($this->db));
+
+            // Add notification for patient
+            $notif_msg = "Your doctor has uploaded a new medical report: " . $title;
+            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$patient_id, 'NEW_REPORT', $notif_msg]);
+
+            return ['status' => 'SUCCESS', 'message' => 'Report uploaded successfully'];
+        } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
+    }
+
+    public function getPatientReports($token, $patient_id = null) {
+        try {
+            $auth = $this->authenticateUser($token);
+            if ($auth['status'] !== 'SUCCESS') return $auth;
+            $user_id = $auth['user_id'];
+
+            // If patient_id is provided, check if the doctor is assigned to this patient
+            if ($patient_id) {
+                $check = pg_query_params($this->db, "SELECT 1 FROM doctor_patient_map WHERE doctor_id = $1 AND patient_id = $2", [$user_id, $patient_id]);
+                if (!$check || pg_num_rows($check) === 0) return ['status' => 'ERROR', 'message' => 'Unauthorized access to patient reports'];
+                $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
+                $result = pg_query_params($this->db, $query, [$patient_id]);
+            } else {
+                // For patient calling their own reports
+                $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
+                $result = pg_query_params($this->db, $query, [$user_id]);
+            }
+
+            $reports = [];
+            if ($result) {
+                while ($row = pg_fetch_assoc($result)) $reports[] = $row;
+            }
+            return ['status' => 'SUCCESS', 'reports' => $reports];
+        } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
+    }
 }
 
 class ChatManager {
@@ -294,6 +354,18 @@ try {
             case 'patient/devices': echo json_encode($dpm->getPatientDevices($input['token'] ?? '')); break;
             case 'patient/unpair-device': echo json_encode($dpm->unpairDevice($input['token'] ?? '', $input['device_id'] ?? '')); break;
             case 'article/create': echo json_encode($am->createArticle($input['token'] ?? '', $input['title'] ?? '', $input['content'] ?? '', $input['summary'] ?? '', $input['category'] ?? '')); break;
+            
+            case 'doctor/upload-report':
+                // Handle multipart form data
+                $token = $_POST['token'] ?? '';
+                $patient_id = $_POST['patient_id'] ?? '';
+                $title = $_POST['title'] ?? '';
+                $notes = $_POST['notes'] ?? '';
+                echo json_encode($dpm->uploadReport($token, $patient_id, $title, $notes));
+                break;
+            case 'doctor/patient-reports': echo json_encode($dpm->getPatientReports($input['token'] ?? '', $input['patient_id'] ?? '')); break;
+            case 'patient/my-reports': echo json_encode($dpm->getPatientReports($input['token'] ?? '')); break;
+
             default: http_response_code(404); echo json_encode(['status' => 'ERROR', 'message' => 'Unknown action: ' . $action]);
         }
     } else if ($method === 'GET') {

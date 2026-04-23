@@ -184,11 +184,16 @@ switch ($module) {
         require 'doctor_patient_management.php';
         break;
 
-    case 'schedule':
-
+    case 'image':
         // Image serving endpoint
         error_log("INDEX.PHP - Routing to IMAGE module, action: " . $action);
         require 'image.php';
+        break;
+    
+    case 'report':
+        // Report serving endpoint
+        error_log("INDEX.PHP - Routing to REPORT module, action: " . $action);
+        require 'report.php';
         break;
     
     case 'docs':

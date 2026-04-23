@@ -657,7 +657,23 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
   const articleCacheRef = useRef({});
   const [isArticleLoading, setIsArticleLoading] = useState(false);
   const [articlesLoading, setArticlesLoading] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const qrScannerRef = useRef(null);
+
+  const fetchReports = async () => {
+    setReportsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/patient/my-reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setReports(data.reports || []);
+    } catch (err) { console.error('Error fetching reports:', err); } finally { setReportsLoading(false); }
+  };
+
   const qrInstanceRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -779,6 +795,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
       fetchStats();
     } else if (activeTab === 'articles') {
       fetchArticles();
+    } else if (activeTab === 'reports') {
+      fetchReports();
     }
   }, [activeTab]);
 
@@ -1916,6 +1934,12 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
           📰 Articles
         </button>
         <button
+          className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
+          onClick={() => setActiveTab('reports')}
+        >
+          📋 My Reports
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
           onClick={() => setActiveTab('chat')}
         >
@@ -2619,6 +2643,45 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
             )}
           </div>
         )}
+        {activeTab === 'reports' && (
+          <div className="section">
+            <h2 style={{ marginBottom: '20px' }}>📋 My Medical Reports</h2>
+            {reportsLoading ? <LoadingSpinner /> : (
+              <div className="reports-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                {reports.length === 0 ? <p className="empty-state">No reports uploaded by your doctors yet.</p> : (
+                  reports.map(r => (
+                    <div key={r.id} className="report-card card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div className="icon-circle" style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <FileText size={20} />
+                        </div>
+                        <span style={{ fontSize: '11px', opacity: 0.5 }}>{new Date(r.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{r.title}</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>{r.file_name}</p>
+                      </div>
+                      {r.notes && (
+                        <div style={{ padding: '10px', background: 'var(--background)', borderRadius: '6px', fontSize: '13px', borderLeft: '3px solid var(--primary)' }}>
+                          {r.notes}
+                        </div>
+                      )}
+                      <a 
+                        href={`${API_URL}/index.php/api/report/download/${r.id}`} 
+                        className="btn-primary" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none', textAlign: 'center', marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      >
+                        <FileText size={18} /> Download Report
+                      </a>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {activeTab === 'chat' && <ChatSection user={{ role: 'PATIENT', id: profile.id, user_id: profile.user_id }} token={token} isMobile={isMobile} />}
       </div>
 
@@ -2840,6 +2903,12 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAssigningId, setIsAssigningId] = useState(null);
   const [showPatientSidebar, setShowPatientSidebar] = useState(window.innerWidth > 768);
+  const [assignedSearchQuery, setAssignedSearchQuery] = useState('');
+  const [patientDetailTab, setPatientDetailTab] = useState('schedules'); // 'details', 'schedules', 'reports'
+  const [patientReports, setPatientReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [newReport, setNewReport] = useState({ title: '', notes: '', file: null });
 
   useEffect(() => {
     const handleResize = () => {
@@ -2885,10 +2954,57 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
     } catch (err) { console.error('Assignment error:', err); } finally { setIsAssigningId(null); }
   };
 
+  const fetchPatientReports = async (patientId) => {
+    setReportsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/patient-reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_id: patientId })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setPatientReports(data.reports || []);
+    } catch (err) { console.error('Error fetching reports:', err); } finally { setReportsLoading(false); }
+  };
+
+  const handleUploadReport = async (e) => {
+    e.preventDefault();
+    if (!newReport.file || !newReport.title) {
+        window.appNotify({ message: 'Title and File are required', type: 'error' });
+        return;
+    }
+    setUploadingReport(true);
+    try {
+      const form = new FormData();
+      form.append('token', token);
+      form.append('patient_id', selectedPatient.id);
+      form.append('title', newReport.title);
+      form.append('notes', newReport.notes);
+      form.append('report_file', newReport.file);
+
+      const response = await fetch(`${API_URL}/index.php/api/doctor/upload-report`, {
+        method: 'POST',
+        body: form
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'Report uploaded successfully', type: 'success' });
+        setNewReport({ title: '', notes: '', file: null });
+        // Clear file input manually
+        const fileInput = document.getElementById('report-file-input');
+        if (fileInput) fileInput.value = '';
+        fetchPatientReports(selectedPatient.id);
+      } else {
+        window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
+      }
+    } catch (err) { console.error('Upload error:', err); } finally { setUploadingReport(false); }
+  };
+
   const viewPatientSchedules = async (patient) => {
     setSelectedPatient(patient);
     setSchedulesLoading(true);
     setShowHistory(false);
+    setPatientDetailTab('schedules'); // Reset to schedules tab when patient changes
     // On mobile, hide sidebar when patient is selected
     if (isMobile) setShowPatientSidebar(false);
     try {
@@ -2899,6 +3015,9 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') setPatientSchedules(data.schedules || []);
+      
+      // Also pre-fetch reports
+      fetchPatientReports(patient.id);
     } catch (err) { console.error('Error fetching schedules:', err); } finally { setSchedulesLoading(false); }
   };
 
@@ -3348,7 +3467,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
             )}
 
             <div className="grid-2" style={{ display: 'flex', gap: '20px', height: '600px', overflow: 'hidden' }}>
-              <div className={`patients-list-sidebar card ${showPatientSidebar ? 'show' : 'hide'}`} style={{ width: '280px', flexShrink: 0, overflowY: 'auto' }}>
+              <div className={`patients-list-sidebar card ${showPatientSidebar ? 'show' : 'hide'}`} style={{ width: '280px', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <strong>Assigned ({patients.length})</strong>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -3356,118 +3475,238 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                     {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>}
                   </div>
                 </div>
-                {patients.length === 0 && !loading ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No patients assigned yet.</p> : (
-                  patients.map(p => (
-                    <div 
-                      key={p.id} 
-                      className={`patient-list-item ${selectedPatient?.id === p.id ? 'active' : ''}`}
-                      onClick={() => viewPatientSchedules(p)}
-                      style={{ 
-                        display: 'flex', gap: '12px', padding: '12px', cursor: 'pointer', 
-                        borderBottom: '1px solid var(--border)',
-                        background: selectedPatient?.id === p.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <div className="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
-                        {p.name?.[0]}
-                      </div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                        <div style={{ fontSize: '11px', opacity: 0.6 }}>{p.nic}</div>
-                      </div>
-                      <button 
-                        className="btn-danger btn-sm" 
-                        style={{ padding: '4px 8px', fontSize: '10px', height: '24px' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          unassignPatient(p.id);
-                        }}
-                        disabled={unassigningId === p.id}
-                      >
-                        {unassigningId === p.id ? '...' : 'Unassign'}
-                      </button>
-                    </div>
-                  ))
-                )}
+                
+                {/* Searchable Patient List Input */}
+                <div style={{ padding: '10px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Search assigned..." 
+                      value={assignedSearchQuery}
+                      onChange={(e) => setAssignedSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '8px 32px 8px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)' }}
+                    />
+                    <Eye size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }} />
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {patients.length === 0 && !loading ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No patients assigned yet.</p> : (
+                    patients
+                      .filter(p => 
+                        p.name?.toLowerCase().includes(assignedSearchQuery.toLowerCase()) || 
+                        p.nic?.toLowerCase().includes(assignedSearchQuery.toLowerCase())
+                      )
+                      .map(p => (
+                        <div 
+                          key={p.id} 
+                          className={`patient-list-item ${selectedPatient?.id === p.id ? 'active' : ''}`}
+                          onClick={() => viewPatientSchedules(p)}
+                          style={{ 
+                            display: 'flex', gap: '12px', padding: '12px', cursor: 'pointer', 
+                            borderBottom: '1px solid var(--border)',
+                            background: selectedPatient?.id === p.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div className="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
+                            {p.name?.[0]}
+                          </div>
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.6 }}>{p.nic}</div>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
               </div>
 
-              <div className="patient-detail-view card" style={{ flex: 1, padding: '20px', minHeight: '400px', overflowY: 'auto' }}>
+              <div className="patient-detail-view card" style={{ flex: 1, padding: '20px', minHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                 {selectedPatient ? (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(true)} style={{ padding: '4px' }}><Menu size={20} /></button>}
                         <div>
                           <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
-                          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>NIC: {selectedPatient.nic} | Phone: {selectedPatient.phone_number}</p>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>NIC: {selectedPatient.nic}</p>
                         </div>
                       </div>
                       <button 
-                        className="btn-secondary btn-sm" 
-                        onClick={() => setShowHistory(!showHistory)}
-                        style={{ height: 'fit-content' }}
+                        className="btn-danger btn-sm" 
+                        onClick={() => unassignPatient(selectedPatient.id)}
+                        disabled={unassigningId === selectedPatient.id}
                       >
-                        {showHistory ? 'Hide History' : 'View History'}
+                        {unassigningId === selectedPatient.id ? 'Unassigning...' : 'Unassign Patient'}
                       </button>
                     </div>
 
-                    <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>{showHistory ? 'Full Schedule History' : 'Upcoming Schedules'}</h3>
-                    {schedulesLoading ? (
-                      <LoadingSpinner />
-                    ) : (
-                      <div className="schedules-timeline">
-                        {(() => {
-                          const today = new Date().toISOString().split('T')[0];
-                          const filtered = (patientSchedules || []).filter(s => {
-                            const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
-                            return showHistory ? true : (!isDone && s.schedule_date >= today);
-                          });
+                    {/* Sub-tabs for Patient Detail */}
+                    <div className="detail-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                      <button 
+                        className={`tab-btn-sm ${patientDetailTab === 'schedules' ? 'active' : ''}`}
+                        onClick={() => setPatientDetailTab('schedules')}
+                      >
+                        📅 View History
+                      </button>
+                      <button 
+                        className={`tab-btn-sm ${patientDetailTab === 'details' ? 'active' : ''}`}
+                        onClick={() => setPatientDetailTab('details')}
+                      >
+                        👤 View Details
+                      </button>
+                      <button 
+                        className={`tab-btn-sm ${patientDetailTab === 'reports' ? 'active' : ''}`}
+                        onClick={() => setPatientDetailTab('reports')}
+                      >
+                        📋 Patient Report
+                      </button>
+                    </div>
 
-                          if (filtered.length === 0) {
-                            return <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No {showHistory ? 'history' : 'upcoming'} schedules found.</p>;
-                          }
+                    <div style={{ flex: 1 }}>
+                      {patientDetailTab === 'schedules' && (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h3 style={{ fontSize: '15px', margin: 0 }}>{showHistory ? 'Full Schedule History' : 'Upcoming Schedules'}</h3>
+                            <button className="btn-link" style={{ fontSize: '13px' }} onClick={() => setShowHistory(!showHistory)}>
+                              {showHistory ? 'Show Upcoming Only' : 'Show Full History'}
+                            </button>
+                          </div>
+                          {schedulesLoading ? <LoadingSpinner /> : (
+                            <div className="schedules-timeline">
+                              {(() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const filtered = (patientSchedules || []).filter(s => {
+                                  const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                                  return showHistory ? true : (!isDone && s.schedule_date >= today);
+                                });
 
-                          return filtered.map(s => {
-                            const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
-                            return (
-                              <div key={s.id} style={{ 
-                                display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
-                                borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
-                                background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
-                              }}>
-                                <div style={{ minWidth: '80px' }}>
-                                  <div style={{ fontWeight: 'bold' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
-                                  <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div>
-                                      <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ fontSize: '18px' }}>
-                                          {s.type === 'MEDICINE' ? '💊' : s.type === 'FOOD' ? '🍽️' : '🩸'}
-                                        </span>
-                                        {s.medicine_name || s.type}
+                                if (filtered.length === 0) return <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No schedules found.</p>;
+
+                                return filtered.map(s => {
+                                  const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                                  return (
+                                    <div key={s.id} style={{ 
+                                      display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
+                                      borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
+                                      background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
+                                    }}>
+                                      <div style={{ minWidth: '70px' }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
+                                        <div style={{ fontSize: '10px', opacity: 0.6 }}>{s.schedule_date}</div>
                                       </div>
-                                      <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.6, marginTop: '2px' }}>{s.type}</div>
+                                      <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{s.medicine_name || s.type}</div>
+                                        {s.description && <div style={{ fontSize: '12px', opacity: 0.7 }}>{s.description}</div>}
+                                      </div>
                                     </div>
-                                  </div>
-                                  {s.description && <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>{s.description}</div>}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontSize: '12px', color: isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
-                                    {isDone ? '✓ Completed' : (s.schedule_date < today ? '✕ Missed' : 'Upcoming')}
-                                  </div>
-                                </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {patientDetailTab === 'details' && (
+                        <div className="patient-basic-info">
+                          <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Full Name</label>
+                              <strong>{selectedPatient.name}</strong>
+                            </div>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>NIC Number</label>
+                              <strong>{selectedPatient.nic}</strong>
+                            </div>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Phone Number</label>
+                              <strong>{selectedPatient.phone_number}</strong>
+                            </div>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Email Address</label>
+                              <strong>{selectedPatient.email}</strong>
+                            </div>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Date of Birth</label>
+                              <strong>{selectedPatient.date_of_birth || 'Not provided'}</strong>
+                            </div>
+                            <div className="info-item">
+                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Blood Type</label>
+                              <strong>{selectedPatient.blood_type || 'Unknown'}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {patientDetailTab === 'reports' && (
+                        <div className="patient-reports-section">
+                          <div className="upload-report-form card" style={{ padding: '16px', marginBottom: '20px', background: 'rgba(59, 130, 246, 0.03)' }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>Upload New Medical Report</h4>
+                            <form onSubmit={handleUploadReport}>
+                              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <input 
+                                  type="text" 
+                                  placeholder="Report Title (e.g. Lab Results)" 
+                                  value={newReport.title}
+                                  onChange={(e) => setNewReport({...newReport, title: e.target.value})}
+                                  style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                  required
+                                />
+                                <input 
+                                  id="report-file-input"
+                                  type="file" 
+                                  onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
+                                  style={{ flex: 1, fontSize: '12px' }}
+                                  required
+                                />
                               </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    )}
+                              <textarea 
+                                placeholder="Add notes or observations..." 
+                                value={newReport.notes}
+                                onChange={(e) => setNewReport({...newReport, notes: e.target.value})}
+                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', minHeight: '60px', marginBottom: '10px' }}
+                              />
+                              <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%' }}>
+                                {uploadingReport ? 'Uploading...' : 'Upload Report'}
+                              </button>
+                            </form>
+                          </div>
+
+                          <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Previous Reports</h4>
+                          {reportsLoading ? <LoadingSpinner /> : (
+                            <div className="reports-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {patientReports.length === 0 ? <p style={{ textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No reports uploaded yet.</p> : (
+                                patientReports.map(r => (
+                                  <div key={r.id} className="report-card" style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{r.title}</div>
+                                      <div style={{ fontSize: '11px', opacity: 0.6 }}>{new Date(r.created_at).toLocaleDateString()} • {r.file_name}</div>
+                                      {r.notes && <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>{r.notes}</div>}
+                                    </div>
+                                    <a 
+                                      href={`${API_URL}/index.php/api/report/download/${r.id}`} 
+                                      className="btn-secondary btn-sm"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                      <FileText size={14} /> Download
+                                    </a>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.3 }}>
                     <Users size={64} style={{ marginBottom: '16px' }} />
-                    <p>Select a patient to view details</p>
+                    <p>Select a patient to manage details, history, and reports</p>
                   </div>
                 )}
               </div>
