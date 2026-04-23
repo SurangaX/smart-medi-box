@@ -2886,7 +2886,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [newArticle, setNewArticle] = useState({ title: '', content: '', cover_image: '', cover_image_data_url: null, cover_image_base64: null, cover_image_mime: null, cover_image_filename: null });
   const [assignPatient, setAssignPatient] = useState({ patient_nic: '', notes: '' });
   const [showAssignForm, setShowAssignForm] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [creatingArticle, setCreatingArticle] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
