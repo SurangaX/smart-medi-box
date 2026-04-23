@@ -9,8 +9,8 @@ import './App.css';
 const API_URL = 'https://smart-medi-box.onrender.com';
 
 // ==================== Components ====================
-const LoadingSpinner = ({ size = 24, color = 'var(--primary)' }) => (
-  <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+const LoadingSpinner = ({ size = 24, color = 'var(--primary)', padding = '20px' }) => (
+  <div style={{ display: 'flex', justifyContent: 'center', padding }}>
     <div className="spinner-mini" style={{ width: size, height: size, borderTopColor: color }}></div>
   </div>
 );
@@ -1988,11 +1988,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
             <button className="btn-link" onClick={clearNotifications}>Clear</button>
           </div>
           <div className="notif-list">
-            {notifsLoading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
-                <div className="spinner-mini" style={{ borderTopColor: 'var(--primary)' }}></div>
-              </div>
-            )}
+            {notifsLoading && <LoadingSpinner size={20} padding="15px" />}
             {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
             {notifications.map(n => (
               <div key={n.id} className={`notif-item ${n.type || ''}`}>
