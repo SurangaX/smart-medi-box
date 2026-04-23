@@ -3636,7 +3636,23 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                 return showHistory ? true : (!isDone && s.schedule_date >= today);
                               });
 
-                              if (filtered.length === 0) return <p style={{ textAlign: 'center', opacity: 0.5, padding: '40px' }}>No schedules found for this view.</p>;
+                              if (filtered.length === 0) {
+                                if (!showHistory) {
+                                  return (
+                                    <div style={{ textAlign: 'center', opacity: 0.6, padding: '40px' }}>
+                                      <p style={{ marginBottom: '15px' }}>There is no upcoming schedules</p>
+                                      <button 
+                                        className="btn-secondary btn-sm" 
+                                        onClick={() => setShowHistory(true)}
+                                        style={{ background: 'var(--primary)', color: 'white', border: 'none' }}
+                                      >
+                                        📅 View Past
+                                      </button>
+                                    </div>
+                                  );
+                                }
+                                return <p style={{ textAlign: 'center', opacity: 0.5, padding: '40px' }}>No schedule history found for this patient.</p>;
+                              }
 
                               return filtered.map(s => {
                                 const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
