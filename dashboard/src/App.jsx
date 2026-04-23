@@ -3704,13 +3704,20 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                               </div>
                               <div style={{ flex: 1 }}>
                                 <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>File (PDF or Image)</label>
-                                <input 
-                                  id="report-file-input"
-                                  type="file" 
-                                  onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
-                                  style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
-                                  required
-                                />
+                                <div style={{ position: 'relative' }}>
+                                  <input 
+                                    id="report-file-input"
+                                    type="file" 
+                                    onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
+                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                    required
+                                  />
+                                  {newReport.file && (
+                                    <div style={{ fontSize: '11px', marginTop: '6px', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <FileText size={12} /> Selected: {newReport.file.name} ({(newReport.file.size / 1024).toFixed(1)} KB)
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div style={{ marginBottom: '15px' }}>
