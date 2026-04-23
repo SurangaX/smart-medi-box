@@ -3498,8 +3498,13 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
               <Users size={20} /> Patient List
             </h3>
             
-            <div className="patient-horizontal-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {patients.length === 0 && !loading ? (
+            <div className="patient-horizontal-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '100px', position: 'relative' }}>
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                  <LoadingSpinner size={40} />
+                  <p style={{ marginTop: '12px', opacity: 0.6 }}>Loading assigned patients...</p>
+                </div>
+              ) : patients.length === 0 ? (
                 <div className="card" style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>
                   <Users size={48} style={{ marginBottom: '12px' }} />
                   <p>You haven't assigned any patients yet.</p>
@@ -3561,6 +3566,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                           });
                         }}
                         disabled={unassigningId === selectedPatient.id}
+                        style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}
                       >
                         {unassigningId === selectedPatient.id ? 'Unassigning...' : 'Unassign'}
                       </button>
