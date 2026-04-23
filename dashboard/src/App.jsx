@@ -2910,6 +2910,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [uploadingReport, setUploadingReport] = useState(false);
   const [newReport, setNewReport] = useState({ title: '', notes: '', file: null });
   const [showPatientModal, setShowPatientModal] = useState(false);
+  const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
 
   const openPatientModal = async (patient, tab) => {
     setSelectedPatient(patient);
@@ -3063,23 +3064,41 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   }, [selectedPatient, token]);
 
   const unassignPatient = async (patientId) => {
-    if (!window.confirm('Are you sure you want to unassign this patient?')) return;
-    setUnassigningId(patientId);
+    // If patientId is provided, it means it was called from the button directly
+    // If not, it uses the selectedPatient.id (called from modal confirm)
+    const id = patientId || selectedPatient?.id;
+    if (!id) return;
+
+    if (!showUnassignConfirm && !patientId) {
+       setShowUnassignConfirm(true);
+       return;
+    }
+
+    setUnassigningId(id);
     try {
       const response = await fetch(`${API_URL}/index.php/api/doctor/unassign-patient`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, patient_id: patientId })
+        body: JSON.stringify({ token, patient_id: id })
       });
       const data = await response.json();
       if (data.status === 'SUCCESS') {
         window.appNotify({ message: 'Patient unassigned successfully', type: 'success' });
         setSelectedPatient(null);
+        setShowPatientModal(false);
+        setShowUnassignConfirm(false);
         fetchPatients();
+        return true;
       } else {
         window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
+        return false;
       }
-    } catch (err) { console.error('Unassign error:', err); } finally { setUnassigningId(null); }
+    } catch (err) { 
+      console.error('Unassign error:', err); 
+      return false;
+    } finally { 
+      setUnassigningId(null); 
+    }
   };
 
   // Local notification state for doctor dashboard
@@ -3916,6 +3935,40 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
               <button className="btn-danger" onClick={handleConfirmLogout}>
                 Logout
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unassign Confirmation Modal */}
+      {showUnassignConfirm && (
+        <div className="modal-overlay" onClick={() => setShowUnassignConfirm(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div style={{ textAlign: 'center', padding: '10px' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}>
+                <AlertCircle size={32} />
+              </div>
+              <h2 style={{ marginBottom: '10px' }}>Unassign Patient?</h2>
+              <p style={{ opacity: 0.7, marginBottom: '20px' }}>
+                Are you sure you want to unassign <strong>{selectedPatient?.name}</strong>? You will no longer be able to manage their medical data.
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  className="btn-secondary" 
+                  style={{ flex: 1 }}
+                  onClick={() => setShowUnassignConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn-danger" 
+                  style={{ flex: 1 }}
+                  onClick={() => unassignPatient()}
+                  disabled={unassigningId !== null}
+                >
+                  {unassigningId ? 'Processing...' : 'Yes, Unassign'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
