@@ -16,7 +16,7 @@ const LoadingSpinner = ({ size = 24, color = 'var(--primary)' }) => (
 );
 
 // ==================== Chat Section ====================
-const ChatSection = ({ user, token, isMobile }) => {
+const ChatSection = ({ user, token, isMobile, initialContactId }) => {
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -24,12 +24,34 @@ const ChatSection = ({ user, token, isMobile }) => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (!isMobile) setShowSidebar(true);
   }, [isMobile]);
 
-  useEffect(() => { fetchContacts(); }, []);
+  useEffect(() => { 
+    fetchContacts(); 
+  }, []);
+
+  useEffect(() => {
+    if (initialContactId && contacts.length > 0) {
+      const contact = contacts.find(c => (c.user_id || c.id) == initialContactId);
+      if (contact) {
+        setSelectedContact(contact);
+        if (isMobile) setShowSidebar(false);
+      }
+    }
+  }, [initialContactId, contacts]);
+
   useEffect(() => {
     let interval;
     if (selectedContact) {
@@ -133,6 +155,7 @@ const ChatSection = ({ user, token, isMobile }) => {
                     <div style={{ fontSize: '10px', opacity: 0.7, textAlign: 'right', marginTop: '4px' }}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
               <form className="chat-input" onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', background: 'var(--surface)' }}>
                 <input type="text" placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', fontSize: '14px' }} />
@@ -2916,6 +2939,12 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
+  const [chatInitialContactId, setChatInitialContactId] = useState(null);
+
+  const handleStartChat = (patientId) => {
+    setChatInitialContactId(patientId);
+    setActiveTab('chat');
+  };
 
   const openPatientModal = async (patient, tab) => {
     setSelectedPatient(patient);
@@ -3550,6 +3579,9 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                       </div>
                       
                       <div className="patient-row-actions" style={{ display: 'flex', gap: '10px' }}>
+                        <button className="btn-secondary btn-sm" onClick={() => handleStartChat(p.user_id || p.id)} style={{ background: 'var(--primary)', color: 'white', border: 'none' }}>
+                          💬 Chat
+                        </button>
                         <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'schedules')}>
                           📅 View Schedule
                         </button>
@@ -3643,8 +3675,14 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                       <p style={{ marginBottom: '15px' }}>There is no upcoming schedules</p>
                                       <button 
                                         className="btn-secondary btn-sm" 
-                                        onClick={() => setShowHistory(true)}
-                                        style={{ background: 'var(--primary)', color: 'white', border: 'none' }}
+                                        onClick={() => {
+                                          setSchedulesLoading(true);
+                                          setTimeout(() => {
+                                            setShowHistory(true);
+                                            setSchedulesLoading(false);
+                                          }, 300);
+                                        }}
+                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
                                       >
                                         📅 View Past
                                       </button>
@@ -3944,7 +3982,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
             )}
           </div>
         )}
-        {activeTab === 'chat' && <ChatSection user={{ role: 'DOCTOR', id: profile.id, user_id: profile.user_id }} token={token} />}
+        {activeTab === 'chat' && <ChatSection user={{ role: 'DOCTOR', id: profile.id, user_id: profile.user_id }} token={token} initialContactId={chatInitialContactId} isMobile={isMobile} />}
       </div>
 
       {/* Delete Article Confirmation Modal */}

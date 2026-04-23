@@ -303,7 +303,22 @@ class ChatManager {
         try {
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') return $auth;
-            pg_query_params($this->db, "INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3)", [$auth['user_id'], $receiver_user_id, $message]);
+            
+            // Get sender's name for the notification
+            $sender_id = $auth['user_id'];
+            $sender_res = pg_query_params($this->db, "SELECT name FROM users WHERE id = $1", [$sender_id]);
+            $sender_name = "Someone";
+            if ($sender_res && pg_num_rows($sender_res) > 0) {
+                $sender_name = pg_fetch_assoc($sender_res)['name'];
+            }
+
+            // Insert message
+            pg_query_params($this->db, "INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3)", [$sender_id, $receiver_user_id, $message]);
+            
+            // Add notification for receiver
+            $notif_msg = "New message from " . $sender_name . ": " . (strlen($message) > 50 ? substr($message, 0, 47) . "..." : $message);
+            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$receiver_user_id, 'NEW_MESSAGE', $notif_msg]);
+
             return ['status' => 'SUCCESS', 'message' => 'Sent'];
         } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
     }
