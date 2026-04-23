@@ -3596,14 +3596,13 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                   </div>
 
                   <div className="modal-nav" style={{ padding: '0 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', gap: '15px' }}>
-                    <button 
-                      className={`tab-btn-sm ${patientDetailTab === 'schedules' ? 'active' : ''}`}
-                      onClick={() => setPatientDetailTab('schedules')}
-                      style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'schedules' ? '2px solid var(--primary)' : '2px solid transparent' }}
-                    >
-                      📅 History
-                    </button>
-                    <button 
+                  <button 
+                    className={`tab-btn-sm ${patientDetailTab === 'schedules' ? 'active' : ''}`}
+                    onClick={() => setPatientDetailTab('schedules')}
+                    style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'schedules' ? '2px solid var(--primary)' : '2px solid transparent' }}
+                  >
+                    📅 Schedule
+                  </button>                    <button 
                       className={`tab-btn-sm ${patientDetailTab === 'details' ? 'active' : ''}`}
                       onClick={() => setPatientDetailTab('details')}
                       style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'details' ? '2px solid var(--primary)' : '2px solid transparent' }}
