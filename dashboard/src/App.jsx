@@ -3698,7 +3698,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                   placeholder="e.g. Blood Test Result" 
                                   value={newReport.title}
                                   onChange={(e) => setNewReport({...newReport, title: e.target.value})}
-                                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                                   required
                                 />
                               </div>
@@ -3726,7 +3726,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                 placeholder="Add any specific observations or instructions..." 
                                 value={newReport.notes}
                                 onChange={(e) => setNewReport({...newReport, notes: e.target.value})}
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px' }}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                               />
                             </div>
                             <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%', padding: '12px' }}>
