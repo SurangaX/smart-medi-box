@@ -3551,7 +3551,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                       
                       <div className="patient-row-actions" style={{ display: 'flex', gap: '10px' }}>
                         <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'schedules')}>
-                          📅 View History
+                          📅 View Schedule
                         </button>
                         <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'details')}>
                           👤 View Details
