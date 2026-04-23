@@ -171,7 +171,7 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
           <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             {isMobile && (
               <button className="mobile-only btn-icon" onClick={() => setShowSidebar(!showSidebar)} style={{ marginRight: '4px' }}>
-                <Users size={20} color={showSidebar ? 'var(--primary)' : 'currentColor'} />
+                <Menu size={20} color={showSidebar ? 'var(--primary)' : 'currentColor'} />
               </button>
             )}
             {selectedContact ? (
@@ -209,16 +209,27 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
               </form>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5, gap: '15px' }}>
-              <Users size={64} />
-              <p>Select a contact to chat</p>
-              {isMobile && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '20px' }}>
+              <div style={{ opacity: 0.5, textAlign: 'center' }}>
+                <Bell size={64} style={{ marginBottom: '10px' }} />
+                <p style={{ margin: 0, fontSize: '16px' }}>Select a contact to chat</p>
+              </div>
+              {!showSidebar && (
                 <button 
                   className="btn-primary" 
                   onClick={() => setShowSidebar(true)}
-                  style={{ marginTop: '10px', padding: '10px 20px', borderRadius: '8px' }}
+                  style={{ 
+                    padding: '12px 24px', 
+                    borderRadius: '12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px',
+                    fontSize: '15px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 12px rgba(var(--primary-rgb), 0.3)'
+                  }}
                 >
-                  View Contacts List
+                  <Users size={20} /> Open Contacts List
                 </button>
               )}
             </div>
