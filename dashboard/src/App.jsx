@@ -99,14 +99,34 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
     if (!newMessage.trim() || !selectedContact) return;
     const msg = newMessage;
     setNewMessage('');
+
+    // Optimistically add message
+    const tempId = Date.now();
+    const tempMsg = {
+      id: tempId,
+      sender_id: user.id || user.user_id,
+      message: msg,
+      created_at: new Date().toISOString(),
+      sending: true
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
     try {
       const response = await fetch(`${API_URL}/index.php/api/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, receiver_id: selectedContact.user_id, message: msg })
       });
-      if (response.ok) fetchMessages(false);
-    } catch (err) { console.error('Error sending message:', err); }
+      if (response.ok) {
+        fetchMessages(false);
+      } else {
+        // Handle error: remove temp message or show error
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, error: true, sending: false } : m));
+      }
+    } catch (err) { 
+      console.error('Error sending message:', err);
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, error: true, sending: false } : m));
+    }
   };
 
   return (
@@ -150,9 +170,17 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
             <>
               <div className="messages-display" style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {loadingMessages ? <LoadingSpinner /> : messages.length === 0 ? <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}><Bell size={48} /><p>Say hi!</p></div> : messages.map((m, idx) => (
-                  <div key={idx} className={`message-bubble ${m.sender_id === (user.id || user.user_id) ? 'sent' : 'received'}`} style={{ alignSelf: m.sender_id === (user.id || user.user_id) ? 'flex-end' : 'flex-start', background: m.sender_id === (user.id || user.user_id) ? 'var(--primary)' : 'var(--surface)', color: m.sender_id === (user.id || user.user_id) ? 'white' : 'var(--text-primary)', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%', fontSize: '14px' }}>
+                  <div key={m.id || idx} className={`message-bubble ${m.sender_id === (user.id || user.user_id) ? 'sent' : 'received'}`} style={{ alignSelf: m.sender_id === (user.id || user.user_id) ? 'flex-end' : 'flex-start', background: m.sender_id === (user.id || user.user_id) ? 'var(--primary)' : 'var(--surface)', color: m.sender_id === (user.id || user.user_id) ? 'white' : 'var(--text-primary)', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%', fontSize: '14px', position: 'relative', opacity: m.sending ? 0.7 : 1 }}>
                     <div>{m.message}</div>
-                    <div style={{ fontSize: '10px', opacity: 0.7, textAlign: 'right', marginTop: '4px' }}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7, textAlign: 'right', marginTop: '4px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px' }}>
+                      {m.sending ? (
+                        <><span>Sending...</span><Clock size={10} /></>
+                      ) : m.error ? (
+                        <span style={{ color: '#ff4444' }}>Failed to send</span>
+                      ) : (
+                        new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      )}
+                    </div>
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
