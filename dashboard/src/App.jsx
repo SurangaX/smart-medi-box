@@ -3438,7 +3438,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                   placeholder="Search your assigned patients by name or NIC..." 
                   value={assignedSearchQuery}
                   onChange={(e) => setAssignedSearchQuery(e.target.value)}
-                  style={{ width: '100%', padding: '12px 16px 12px 40px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '15px' }}
+                  style={{ width: '100%', padding: '12px 16px 12px 40px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '15px', color: 'white', caretColor: 'white' }}
                 />
                 <Eye size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
               </div>
