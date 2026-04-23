@@ -1935,7 +1935,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
         </button>
         <button
           className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reports')}
+          onClick={() => {
+            setReports([]);
+            setReportsLoading(true);
+            setActiveTab('reports');
+          }}
         >
           📋 My Reports
         </button>
@@ -2918,7 +2922,10 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
     setPatientDetailTab(tab);
     setShowPatientModal(true);
     setSchedulesLoading(true);
+    setReportsLoading(true); // Ensure reports loading is true immediately
+    setPatientReports([]); // Clear previous patient's reports
     setShowHistory(false);
+    setShowReportForm(false); // Close the upload form by default
     
     try {
       const response = await fetch(`${API_URL}/index.php/api/doctor/patient-schedules`, {
