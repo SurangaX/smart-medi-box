@@ -3940,10 +3940,20 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                         {[
                           { label: 'Full Name', value: selectedPatient.name },
                           { label: 'NIC Number', value: selectedPatient.nic },
+                          { label: 'Age', value: selectedPatient.date_of_birth ? `${(() => {
+                            const today = new Date();
+                            const birthDate = new Date(selectedPatient.date_of_birth);
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                            return age;
+                          })()} Years` : 'Unknown' },
                           { label: 'Phone Number', value: selectedPatient.phone_number },
+                          { label: 'Emergency Contact', value: selectedPatient.emergency_contact || 'None' },
                           { label: 'Email Address', value: selectedPatient.email },
                           { label: 'Date of Birth', value: selectedPatient.date_of_birth || 'Not provided' },
-                          { label: 'Blood Type', value: selectedPatient.blood_type || 'Unknown' }
+                          { label: 'Blood Type', value: selectedPatient.blood_type || 'Unknown' },
+                          { label: 'Transplanted Organ', value: selectedPatient.transplanted_organ && selectedPatient.transplanted_organ !== 'NONE' ? selectedPatient.transplanted_organ : 'None' }
                         ].map((item, i) => (
                           <div key={i} className="info-card" style={{ padding: '15px', background: 'var(--background)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                             <label style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '5px' }}>{item.label}</label>
