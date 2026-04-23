@@ -3071,16 +3071,14 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
     return () => clearInterval(interval);
   }, [selectedPatient, token]);
 
-  const unassignPatient = async (patientId) => {
-    // If patientId is provided, it means it was called from the button directly
-    // If not, it uses the selectedPatient.id (called from modal confirm)
-    const id = patientId || selectedPatient?.id;
-    if (!id) return;
+  const handleUnassignClick = (patient) => {
+    setSelectedPatient(patient);
+    setShowUnassignConfirm(true);
+  };
 
-    if (!showUnassignConfirm && !patientId) {
-       setShowUnassignConfirm(true);
-       return;
-    }
+  const unassignPatient = async () => {
+    const id = selectedPatient?.id;
+    if (!id) return;
 
     setUnassigningId(id);
     try {
@@ -3096,14 +3094,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         setShowPatientModal(false);
         setShowUnassignConfirm(false);
         fetchPatients();
-        return true;
       } else {
         window.appNotify({ message: 'Error: ' + data.message, type: 'error' });
-        return false;
       }
     } catch (err) { 
       console.error('Unassign error:', err); 
-      return false;
     } finally { 
       setUnassigningId(null); 
     }
@@ -3587,11 +3582,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <button 
                         className="btn-danger btn-sm" 
-                        onClick={() => {
-                          unassignPatient(selectedPatient.id).then(success => {
-                            if (success !== false) setShowPatientModal(false);
-                          });
-                        }}
+                        onClick={() => handleUnassignClick(selectedPatient)}
                         disabled={unassigningId === selectedPatient.id}
                         style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}
                       >
