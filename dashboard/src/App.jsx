@@ -3643,22 +3643,35 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                 const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
                                 return (
                                   <div key={s.id} style={{ 
-                                    display: 'flex', gap: '20px', marginBottom: '15px', padding: '15px', 
+                                    display: 'flex', gap: '20px', marginBottom: '16px', padding: '16px', 
                                     borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
-                                    background: 'var(--background)', borderRadius: '0 10px 10px 0', border: '1px solid var(--border)', borderLeftWidth: '4px'
+                                    background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', borderLeftWidth: '4px',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
                                   }}>
-                                    <div style={{ minWidth: '75px' }}>
-                                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
-                                      <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
+                                    <div style={{ minWidth: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                      <div style={{ fontWeight: '800', fontSize: '16px', color: 'var(--text-primary)' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
+                                      <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>{s.schedule_date}</div>
                                     </div>
+                                    
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', border: '1px solid var(--border)' }}>
+                                      {s.type === 'MEDICINE' ? '💊' : s.type === 'FOOD' ? '🍽️' : '🩸'}
+                                    </div>
+
                                     <div style={{ flex: 1 }}>
-                                      <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.medicine_name || s.type}</div>
-                                      {s.description && <div style={{ fontSize: '13px', opacity: 0.7, marginTop: '4px' }}>{s.description}</div>}
-                                      <div style={{ marginTop: '6px' }}>
-                                        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: isDone ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: isDone ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>
-                                          {isDone ? 'COMPLETED' : 'PENDING'}
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                          <div style={{ fontWeight: '700', fontSize: '15px', color: 'var(--text-primary)' }}>{s.medicine_name || s.type}</div>
+                                          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, fontWeight: '700', marginTop: '2px' }}>{s.type}</div>
+                                        </div>
+                                        <span style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '20px', background: isDone ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: isDone ? '#10b981' : '#f59e0b', fontWeight: '800', border: '1px solid ' + (isDone ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)') }}>
+                                          {isDone ? '✓ COMPLETED' : '🕒 PENDING'}
                                         </span>
                                       </div>
+                                      {s.description && (
+                                        <div style={{ fontSize: '13px', opacity: 0.7, marginTop: '8px', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '2px solid var(--primary)' }}>
+                                          {s.description}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );
