@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu, ChevronDown, ChevronUp } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
@@ -2911,6 +2911,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [newReport, setNewReport] = useState({ title: '', notes: '', file: null });
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
+  const [showReportForm, setShowReportForm] = useState(false);
 
   const openPatientModal = async (patient, tab) => {
     setSelectedPatient(patient);
@@ -3687,52 +3688,65 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
                     {patientDetailTab === 'reports' && (
                       <div className="patient-reports-container">
-                        <div className="upload-section card" style={{ padding: '20px', marginBottom: '30px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary)' }}>
-                          <h4 style={{ marginTop: 0, marginBottom: '15px' }}>📤 Upload New Medical Report</h4>
-                          <form onSubmit={handleUploadReport}>
-                            <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                              <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Report Title</label>
-                                <input 
-                                  type="text" 
-                                  placeholder="e.g. Blood Test Result" 
-                                  value={newReport.title}
-                                  onChange={(e) => setNewReport({...newReport, title: e.target.value})}
-                                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                                  required
-                                />
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>File (PDF or Image)</label>
-                                <div style={{ position: 'relative' }}>
-                                  <input 
-                                    id="report-file-input"
-                                    type="file" 
-                                    onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
-                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                                    required
-                                  />
-                                  {newReport.file && (
-                                    <div style={{ fontSize: '11px', marginTop: '6px', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                      <FileText size={12} /> Selected: {newReport.file.name} ({(newReport.file.size / 1024).toFixed(1)} KB)
+                        <div className="upload-section card" style={{ padding: 0, marginBottom: '30px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary)', overflow: 'hidden' }}>
+                          <div 
+                            onClick={() => setShowReportForm(!showReportForm)}
+                            style={{ padding: '15px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(59, 130, 246, 0.1)' }}
+                          >
+                            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              📤 Upload New Medical Report
+                            </h4>
+                            {showReportForm ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                          </div>
+
+                          {showReportForm && (
+                            <div className="animate-slide-down" style={{ padding: '20px', borderTop: '1px solid var(--primary)' }}>
+                              <form onSubmit={handleUploadReport}>
+                                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Report Title</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="e.g. Blood Test Result" 
+                                      value={newReport.title}
+                                      onChange={(e) => setNewReport({...newReport, title: e.target.value})}
+                                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                      required
+                                    />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>File (PDF or Image)</label>
+                                    <div style={{ position: 'relative' }}>
+                                      <input 
+                                        id="report-file-input"
+                                        type="file" 
+                                        onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
+                                        style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                        required
+                                      />
+                                      {newReport.file && (
+                                        <div style={{ fontSize: '11px', marginTop: '6px', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                          <FileText size={12} /> Selected: {newReport.file.name} ({(newReport.file.size / 1024).toFixed(1)} KB)
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
-                              </div>
+                                <div style={{ marginBottom: '15px' }}>
+                                  <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Doctor's Notes</label>
+                                  <textarea 
+                                    placeholder="Add any specific observations or instructions..." 
+                                    value={newReport.notes}
+                                    onChange={(e) => setNewReport({...newReport, notes: e.target.value})}
+                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                  />
+                                </div>
+                                <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%', padding: '12px' }}>
+                                  {uploadingReport ? 'Processing Upload...' : 'Upload & Notify Patient'}
+                                </button>
+                              </form>
                             </div>
-                            <div style={{ marginBottom: '15px' }}>
-                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Doctor's Notes</label>
-                              <textarea 
-                                placeholder="Add any specific observations or instructions..." 
-                                value={newReport.notes}
-                                onChange={(e) => setNewReport({...newReport, notes: e.target.value})}
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                              />
-                            </div>
-                            <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%', padding: '12px' }}>
-                              {uploadingReport ? 'Processing Upload...' : 'Upload & Notify Patient'}
-                            </button>
-                          </form>
+                          )}
                         </div>
 
                         <h4 style={{ marginBottom: '15px' }}>History of Reports</h4>
