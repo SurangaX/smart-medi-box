@@ -234,6 +234,7 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
               )}
             </div>
           )}
+        </div>
       </div>
     </div>
   );
