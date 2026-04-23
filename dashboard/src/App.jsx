@@ -3559,6 +3559,17 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                         <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'reports')}>
                           📋 Patient Report
                         </button>
+                        <button 
+                          className="btn-danger btn-sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnassignClick(p);
+                          }}
+                          disabled={unassigningId === p.id}
+                          style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}
+                        >
+                          🗑️ Unassign
+                        </button>
                       </div>
                     </div>
                   ))
@@ -3580,14 +3591,6 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <button 
-                        className="btn-danger btn-sm" 
-                        onClick={() => handleUnassignClick(selectedPatient)}
-                        disabled={unassigningId === selectedPatient.id}
-                        style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}
-                      >
-                        {unassigningId === selectedPatient.id ? 'Unassigning...' : 'Unassign'}
-                      </button>
                       <button className="btn-icon" onClick={() => setShowPatientModal(false)}><X size={24} /></button>
                     </div>
                   </div>
