@@ -154,11 +154,24 @@ class DoctorPatientManager {
             
             $result = pg_query_params($this->db, "SELECT user_id, name FROM patients WHERE id = $1", [$patient_id]);
             $patient_info = pg_fetch_assoc($result);
+            if (!$patient_info) return ['status' => 'ERROR', 'message' => 'Patient not found'];
+
+            $query = "SELECT 
+                        s.*,
+                        (SELECT COUNT(*) > 0 FROM schedule_logs sl 
+                         WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
+                         AND DATE(sl.created_at) = CURRENT_DATE) as day_completed
+                      FROM schedules s 
+                      WHERE s.user_id = $1 AND s.status = 'ACTIVE'
+                      ORDER BY s.schedule_date DESC, s.hour DESC, s.minute DESC";
             
-            $query = "SELECT * FROM schedules WHERE user_id = $1 ORDER BY schedule_date DESC, hour DESC, minute DESC";
             $result = pg_query_params($this->db, $query, [$patient_info['user_id']]);
             $schedules = [];
-            while ($row = pg_fetch_assoc($result)) $schedules[] = $row;
+            while ($row = pg_fetch_assoc($result)) {
+                // Override is_completed with the daily calculation for consistency
+                $row['is_completed'] = ($row['day_completed'] === 't' || $row['day_completed'] === true);
+                $schedules[] = $row;
+            }
             return ['status' => 'SUCCESS', 'patient_name' => $patient_info['name'], 'schedules' => $schedules];
         } catch (Exception $e) {
             return ['status' => 'ERROR', 'message' => $e->getMessage()];

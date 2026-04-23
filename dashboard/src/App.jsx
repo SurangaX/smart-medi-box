@@ -1,4 +1,4 @@
-// Smart Medi Box Dashboard - v1.5.2
+// Smart Medi Box Dashboard - v1.5.3
 import React, { useState, useEffect, useRef } from 'react';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -16,22 +16,18 @@ const LoadingSpinner = ({ size = 24, color = 'var(--primary)' }) => (
 );
 
 // ==================== Chat Section ====================
-const ChatSection = ({ user, token }) => {
+const ChatSection = ({ user, token, isMobile }) => {
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 768);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) setShowSidebar(true);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (!isMobile) setShowSidebar(true);
+  }, [isMobile]);
 
   useEffect(() => { fetchContacts(); }, []);
   useEffect(() => {
@@ -40,13 +36,10 @@ const ChatSection = ({ user, token }) => {
       setMessages([]);
       fetchMessages(true);
       interval = setInterval(() => fetchMessages(false), 5000);
-      // ONLY hide sidebar on mobile when contact is selected
-      if (window.innerWidth <= 768) {
-        setShowSidebar(false);
-      }
+      if (isMobile) setShowSidebar(false);
     }
     return () => clearInterval(interval);
-  }, [selectedContact]);
+  }, [selectedContact, isMobile]);
 
   const fetchContacts = async () => {
     setLoadingContacts(true);
@@ -601,7 +594,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
 };
 
 // ==================== Patient Dashboard ====================
-const PatientDashboard = ({ profile, token, onLogout }) => {
+const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
@@ -2139,7 +2132,11 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
                               {String(sched.hour).padStart(2, '0')}:{String(sched.minute).padStart(2, '0')}
                             </div>
                             <div className="schedule-details">
-                              <div className="schedule-type">{sched.medicine_name || sched.type}</div>
+                              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>{sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}</span>
+                                {sched.medicine_name || sched.type}
+                              </div>
+                              <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.6 }}>{sched.type}</div>
                               <div className="schedule-status">
                                 {isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
                                 {isDone ? 'Completed' : 'Pending'}
@@ -2622,7 +2619,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
             )}
           </div>
         )}
-        {activeTab === 'chat' && <ChatSection user={{ role: 'PATIENT', id: profile.id, user_id: profile.user_id }} token={token} />}
+        {activeTab === 'chat' && <ChatSection user={{ role: 'PATIENT', id: profile.id, user_id: profile.user_id }} token={token} isMobile={isMobile} />}
       </div>
 
       {/* Article Detail Modal */}
@@ -2804,7 +2801,7 @@ const PatientDashboard = ({ profile, token, onLogout }) => {
 };
 
 // ==================== Doctor Dashboard ====================
-const DoctorDashboard = ({ profile, token, onLogout }) => {
+const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   // Debug: show profile shape when doctor dashboard mounts
   useEffect(() => {
     try {
@@ -2892,6 +2889,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
     setSelectedPatient(patient);
     setSchedulesLoading(true);
     setShowHistory(false);
+    // On mobile, hide sidebar when patient is selected
+    if (isMobile) setShowPatientSidebar(false);
     try {
       const response = await fetch(`${API_URL}/index.php/api/doctor/patient-schedules`, {
         method: 'POST',
@@ -2902,6 +2901,25 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
       if (data.status === 'SUCCESS') setPatientSchedules(data.schedules || []);
     } catch (err) { console.error('Error fetching schedules:', err); } finally { setSchedulesLoading(false); }
   };
+
+  // Auto-refresh patient schedules if one is selected
+  useEffect(() => {
+    if (!selectedPatient) return;
+    const interval = setInterval(() => {
+      // Refresh in background without setting schedulesLoading(true) to avoid flicker
+      fetch(`${API_URL}/index.php/api/doctor/patient-schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_id: selectedPatient.id })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'SUCCESS') setPatientSchedules(data.schedules || []);
+      })
+      .catch(err => console.error('Auto-refresh error:', err));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [selectedPatient, token]);
 
   const unassignPatient = async (patientId) => {
     if (!window.confirm('Are you sure you want to unassign this patient?')) return;
@@ -3271,9 +3289,12 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
 
       <div className="dashboard-content">
         {activeTab === 'patients' && (
-          <div className="section">
+          <div className="section" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="section-header">
-              <h2>My Patients</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(true)}><Menu size={20} /></button>}
+                <h2 style={{ margin: 0 }}>My Patients</h2>
+              </div>
               <button className="btn-primary" onClick={() => setShowAssignForm(!showAssignForm)}>
                 <Plus size={18} /> {showAssignForm ? 'Close Search' : 'Assign New Patient'}
               </button>
@@ -3326,11 +3347,14 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
               </div>
             )}
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px' }}>
-              <div className="patients-list-sidebar card" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            <div className="grid-2" style={{ display: 'flex', gap: '20px', height: '600px', overflow: 'hidden' }}>
+              <div className={`patients-list-sidebar card ${showPatientSidebar ? 'show' : 'hide'}`} style={{ width: '280px', flexShrink: 0, overflowY: 'auto' }}>
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <strong>Assigned ({patients.length})</strong>
-                  {loading && <div className="spinner-mini"></div>}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {loading && <div className="spinner-mini" style={{ width: '14px', height: '14px' }}></div>}
+                    {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>}
+                  </div>
                 </div>
                 {patients.length === 0 && !loading ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No patients assigned yet.</p> : (
                   patients.map(p => (
@@ -3353,8 +3377,8 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                         <div style={{ fontSize: '11px', opacity: 0.6 }}>{p.nic}</div>
                       </div>
                       <button 
-                        className="btn-link" 
-                        style={{ color: 'var(--danger)', padding: '4px 8px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', fontSize: '11px', borderRadius: '4px' }}
+                        className="btn-danger btn-sm" 
+                        style={{ padding: '4px 8px', fontSize: '10px', height: '24px' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           unassignPatient(p.id);
@@ -3368,13 +3392,16 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                 )}
               </div>
 
-              <div className="patient-detail-view card" style={{ padding: '20px', minHeight: '400px' }}>
+              <div className="patient-detail-view card" style={{ flex: 1, padding: '20px', minHeight: '400px', overflowY: 'auto' }}>
                 {selectedPatient ? (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
-                      <div>
-                        <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>NIC: {selectedPatient.nic} | Phone: {selectedPatient.phone_number}</p>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(true)} style={{ padding: '4px' }}><Menu size={20} /></button>}
+                        <div>
+                          <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>NIC: {selectedPatient.nic} | Phone: {selectedPatient.phone_number}</p>
+                        </div>
                       </div>
                       <button 
                         className="btn-secondary btn-sm" 
@@ -3392,7 +3419,7 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                       <div className="schedules-timeline">
                         {(() => {
                           const today = new Date().toISOString().split('T')[0];
-                          const filtered = patientSchedules.filter(s => {
+                          const filtered = (patientSchedules || []).filter(s => {
                             const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
                             return showHistory ? true : (!isDone && s.schedule_date >= today);
                           });
@@ -3414,9 +3441,19 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
                                   <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 'bold' }}>{s.medicine_name || s.type}</div>
-                                  {s.description && <div style={{ fontSize: '13px', opacity: 0.8 }}>{s.description}</div>}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px', color: isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div>
+                                      <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '18px' }}>
+                                          {s.type === 'MEDICINE' ? '💊' : s.type === 'FOOD' ? '🍽️' : '🩸'}
+                                        </span>
+                                        {s.medicine_name || s.type}
+                                      </div>
+                                      <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.6, marginTop: '2px' }}>{s.type}</div>
+                                    </div>
+                                  </div>
+                                  {s.description && <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>{s.description}</div>}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontSize: '12px', color: isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b') }}>
                                     {isDone ? '✓ Completed' : (s.schedule_date < today ? '✕ Missed' : 'Upcoming')}
                                   </div>
                                 </div>
@@ -3437,7 +3474,6 @@ const DoctorDashboard = ({ profile, token, onLogout }) => {
             </div>
           </div>
         )}
-
         {activeTab === 'articles' && (
           <div className="section">
             <div className="section-header">
@@ -3616,6 +3652,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('login');
   const [toasts, setToasts] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -3728,12 +3771,14 @@ export default function App() {
           profile={currentUser.profile}
           token={currentUser.token}
           onLogout={handleLogout}
+          isMobile={isMobile}
         />
       ) : (
         <DoctorDashboard
           profile={currentUser.profile}
           token={currentUser.token}
           onLogout={handleLogout}
+          isMobile={isMobile}
         />
       )}
       {/* Toast container (bottom-left transient notifications) */}
