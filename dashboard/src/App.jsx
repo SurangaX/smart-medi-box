@@ -960,6 +960,19 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const positionNotifPanel = () => {
     try {
+      if (isMobile) {
+        setNotifPanelStyle({
+          position: 'fixed',
+          top: '70px',
+          left: '10px',
+          right: '10px',
+          width: 'calc(100% - 20px)',
+          maxWidth: 'none',
+          zIndex: 2000,
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+        });
+        return;
+      }
       if (!headerRef.current) return setNotifPanelStyle({ top: 64 });
       const hdr = headerRef.current.getBoundingClientRect();
       const panelWidth = 340;
@@ -967,7 +980,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
       let left = Math.round(hdr.right - panelWidth - 8);
       if (left < 8) left = 8;
       if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
-      setNotifPanelStyle({ top: `${top}px`, left: `${left}px`, position: 'fixed' });
+      setNotifPanelStyle({ top: `${top}px`, left: `${left}px`, position: 'fixed', maxWidth: '340px' });
     } catch (e) { console.error('positionNotifPanel error', e); }
   };
 
@@ -3254,6 +3267,19 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const positionNotifPanelDoc = () => {
     try {
+      if (isMobile) {
+        setNotifPanelStyleDoc({
+          position: 'fixed',
+          top: '70px',
+          left: '10px',
+          right: '10px',
+          width: 'calc(100% - 20px)',
+          maxWidth: 'none',
+          zIndex: 2000,
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+        });
+        return;
+      }
       if (!headerRefDoc.current) return setNotifPanelStyleDoc({ top: 64 });
       const hdr = headerRefDoc.current.getBoundingClientRect();
       const panelWidth = 340;
@@ -3261,7 +3287,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       let left = Math.round(hdr.right - panelWidth - 8);
       if (left < 8) left = 8;
       if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
-      setNotifPanelStyleDoc({ top: `${top}px`, left: `${left}px`, position: 'fixed' });
+      setNotifPanelStyleDoc({ top: `${top}px`, left: `${left}px`, position: 'fixed', maxWidth: '340px' });
     } catch (e) { console.error('positionNotifPanelDoc error', e); }
   };
 
