@@ -156,11 +156,18 @@ class DoctorPatientManager {
             $patient_info = pg_fetch_assoc($result);
             if (!$patient_info) return ['status' => 'ERROR', 'message' => 'Patient not found'];
 
+            // Robust query:
+            // 1. Filter by ACTIVE status to hide deleted ones
+            // 2. For one-time schedules (is_recurring=false), use the persistent is_completed column
+            // 3. For recurring schedules, check if completed TODAY via logs
             $query = "SELECT 
                         s.*,
-                        (SELECT COUNT(*) > 0 FROM schedule_logs sl 
-                         WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
-                         AND DATE(sl.created_at) = CURRENT_DATE) as day_completed
+                        (CASE 
+                            WHEN s.is_recurring = FALSE THEN s.is_completed
+                            ELSE (SELECT COUNT(*) > 0 FROM schedule_logs sl 
+                                  WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
+                                  AND DATE(sl.created_at) = CURRENT_DATE)
+                         END) as calculated_completed
                       FROM schedules s 
                       WHERE s.user_id = $1 AND s.status = 'ACTIVE'
                       ORDER BY s.schedule_date DESC, s.hour DESC, s.minute DESC";
@@ -168,8 +175,8 @@ class DoctorPatientManager {
             $result = pg_query_params($this->db, $query, [$patient_info['user_id']]);
             $schedules = [];
             while ($row = pg_fetch_assoc($result)) {
-                // Override is_completed with the daily calculation for consistency
-                $row['is_completed'] = ($row['day_completed'] === 't' || $row['day_completed'] === true);
+                // Ensure is_completed reflects our calculation
+                $row['is_completed'] = ($row['calculated_completed'] === 't' || $row['calculated_completed'] === true);
                 $schedules[] = $row;
             }
             return ['status' => 'SUCCESS', 'patient_name' => $patient_info['name'], 'schedules' => $schedules];
