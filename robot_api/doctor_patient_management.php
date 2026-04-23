@@ -212,7 +212,12 @@ class DoctorPatientManager {
         try {
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') return $auth;
-            $doctor_id = $auth['user_id'];
+            $doctor_user_id = $auth['user_id'];
+
+            // Get the patient's user_id from their patient_id
+            $res = pg_query_params($this->db, "SELECT user_id FROM patients WHERE id = $1", [$patient_id]);
+            if (!$res || pg_num_rows($res) === 0) return ['status' => 'ERROR', 'message' => 'Patient not found'];
+            $patient_user_id = pg_fetch_assoc($res)['user_id'];
 
             // Handle file upload
             $file_data = null;
@@ -230,16 +235,20 @@ class DoctorPatientManager {
 
             $query = "INSERT INTO patient_reports (patient_id, doctor_id, title, notes, file_data, file_mime, file_name) 
                       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id";
-            $result = pg_query_params($this->db, $query, [$patient_id, $doctor_id, $title, $notes, pg_escape_bytea($file_data), $file_mime, $file_name]);
+            // Use pg_escape_bytea for the binary data parameter
+            $result = pg_query_params($this->db, $query, [$patient_user_id, $doctor_user_id, $title, $notes, pg_escape_bytea($file_data), $file_mime, $file_name]);
             
             if (!$result) throw new Exception(pg_last_error($this->db));
 
-            // Add notification for patient
+            // Add notification for patient (using patient_user_id)
             $notif_msg = "Your doctor has uploaded a new medical report: " . $title;
-            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$patient_id, 'NEW_REPORT', $notif_msg]);
+            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$patient_user_id, 'NEW_REPORT', $notif_msg]);
 
             return ['status' => 'SUCCESS', 'message' => 'Report uploaded successfully'];
-        } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
+        } catch (Exception $e) { 
+            error_log("UPLOAD REPORT ERROR: " . $e->getMessage());
+            return ['status' => 'ERROR', 'message' => $e->getMessage()]; 
+        }
     }
 
     public function getPatientReports($token, $patient_id = null) {
@@ -250,12 +259,23 @@ class DoctorPatientManager {
 
             // If patient_id is provided, check if the doctor is assigned to this patient
             if ($patient_id) {
-                $check = pg_query_params($this->db, "SELECT 1 FROM doctor_patient_map WHERE doctor_id = $1 AND patient_id = $2", [$user_id, $patient_id]);
+                // Get doctor's ID from doctors table
+                $res = pg_query_params($this->db, "SELECT id FROM doctors WHERE user_id = $1", [$user_id]);
+                if (!$res || pg_num_rows($res) === 0) return ['status' => 'ERROR', 'message' => 'Doctor profile not found'];
+                $doctor_id = pg_fetch_assoc($res)['id'];
+
+                // Check assignment
+                $check = pg_query_params($this->db, "SELECT 1 FROM patient_doctor_assignments WHERE doctor_id = $1 AND patient_id = $2", [$doctor_id, $patient_id]);
                 if (!$check || pg_num_rows($check) === 0) return ['status' => 'ERROR', 'message' => 'Unauthorized access to patient reports'];
+                
+                // Get patient's user_id
+                $res = pg_query_params($this->db, "SELECT user_id FROM patients WHERE id = $1", [$patient_id]);
+                $patient_user_id = pg_fetch_assoc($res)['user_id'];
+
                 $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
-                $result = pg_query_params($this->db, $query, [$patient_id]);
+                $result = pg_query_params($this->db, $query, [$patient_user_id]);
             } else {
-                // For patient calling their own reports
+                // For patient calling their own reports (user_id is users.id)
                 $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
                 $result = pg_query_params($this->db, $query, [$user_id]);
             }
