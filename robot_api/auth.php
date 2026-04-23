@@ -275,6 +275,16 @@ function handlePatientSignup($method) {
         return;
     }
     
+    $gender = $input['gender'] ?? null;
+    $blood_type = $input['blood_type'] ?? null;
+    $transplanted_organ = $input['transplanted_organ'] ?? null;
+    $transplantation_date = $input['transplantation_date'] ?? null;
+    $emergency_contact = $input['emergency_contact'] ?? null;
+    
+    // Convert empty strings to NULL for database compatibility (especially for DATE columns)
+    if ($transplantation_date === '') $transplantation_date = null;
+    if ($dob === '') $dob = null;
+    
     try {
         // Check if email exists
         $check = pg_query_params($conn, "SELECT id FROM users WHERE email = $1", [$email]);
@@ -328,7 +338,7 @@ function handlePatientSignup($method) {
 
         // Now insert into patients table linked to users
         $pQuery = "INSERT INTO patients (user_id, nic, name, date_of_birth, gender, blood_type, phone_number, transplanted_organ, transplantation_date, emergency_contact) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
-        $pResult = pg_query_params($conn, $pQuery, [$user_id, $nic, $name, $dob, $input['gender'] ?? null, $input['blood_type'] ?? null, $phone, $input['transplanted_organ'] ?? null, $input['transplantation_date'] ?? null, $input['emergency_contact'] ?? null]);
+        $pResult = pg_query_params($conn, $pQuery, [$user_id, $nic, $name, $dob, $gender, $blood_type, $phone, $transplanted_organ, $transplantation_date, $emergency_contact]);
         if (!$pResult) {
             $msg = pg_last_error($conn);
             error_log("PATIENT INSERT FAILED: $msg");

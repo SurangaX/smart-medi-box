@@ -432,6 +432,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
 
       // Add role-specific fields
       if (role === 'PATIENT') {
+        payload.gender = formData.gender;
         payload.blood_type = formData.blood_type;
         payload.transplanted_organ = formData.transplanted_organ;
         payload.transplantation_date = formData.transplantation_date;
