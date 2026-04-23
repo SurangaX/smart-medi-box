@@ -960,21 +960,24 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const positionNotifPanel = () => {
     try {
+      if (!headerRef.current) return setNotifPanelStyle({ top: 64 });
+      const hdr = headerRef.current.getBoundingClientRect();
+      
       if (isMobile) {
         setNotifPanelStyle({
           position: 'fixed',
-          top: '70px',
+          top: `${hdr.bottom}px`,
           left: '10px',
           right: '10px',
           width: 'calc(100% - 20px)',
           maxWidth: 'none',
           zIndex: 2000,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          borderRadius: '0 0 12px 12px'
         });
         return;
       }
-      if (!headerRef.current) return setNotifPanelStyle({ top: 64 });
-      const hdr = headerRef.current.getBoundingClientRect();
+      
       const panelWidth = 340;
       const top = Math.round(hdr.bottom + window.scrollY + 8);
       let left = Math.round(hdr.right - panelWidth - 8);
@@ -3267,21 +3270,24 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const positionNotifPanelDoc = () => {
     try {
+      if (!headerRefDoc.current) return setNotifPanelStyleDoc({ top: 64 });
+      const hdr = headerRefDoc.current.getBoundingClientRect();
+      
       if (isMobile) {
         setNotifPanelStyleDoc({
           position: 'fixed',
-          top: '70px',
+          top: `${hdr.bottom}px`,
           left: '10px',
           right: '10px',
           width: 'calc(100% - 20px)',
           maxWidth: 'none',
           zIndex: 2000,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          borderRadius: '0 0 12px 12px'
         });
         return;
       }
-      if (!headerRefDoc.current) return setNotifPanelStyleDoc({ top: 64 });
-      const hdr = headerRefDoc.current.getBoundingClientRect();
+      
       const panelWidth = 340;
       const top = Math.round(hdr.bottom + window.scrollY + 8);
       let left = Math.round(hdr.right - panelWidth - 8);
