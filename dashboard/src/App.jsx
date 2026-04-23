@@ -25,6 +25,7 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const messagesEndRef = useRef(null);
+  const lastContactIdRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,13 +56,19 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
   useEffect(() => {
     let interval;
     if (selectedContact) {
-      setMessages([]);
-      fetchMessages(true);
+      const contactId = selectedContact.user_id || selectedContact.id;
+      // Only clear messages if the contact actually changed
+      if (lastContactIdRef.current !== contactId) {
+        setMessages([]);
+        fetchMessages(true);
+        lastContactIdRef.current = contactId;
+      }
+      
       interval = setInterval(() => fetchMessages(false), 5000);
       if (isMobile) setShowSidebar(false);
     }
     return () => clearInterval(interval);
-  }, [selectedContact, isMobile]);
+  }, [selectedContact]); // Removed isMobile to prevent clearing on resize
 
   const fetchContacts = async () => {
     setLoadingContacts(true);
@@ -90,7 +97,15 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         body: JSON.stringify({ token, other_user_id: selectedContact.user_id })
       });
       const data = await response.json();
-      if (data.status === 'SUCCESS') setMessages(data.messages || []);
+      if (data.status === 'SUCCESS') {
+        const serverMsgs = data.messages || [];
+        setMessages(prev => {
+          // Keep local messages that are still "sending" or have an "error"
+          // This prevents the flicker when the server list replaces the local list
+          const pending = prev.filter(m => m.sending || m.error);
+          return [...serverMsgs, ...pending];
+        });
+      }
     } catch (err) { console.error('Error fetching messages:', err); } finally { if (showSpinner) setLoadingMessages(false); }
   };
 
@@ -118,9 +133,10 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         body: JSON.stringify({ token, receiver_id: selectedContact.user_id, message: msg })
       });
       if (response.ok) {
-        fetchMessages(false);
+        // Mark as sent locally. The merge logic in fetchMessages will 
+        // eventually replace this with the real message from the server.
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, sending: false } : m));
       } else {
-        // Handle error: remove temp message or show error
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, error: true, sending: false } : m));
       }
     } catch (err) { 
@@ -153,8 +169,10 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
         </div>
         <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
           <div className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {window.innerWidth <= 768 && (
-              <button className="mobile-only btn-icon" onClick={() => setShowSidebar(true)} style={{ marginRight: '4px' }}><Menu size={20} /></button>
+            {isMobile && (
+              <button className="mobile-only btn-icon" onClick={() => setShowSidebar(!showSidebar)} style={{ marginRight: '4px' }}>
+                <Users size={20} color={showSidebar ? 'var(--primary)' : 'currentColor'} />
+              </button>
             )}
             {selectedContact ? (
               <>
@@ -190,8 +208,21 @@ const ChatSection = ({ user, token, isMobile, initialContactId }) => {
                 <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>Send</button>
               </form>
             </>
-          ) : <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}><Bell size={64} /><p>Select a contact to chat</p></div>}
-        </div>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5, gap: '15px' }}>
+              <Users size={64} />
+              <p>Select a contact to chat</p>
+              {isMobile && (
+                <button 
+                  className="btn-primary" 
+                  onClick={() => setShowSidebar(true)}
+                  style={{ marginTop: '10px', padding: '10px 20px', borderRadius: '8px' }}
+                >
+                  View Contacts List
+                </button>
+              )}
+            </div>
+          )}
       </div>
     </div>
   );
