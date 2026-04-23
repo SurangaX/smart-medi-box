@@ -2909,6 +2909,28 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [uploadingReport, setUploadingReport] = useState(false);
   const [newReport, setNewReport] = useState({ title: '', notes: '', file: null });
+  const [showPatientModal, setShowPatientModal] = useState(false);
+
+  const openPatientModal = async (patient, tab) => {
+    setSelectedPatient(patient);
+    setPatientDetailTab(tab);
+    setShowPatientModal(true);
+    setSchedulesLoading(true);
+    setShowHistory(false);
+    
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/doctor/patient-schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patient_id: patient.id })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') setPatientSchedules(data.schedules || []);
+      
+      // Also fetch reports
+      fetchPatientReports(patient.id);
+    } catch (err) { console.error('Error fetching schedules:', err); } finally { setSchedulesLoading(false); }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -3408,27 +3430,33 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
       <div className="dashboard-content">
         {activeTab === 'patients' && (
-          <div className="section" style={{ position: 'relative', overflow: 'hidden' }}>
-            <div className="section-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(true)}><Menu size={20} /></button>}
-                <h2 style={{ margin: 0 }}>My Patients</h2>
+          <div className="section">
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'center' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search your assigned patients by name or NIC..." 
+                  value={assignedSearchQuery}
+                  onChange={(e) => setAssignedSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px 12px 40px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '15px' }}
+                />
+                <Eye size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
               </div>
-              <button className="btn-primary" onClick={() => setShowAssignForm(!showAssignForm)}>
-                <Plus size={18} /> {showAssignForm ? 'Close Search' : 'Assign New Patient'}
+              <button className="btn-primary" onClick={() => setShowAssignForm(!showAssignForm)} style={{ height: '46px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Plus size={20} /> {showAssignForm ? 'Close Search' : 'Assign New Patient'}
               </button>
             </div>
 
             {showAssignForm && (
-              <div className="card search-card" style={{ marginBottom: '20px', padding: '16px' }}>
-                <h3>Search Patient by Name or NIC</h3>
-                <div style={{ display: 'flex', gap: '8px', margin: '12px 0' }}>
+              <div className="card search-card" style={{ marginBottom: '24px', padding: '20px', border: '2px dashed var(--primary)' }}>
+                <h3 style={{ marginTop: 0 }}>🔍 Find & Assign New Patient</h3>
+                <div style={{ display: 'flex', gap: '10px', margin: '15px 0' }}>
                   <input 
                     type="text" 
-                    placeholder="Search name or NIC..." 
+                    placeholder="Enter Patient Name or NIC to search database..." 
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)' }}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}
                   />
                 </div>
                 
@@ -3437,280 +3465,284 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                 ) : (
                   <>
                     {searchResults.length > 0 && (
-                      <div className="search-results-dropdown" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
+                      <div className="search-results-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {searchResults.map(p => (
-                          <div key={p.id} className="search-result-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <div className="avatar-mini" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                          <div key={p.id} className="search-result-row card" style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div className="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                                 {p.name?.[0]}
                               </div>
                               <div>
-                                <div style={{ fontWeight: 'bold' }}>{p.name}</div>
-                                <div style={{ fontSize: '12px', opacity: 0.6 }}>NIC: {p.nic}</div>
+                                <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{p.name}</div>
+                                <div style={{ fontSize: '13px', opacity: 0.6 }}>NIC: {p.nic}</div>
                               </div>
                             </div>
                             <button 
-                              className="btn-secondary btn-sm" 
+                              className="btn-primary btn-sm" 
                               onClick={() => assignPatientFromSearch(p.nic)}
                               disabled={isAssigningId === p.nic}
                             >
-                              {isAssigningId === p.nic ? 'Assigning...' : 'Assign'}
+                              {isAssigningId === p.nic ? 'Assigning...' : 'Assign to Me'}
                             </button>
                           </div>
                         ))}
                       </div>
                     )}
-                    {searchQuery && searchResults.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5 }}>No patients found.</p>}
+                    {searchQuery && searchResults.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No patients found matching "{searchQuery}"</p>}
                   </>
                 )}
               </div>
             )}
 
-            <div className="grid-2" style={{ display: 'flex', gap: '20px', height: '600px', overflow: 'hidden' }}>
-              <div className={`patients-list-sidebar card ${showPatientSidebar ? 'show' : 'hide'}`} style={{ width: '280px', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong>Assigned ({patients.length})</strong>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {loading && <div className="spinner-mini" style={{ width: '14px', height: '14px' }}></div>}
-                    {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(false)} style={{ padding: '4px' }}><X size={18} /></button>}
-                  </div>
+            <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={20} /> Patient List
+            </h3>
+            
+            <div className="patient-horizontal-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {patients.length === 0 && !loading ? (
+                <div className="card" style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>
+                  <Users size={48} style={{ marginBottom: '12px' }} />
+                  <p>You haven't assigned any patients yet.</p>
                 </div>
-                
-                {/* Searchable Patient List Input */}
-                <div style={{ padding: '10px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ position: 'relative' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Search assigned..." 
-                      value={assignedSearchQuery}
-                      onChange={(e) => setAssignedSearchQuery(e.target.value)}
-                      style={{ width: '100%', padding: '8px 32px 8px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)' }}
-                    />
-                    <Eye size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }} />
-                  </div>
-                </div>
-
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {patients.length === 0 && !loading ? <p style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>No patients assigned yet.</p> : (
-                    patients
-                      .filter(p => 
-                        p.name?.toLowerCase().includes(assignedSearchQuery.toLowerCase()) || 
-                        p.nic?.toLowerCase().includes(assignedSearchQuery.toLowerCase())
-                      )
-                      .map(p => (
-                        <div 
-                          key={p.id} 
-                          className={`patient-list-item ${selectedPatient?.id === p.id ? 'active' : ''}`}
-                          onClick={() => viewPatientSchedules(p)}
-                          style={{ 
-                            display: 'flex', gap: '12px', padding: '12px', cursor: 'pointer', 
-                            borderBottom: '1px solid var(--border)',
-                            background: selectedPatient?.id === p.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div className="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
-                            {p.name?.[0]}
-                          </div>
-                          <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                            <div style={{ fontSize: '11px', opacity: 0.6 }}>{p.nic}</div>
-                          </div>
+              ) : (
+                patients
+                  .filter(p => 
+                    p.name?.toLowerCase().includes(assignedSearchQuery.toLowerCase()) || 
+                    p.nic?.toLowerCase().includes(assignedSearchQuery.toLowerCase())
+                  )
+                  .map(p => (
+                    <div key={p.id} className="patient-row-card card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', transition: 'all 0.2s' }}>
+                      <div className="patient-main-info" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="avatar" style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
+                          {p.name?.[0]}
                         </div>
-                      ))
-                  )}
-                </div>
-              </div>
-
-              <div className="patient-detail-view card" style={{ flex: 1, padding: '20px', minHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                {selectedPatient ? (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        {isMobile && <button className="btn-icon" onClick={() => setShowPatientSidebar(true)} style={{ padding: '4px' }}><Menu size={20} /></button>}
                         <div>
-                          <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
-                          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>NIC: {selectedPatient.nic}</p>
+                          <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name}</div>
+                          <div style={{ fontSize: '13px', opacity: 0.6 }}>NIC: {p.nic}</div>
                         </div>
                       </div>
+                      
+                      <div className="patient-row-actions" style={{ display: 'flex', gap: '10px' }}>
+                        <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'schedules')}>
+                          📅 View History
+                        </button>
+                        <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'details')}>
+                          👤 View Details
+                        </button>
+                        <button className="btn-secondary btn-sm" onClick={() => openPatientModal(p, 'reports')}>
+                          📋 Patient Report
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* Patient Detail Modal */}
+            {showPatientModal && selectedPatient && (
+              <div className="modal-overlay" onClick={() => setShowPatientModal(false)}>
+                <div className="modal-content" style={{ width: '95%', maxWidth: '900px', height: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                  <div className="modal-header" style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <div className="avatar" style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '20px' }}>
+                        {selectedPatient.name?.[0]}
+                      </div>
+                      <div>
+                        <h2 style={{ margin: 0 }}>{selectedPatient.name}</h2>
+                        <p style={{ margin: 0, fontSize: '13px', opacity: 0.6 }}>NIC: {selectedPatient.nic}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <button 
                         className="btn-danger btn-sm" 
-                        onClick={() => unassignPatient(selectedPatient.id)}
+                        onClick={() => {
+                          unassignPatient(selectedPatient.id).then(success => {
+                            if (success !== false) setShowPatientModal(false);
+                          });
+                        }}
                         disabled={unassigningId === selectedPatient.id}
                       >
-                        {unassigningId === selectedPatient.id ? 'Unassigning...' : 'Unassign Patient'}
+                        {unassigningId === selectedPatient.id ? 'Unassigning...' : 'Unassign'}
                       </button>
+                      <button className="btn-icon" onClick={() => setShowPatientModal(false)}><X size={24} /></button>
                     </div>
+                  </div>
 
-                    {/* Sub-tabs for Patient Detail */}
-                    <div className="detail-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                      <button 
-                        className={`tab-btn-sm ${patientDetailTab === 'schedules' ? 'active' : ''}`}
-                        onClick={() => setPatientDetailTab('schedules')}
-                      >
-                        📅 View History
-                      </button>
-                      <button 
-                        className={`tab-btn-sm ${patientDetailTab === 'details' ? 'active' : ''}`}
-                        onClick={() => setPatientDetailTab('details')}
-                      >
-                        👤 View Details
-                      </button>
-                      <button 
-                        className={`tab-btn-sm ${patientDetailTab === 'reports' ? 'active' : ''}`}
-                        onClick={() => setPatientDetailTab('reports')}
-                      >
-                        📋 Patient Report
-                      </button>
-                    </div>
+                  <div className="modal-nav" style={{ padding: '0 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', gap: '15px' }}>
+                    <button 
+                      className={`tab-btn-sm ${patientDetailTab === 'schedules' ? 'active' : ''}`}
+                      onClick={() => setPatientDetailTab('schedules')}
+                      style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'schedules' ? '2px solid var(--primary)' : '2px solid transparent' }}
+                    >
+                      📅 History
+                    </button>
+                    <button 
+                      className={`tab-btn-sm ${patientDetailTab === 'details' ? 'active' : ''}`}
+                      onClick={() => setPatientDetailTab('details')}
+                      style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'details' ? '2px solid var(--primary)' : '2px solid transparent' }}
+                    >
+                      👤 Details
+                    </button>
+                    <button 
+                      className={`tab-btn-sm ${patientDetailTab === 'reports' ? 'active' : ''}`}
+                      onClick={() => setPatientDetailTab('reports')}
+                      style={{ padding: '15px 10px', borderRadius: 0, borderBottom: patientDetailTab === 'reports' ? '2px solid var(--primary)' : '2px solid transparent' }}
+                    >
+                      📋 Reports
+                    </button>
+                  </div>
 
-                    <div style={{ flex: 1 }}>
-                      {patientDetailTab === 'schedules' && (
-                        <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h3 style={{ fontSize: '15px', margin: 0 }}>{showHistory ? 'Full Schedule History' : 'Upcoming Schedules'}</h3>
-                            <button className="btn-link" style={{ fontSize: '13px' }} onClick={() => setShowHistory(!showHistory)}>
-                              {showHistory ? 'Show Upcoming Only' : 'Show Full History'}
-                            </button>
-                          </div>
-                          {schedulesLoading ? <LoadingSpinner /> : (
-                            <div className="schedules-timeline">
-                              {(() => {
-                                const today = new Date().toISOString().split('T')[0];
-                                const filtered = (patientSchedules || []).filter(s => {
-                                  const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
-                                  return showHistory ? true : (!isDone && s.schedule_date >= today);
-                                });
+                  <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '25px' }}>
+                    {patientDetailTab === 'schedules' && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                          <h3 style={{ margin: 0 }}>{showHistory ? 'Full Schedule History' : 'Upcoming Schedules'}</h3>
+                          <button className="btn-link" onClick={() => setShowHistory(!showHistory)}>
+                            {showHistory ? 'Show Upcoming Only' : 'Show Full History'}
+                          </button>
+                        </div>
+                        {schedulesLoading ? <LoadingSpinner /> : (
+                          <div className="schedules-timeline">
+                            {(() => {
+                              const today = new Date().toISOString().split('T')[0];
+                              const filtered = (patientSchedules || []).filter(s => {
+                                const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                                return showHistory ? true : (!isDone && s.schedule_date >= today);
+                              });
 
-                                if (filtered.length === 0) return <p style={{ textAlign: 'center', opacity: 0.5, padding: '20px' }}>No schedules found.</p>;
+                              if (filtered.length === 0) return <p style={{ textAlign: 'center', opacity: 0.5, padding: '40px' }}>No schedules found for this view.</p>;
 
-                                return filtered.map(s => {
-                                  const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
-                                  return (
-                                    <div key={s.id} style={{ 
-                                      display: 'flex', gap: '16px', marginBottom: '12px', padding: '12px', 
-                                      borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
-                                      background: 'rgba(0,0,0,0.02)', borderRadius: '0 8px 8px 0' 
-                                    }}>
-                                      <div style={{ minWidth: '70px' }}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
-                                        <div style={{ fontSize: '10px', opacity: 0.6 }}>{s.schedule_date}</div>
-                                      </div>
-                                      <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{s.medicine_name || s.type}</div>
-                                        {s.description && <div style={{ fontSize: '12px', opacity: 0.7 }}>{s.description}</div>}
+                              return filtered.map(s => {
+                                const isDone = s.is_completed === true || s.is_completed === 't' || s.is_completed === 'true';
+                                return (
+                                  <div key={s.id} style={{ 
+                                    display: 'flex', gap: '20px', marginBottom: '15px', padding: '15px', 
+                                    borderLeft: '4px solid ' + (isDone ? '#10b981' : (s.schedule_date < today ? '#ef4444' : '#f59e0b')), 
+                                    background: 'var(--background)', borderRadius: '0 10px 10px 0', border: '1px solid var(--border)', borderLeftWidth: '4px'
+                                  }}>
+                                    <div style={{ minWidth: '75px' }}>
+                                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{String(s.hour).padStart(2, '0')}:{String(s.minute).padStart(2, '0')}</div>
+                                      <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.schedule_date}</div>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.medicine_name || s.type}</div>
+                                      {s.description && <div style={{ fontSize: '13px', opacity: 0.7, marginTop: '4px' }}>{s.description}</div>}
+                                      <div style={{ marginTop: '6px' }}>
+                                        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: isDone ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: isDone ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>
+                                          {isDone ? 'COMPLETED' : 'PENDING'}
+                                        </span>
                                       </div>
                                     </div>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {patientDetailTab === 'details' && (
-                        <div className="patient-basic-info">
-                          <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Full Name</label>
-                              <strong>{selectedPatient.name}</strong>
-                            </div>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>NIC Number</label>
-                              <strong>{selectedPatient.nic}</strong>
-                            </div>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Phone Number</label>
-                              <strong>{selectedPatient.phone_number}</strong>
-                            </div>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Email Address</label>
-                              <strong>{selectedPatient.email}</strong>
-                            </div>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Date of Birth</label>
-                              <strong>{selectedPatient.date_of_birth || 'Not provided'}</strong>
-                            </div>
-                            <div className="info-item">
-                              <label style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>Blood Type</label>
-                              <strong>{selectedPatient.blood_type || 'Unknown'}</strong>
-                            </div>
+                                  </div>
+                                );
+                              });
+                            })()}
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </>
+                    )}
 
-                      {patientDetailTab === 'reports' && (
-                        <div className="patient-reports-section">
-                          <div className="upload-report-form card" style={{ padding: '16px', marginBottom: '20px', background: 'rgba(59, 130, 246, 0.03)' }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>Upload New Medical Report</h4>
-                            <form onSubmit={handleUploadReport}>
-                              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                    {patientDetailTab === 'details' && (
+                      <div className="patient-info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' }}>
+                        {[
+                          { label: 'Full Name', value: selectedPatient.name },
+                          { label: 'NIC Number', value: selectedPatient.nic },
+                          { label: 'Phone Number', value: selectedPatient.phone_number },
+                          { label: 'Email Address', value: selectedPatient.email },
+                          { label: 'Date of Birth', value: selectedPatient.date_of_birth || 'Not provided' },
+                          { label: 'Blood Type', value: selectedPatient.blood_type || 'Unknown' }
+                        ].map((item, i) => (
+                          <div key={i} className="info-card" style={{ padding: '15px', background: 'var(--background)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                            <label style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '5px' }}>{item.label}</label>
+                            <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{item.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {patientDetailTab === 'reports' && (
+                      <div className="patient-reports-container">
+                        <div className="upload-section card" style={{ padding: '20px', marginBottom: '30px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary)' }}>
+                          <h4 style={{ marginTop: 0, marginBottom: '15px' }}>📤 Upload New Medical Report</h4>
+                          <form onSubmit={handleUploadReport}>
+                            <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Report Title</label>
                                 <input 
                                   type="text" 
-                                  placeholder="Report Title (e.g. Lab Results)" 
+                                  placeholder="e.g. Blood Test Result" 
                                   value={newReport.title}
                                   onChange={(e) => setNewReport({...newReport, title: e.target.value})}
-                                  style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}
                                   required
                                 />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>File (PDF or Image)</label>
                                 <input 
                                   id="report-file-input"
                                   type="file" 
                                   onChange={(e) => setNewReport({...newReport, file: e.target.files[0]})}
-                                  style={{ flex: 1, fontSize: '12px' }}
+                                  style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
                                   required
                                 />
                               </div>
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                              <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Doctor's Notes</label>
                               <textarea 
-                                placeholder="Add notes or observations..." 
+                                placeholder="Add any specific observations or instructions..." 
                                 value={newReport.notes}
                                 onChange={(e) => setNewReport({...newReport, notes: e.target.value})}
-                                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', minHeight: '60px', marginBottom: '10px' }}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px' }}
                               />
-                              <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%' }}>
-                                {uploadingReport ? 'Uploading...' : 'Upload Report'}
-                              </button>
-                            </form>
-                          </div>
-
-                          <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Previous Reports</h4>
-                          {reportsLoading ? <LoadingSpinner /> : (
-                            <div className="reports-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                              {patientReports.length === 0 ? <p style={{ textAlign: 'center', opacity: 0.5, fontSize: '13px' }}>No reports uploaded yet.</p> : (
-                                patientReports.map(r => (
-                                  <div key={r.id} className="report-card" style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{r.title}</div>
-                                      <div style={{ fontSize: '11px', opacity: 0.6 }}>{new Date(r.created_at).toLocaleDateString()} • {r.file_name}</div>
-                                      {r.notes && <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>{r.notes}</div>}
-                                    </div>
-                                    <a 
-                                      href={`${API_URL}/index.php/api/report/download/${r.id}`} 
-                                      className="btn-secondary btn-sm"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                      <FileText size={14} /> Download
-                                    </a>
-                                  </div>
-                                ))
-                              )}
                             </div>
-                          )}
+                            <button type="submit" className="btn-primary" disabled={uploadingReport} style={{ width: '100%', padding: '12px' }}>
+                              {uploadingReport ? 'Processing Upload...' : 'Upload & Notify Patient'}
+                            </button>
+                          </form>
                         </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.3 }}>
-                    <Users size={64} style={{ marginBottom: '16px' }} />
-                    <p>Select a patient to manage details, history, and reports</p>
+
+                        <h4 style={{ marginBottom: '15px' }}>History of Reports</h4>
+                        {reportsLoading ? <LoadingSpinner /> : (
+                          <div className="reports-stack" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {patientReports.length === 0 ? (
+                              <div style={{ textAlign: 'center', opacity: 0.5, padding: '30px', border: '1px dashed var(--border)', borderRadius: '10px' }}>
+                                No reports found for this patient.
+                              </div>
+                            ) : (
+                              patientReports.map(r => (
+                                <div key={r.id} className="report-row card" style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <FileText size={22} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontWeight: 'bold' }}>{r.title}</div>
+                                      <div style={{ fontSize: '12px', opacity: 0.6 }}>{new Date(r.created_at).toLocaleDateString()} • {r.file_name}</div>
+                                      {r.notes && <div style={{ fontSize: '13px', marginTop: '5px', color: 'var(--text-secondary)' }}>{r.notes}</div>}
+                                    </div>
+                                  </div>
+                                  <a 
+                                    href={`${API_URL}/index.php/api/report/download/${r.id}`} 
+                                    className="btn-secondary btn-sm"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                  >
+                                    <Plus size={14} style={{ transform: 'rotate(45deg)' }} /> Download
+                                  </a>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         {activeTab === 'articles' && (

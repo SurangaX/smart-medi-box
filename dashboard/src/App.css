@@ -3235,3 +3235,70 @@ button, a { user-select: none; cursor: pointer; }
   transform: scale(1.1);
 }
 
+
+/* ==================== Patient List Flat Layout & Modal ==================== */
+.patient-row-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+  border-color: var(--primary);
+}
+
+.patient-row-actions .btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.modal-nav .tab-btn-sm {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-nav .tab-btn-sm:hover {
+  color: var(--primary);
+}
+
+.modal-nav .tab-btn-sm.active {
+  color: var(--primary);
+}
+
+.info-card label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.search-result-row:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+.report-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Scrollbar Styling */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
