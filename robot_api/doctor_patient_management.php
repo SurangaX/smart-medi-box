@@ -100,9 +100,11 @@ class DoctorPatientManager {
             $doctor = pg_fetch_assoc($result);
             if (!$doctor) return ['status' => 'ERROR', 'message' => 'Doctor record not found'];
 
-            $query = "SELECT p.*, pda.assigned_at, pda.notes, 
+            $query = "SELECT p.*, u.email, pda.assigned_at, pda.notes, 
                       (SELECT COUNT(*) FROM messages WHERE sender_id = p.user_id AND receiver_id = $2 AND is_read = FALSE) as unread_count
-                      FROM patients p JOIN patient_doctor_assignments pda ON p.id = pda.patient_id 
+                      FROM patients p 
+                      JOIN users u ON p.user_id = u.id
+                      JOIN patient_doctor_assignments pda ON p.id = pda.patient_id 
                       WHERE pda.doctor_id = $1 AND pda.is_active = TRUE ORDER BY pda.assigned_at DESC";
             $result = pg_query_params($this->db, $query, [$doctor['id'], $user_id]);
             $patients = [];
@@ -147,10 +149,15 @@ class DoctorPatientManager {
             if ($auth['status'] !== 'SUCCESS') return $auth;
             
             if (empty($query)) {
-                $q = "SELECT id, user_id, nic, name, profile_photo FROM patients ORDER BY name ASC LIMIT 50";
+                $q = "SELECT p.id, p.user_id, p.nic, p.name, p.profile_photo, u.email 
+                      FROM patients p JOIN users u ON p.user_id = u.id 
+                      ORDER BY p.name ASC LIMIT 50";
                 $result = pg_query($this->db, $q);
             } else {
-                $q = "SELECT id, user_id, nic, name, profile_photo FROM patients WHERE name ILIKE $1 OR nic ILIKE $1 ORDER BY name ASC LIMIT 50";
+                $q = "SELECT p.id, p.user_id, p.nic, p.name, p.profile_photo, u.email 
+                      FROM patients p JOIN users u ON p.user_id = u.id 
+                      WHERE p.name ILIKE $1 OR p.nic ILIKE $1 
+                      ORDER BY p.name ASC LIMIT 50";
                 $result = pg_query_params($this->db, $q, ["%$query%"]);
             }
             
