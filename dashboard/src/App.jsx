@@ -3957,7 +3957,10 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                           { label: 'Email Address', value: selectedPatient.email },
                           { label: 'Date of Birth', value: selectedPatient.date_of_birth || 'Not provided' },
                           { label: 'Blood Type', value: selectedPatient.blood_type || 'Unknown' },
-                          { label: 'Transplanted Organ', value: selectedPatient.transplanted_organ && selectedPatient.transplanted_organ !== 'NONE' ? selectedPatient.transplanted_organ : 'None' }
+                          { label: 'Transplanted Organ', value: selectedPatient.transplanted_organ && selectedPatient.transplanted_organ !== 'NONE' ? selectedPatient.transplanted_organ : 'None' },
+                          ...(selectedPatient.transplanted_organ && selectedPatient.transplanted_organ !== 'NONE' ? [
+                            { label: 'Transplantation Date', value: selectedPatient.transplantation_date || 'Not provided' }
+                          ] : [])
                         ].map((item, i) => (
                           <div key={i} className="info-card" style={{ padding: '15px', background: 'var(--background)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                             <label style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '5px' }}>{item.label}</label>
