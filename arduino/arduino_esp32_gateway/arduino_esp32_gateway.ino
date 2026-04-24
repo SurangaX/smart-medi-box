@@ -78,6 +78,12 @@ void loop() {
   if (millis() - lastSync > 60000) {
     LeoSerial.println("req_data"); // Request fresh data from Leonardo
     syncToServer();
+    
+    // If still unpaired, retry fetching user info during the sync cycle
+    if (box.user == "Unpaired" || box.user == "") {
+      fetchUserInfo();
+    }
+    
     lastSync = millis();
   }
 }
@@ -131,10 +137,12 @@ void fetchUserInfo() {
   String mac = WiFi.macAddress();
   String payload = "{\"mac_address\":\"" + mac + "\"}";
   int code = http.POST(payload);
-  if (code > 0) {
+  if (code == 200 || code == 201) {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, http.getString());
-    if (doc.containsKey("user_name")) box.user = doc["user_name"].as<String>();
+    if (doc["status"] == "SUCCESS" && doc.containsKey("user_name")) {
+      box.user = doc["user_name"].as<String>();
+    }
   }
   http.end();
 }

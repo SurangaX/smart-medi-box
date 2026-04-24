@@ -24,7 +24,8 @@ const Dashboard = ({ user, onLogout }) => {
   const [deviceStatus, setDeviceStatus] = useState({
     solenoid: 'LOCKED',
     door: 'CLOSED',
-    alarm: 'INACTIVE'
+    alarm: 'INACTIVE',
+    is_online: true
   });
 
   useEffect(() => {
@@ -37,7 +38,7 @@ const Dashboard = ({ user, onLogout }) => {
     // Set up periodic updates
     const scheduleInterval = setInterval(fetchSchedules, 60000);
     const statusInterval = setInterval(fetchDeviceStatus, 5000);
-    const tempInterval = setInterval(fetchTemperatureData, 30000);
+    const tempInterval = setInterval(fetchTemperatureData, 10000); // Poll temp every 10s
     const notifInterval = setInterval(fetchNotifications, 30000);
 
     return () => {
@@ -80,7 +81,18 @@ const Dashboard = ({ user, onLogout }) => {
       );
       const data = await response.json();
       if (data.status === 'SUCCESS') {
-        setDeviceStatus(data.device_status);
+        const lastSyncStr = data.device_status.last_sync;
+        let isOnline = false;
+        if (lastSyncStr) {
+          const lastSync = new Date(lastSyncStr.replace(' ', 'T'));
+          const now = new Date();
+          const diffMinutes = (now - lastSync) / 60000;
+          isOnline = diffMinutes < 3;
+        }
+        setDeviceStatus({
+          ...data.device_status,
+          is_online: isOnline
+        });
       }
     } catch (err) {
       console.error('Error fetching device status:', err);
@@ -89,14 +101,24 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchTemperatureData = async () => {
     try {
-      const response = await fetch(
+      // 1. Get current temp for the display
+      const currentRes = await fetch(
+        `${API_URL}/index.php/api/temperature/current?user_id=${user?.user_id}`,
+        { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
+      );
+      const currentData = await currentRes.json();
+      if (currentData.status === 'SUCCESS') {
+        setCurrentTemp(currentData.temperature.internal_temp);
+      }
+
+      // 2. Get history for charts
+      const historyRes = await fetch(
         `${API_URL}/index.php/api/temperature/history?user_id=${user?.user_id}`,
         { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
       );
-      const data = await response.json();
-      if (data.status === 'SUCCESS') {
-        setTempData(data.history);
-        setCurrentTemp(data.current_temp);
+      const historyData = await historyRes.json();
+      if (historyData.status === 'SUCCESS') {
+        setTempData(historyData.history);
       }
     } catch (err) {
       console.error('Error fetching temperature data:', err);
@@ -175,8 +197,6 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="main-content">
         {/* Header */}
         <header className="dashboard-header">
           <h1 className="page-title">
@@ -184,8 +204,10 @@ const Dashboard = ({ user, onLogout }) => {
           </h1>
           <div className="header-right">
             <div className="device-status-indicator">
-              <span className={`status-dot ${deviceStatus.alarm === 'ACTIVE' ? 'danger' : 'success'}`}></span>
-              <span>{deviceStatus.alarm === 'ACTIVE' ? 'Alarm Active' : 'System Ready'}</span>
+              <span className={`status-dot ${!deviceStatus.is_online ? 'offline' : (deviceStatus.alarm === 'ACTIVE' ? 'danger' : 'success')}`}></span>
+              <span style={{ color: !deviceStatus.is_online ? '#94a3b8' : 'inherit', fontWeight: '500' }}>
+                {!deviceStatus.is_online ? 'Device Offline' : (deviceStatus.alarm === 'ACTIVE' ? 'Alarm Active' : 'System Online')}
+              </span>
             </div>
           </div>
         </header>
@@ -217,32 +239,37 @@ const OverviewSection = ({ schedules, tempData, currentTemp, deviceStatus }) => 
         {/* System Status Card */}
         <div className="card">
           <h3>System Status</h3>
+          {!deviceStatus.is_online && (
+            <div className="offline-banner">
+              <AlertCircle size={16} /> Device Offline - Showing last known data
+            </div>
+          )}
           <div className="status-grid">
             <div className="status-item">
               <Lock size={20} />
               <span>Solenoid</span>
-              <strong className={deviceStatus.solenoid === 'LOCKED' ? 'success' : 'warning'}>
+              <strong className={!deviceStatus.is_online ? 'offline' : (deviceStatus.solenoid === 'LOCKED' ? 'success' : 'warning')}>
                 {deviceStatus.solenoid}
               </strong>
             </div>
             <div className="status-item">
               <Home size={20} />
               <span>Door</span>
-              <strong className={deviceStatus.door === 'CLOSED' ? 'success' : 'warning'}>
+              <strong className={!deviceStatus.is_online ? 'offline' : (deviceStatus.door === 'CLOSED' ? 'success' : 'warning')}>
                 {deviceStatus.door}
               </strong>
             </div>
             <div className="status-item">
               <AlertTriangle size={20} />
               <span>Alarm</span>
-              <strong className={deviceStatus.alarm === 'INACTIVE' ? 'success' : 'danger'}>
+              <strong className={!deviceStatus.is_online ? 'offline' : (deviceStatus.alarm === 'INACTIVE' ? 'success' : 'danger')}>
                 {deviceStatus.alarm}
               </strong>
             </div>
             <div className="status-item">
               <Thermometer size={20} />
               <span>Temperature</span>
-              <strong>{currentTemp.toFixed(1)}°C</strong>
+              <strong className={!deviceStatus.is_online ? 'offline' : ''}>{currentTemp.toFixed(1)}°C</strong>
             </div>
           </div>
         </div>
