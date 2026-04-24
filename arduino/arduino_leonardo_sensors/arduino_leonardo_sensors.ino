@@ -45,6 +45,7 @@ float tempC = 0;
 int hum = 0;
 bool doorOpen = false;
 bool alarmActive = false;
+bool pendingClose = false; // Tracks if door was opened during alarm
 unsigned long alarmStartTime = 0;
 unsigned long lastUpdate = 0;
 bool rtcOk = false;
@@ -116,20 +117,32 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   
-  // 1. Pulsing Alarm Logic (Beep effect)
+  // Read Door Sensor (HIGH = Open, LOW = Closed to GND)
+  doorOpen = (digitalRead(DOOR_PIN) == HIGH);
+
+  // 1. Intelligent Alarm Logic
   if (alarmActive) {
-    // Auto-stop after 1 minute
+    // Auto-stop after 1 minute if no interaction
     if (now - alarmStartTime > 60000) {
       Serial.println(F("Alarm timeout (1min)"));
       stopAlarm();
     } 
-    // Stop if door is opened
-    else if (doorOpen) {
-      Serial.println(F("Door opened - Stopping alarm"));
-      stopAlarm();
+    // Step 1: Door Opening stops buzzer but keeps solenoid unlocked
+    else if (doorOpen && !pendingClose) {
+      Serial.println(F("Door opened - Stopping buzzer, waiting for close"));
+      digitalWrite(BUZZER_PIN, LOW);
+      myDFPlayer.stop();
+      pendingClose = true;
     }
-    // Pulsing beep (500ms on, 500ms off)
-    else {
+    // Step 2: Door Closing relocks and completes the medicine taken cycle
+    else if (pendingClose && !doorOpen) {
+      Serial.println(F("Door closed - Relocking and completing cycle"));
+      Serial1.println(F("MED_TAKEN")); // Notify ESP32
+      stopAlarm();
+      pendingClose = false;
+    }
+    // Pulsing beep while active and door not yet opened
+    else if (!pendingClose) {
       bool beepState = (now / 500) % 2;
       digitalWrite(BUZZER_PIN, beepState);
     }
@@ -180,7 +193,8 @@ void readAndSendData() {
     hum = (int)h;
   }
 
-  doorOpen = (digitalRead(DOOR_PIN) == LOW);
+  // Update door state before sending
+  doorOpen = (digitalRead(DOOR_PIN) == HIGH);
 
   // Debug to USB Serial
   Serial.print(F("Sensors -> DHT_T:")); Serial.print(tempC);
@@ -200,7 +214,10 @@ void readAndSendData() {
 void checkRFID() {
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     if (alarmActive) { 
+      Serial.println(F("RFID Dismissal - Completing cycle"));
+      Serial1.println(F("MED_TAKEN"));
       stopAlarm();
+      pendingClose = false;
       // Rotate stepper as feedback
       digitalWrite(DIR_PIN, HIGH);
       for(int i=0; i<200; i++) { 
@@ -226,6 +243,7 @@ void checkIncomingCommands() {
       startAlarm();
     } else if (cmd.indexOf("stop_alarm") >= 0 || cmd.indexOf("BUZZ:OFF") >= 0) {
       stopAlarm();
+      pendingClose = false;
     } else if (cmd.indexOf("lock") >= 0 || cmd.indexOf("SOL:LOCK") >= 0) {
       digitalWrite(SOLENOID_PIN, LOW);
     } else if (cmd.indexOf("unlock") >= 0 || cmd.indexOf("SOL:UNLOCK") >= 0) {
@@ -246,11 +264,11 @@ void startAlarm() {
   if (!alarmActive) {
     alarmActive = true;
     alarmStartTime = millis();
+    pendingClose = false;
     digitalWrite(SOLENOID_PIN, HIGH); // Unlock solenoid on alarm
     myDFPlayer.play(1); 
     Serial.println(F("ALARM STARTED"));
   } else {
-    // If alarm is already active, just reset the timer to extend it
     alarmStartTime = millis();
     Serial.println(F("ALARM TIMER RESET"));
   }

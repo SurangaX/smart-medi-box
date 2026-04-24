@@ -38,10 +38,73 @@ switch ($action) {
     case 'heartbeat': handleDeviceHeartbeat($method); break;
     case 'check-commands': handleCheckCommands($method); break;
     case 'trigger-manual': handleManualTrigger($method); break;
+    case 'med-taken': handleMedicineTaken($method); break; // New auto-approve endpoint
     default:
         http_response_code(404);
         sendJSON(['status' => 'ERROR', 'message' => 'Endpoint not found', 'received_action' => $action]);
         break;
+}
+
+/**
+ * Handle medicine taken event from device
+ */
+function handleMedicineTaken($method) {
+    global $conn;
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $mac = trim($input['mac_address'] ?? '');
+    if (!$mac) { sendJSON(['status' => 'ERROR', 'message' => 'mac_address required']); }
+    
+    try {
+        // Find the user mapped to this device
+        $q = "SELECT dum.user_id 
+              FROM devices d 
+              JOIN device_user_map dum ON d.id = dum.device_id 
+              WHERE UPPER(TRIM(d.mac_address)) = UPPER($1) 
+              LIMIT 1";
+        $res = pg_query_params($conn, $q, array($mac));
+        
+        if ($res && pg_num_rows($res) > 0) {
+            $user_id = pg_fetch_result($res, 0, 0);
+            
+            // Find all active (not dismissed) notifications for today for this user
+            $notifQ = "SELECT id, schedule_id FROM notifications 
+                       WHERE user_id = $1 
+                       AND is_dismissed = false 
+                       AND created_at >= CURRENT_DATE";
+            $notifRes = pg_query_params($conn, $notifQ, array($user_id));
+            
+            $completed_count = 0;
+            if ($notifRes && pg_num_rows($notifRes) > 0) {
+                while ($row = pg_fetch_assoc($notifRes)) {
+                    $notif_id = $row['id'];
+                    $sched_id = $row['schedule_id'];
+                    
+                    if ($sched_id) {
+                        // Mark the associated schedule as completed
+                        $updateSched = "UPDATE schedules SET 
+                                        is_completed = (CASE WHEN is_recurring = false THEN true ELSE false END), 
+                                        completed_at = (CASE WHEN is_recurring = false THEN NOW() ELSE completed_at END),
+                                        updated_at = NOW()
+                                        WHERE id = $1";
+                        pg_query_params($conn, $updateSched, array($sched_id));
+                        
+                        // Log the action
+                        pg_query_params($conn, "INSERT INTO schedule_logs (user_id, schedule_id, action) VALUES ($1, $2, 'COMPLETED_VIA_DOOR')", array($user_id, $sched_id));
+                    }
+                    
+                    // Dismiss the notification
+                    pg_query_params($conn, "UPDATE notifications SET is_dismissed = true, updated_at = NOW() WHERE id = $1", array($notif_id));
+                    $completed_count++;
+                }
+            }
+            
+            sendJSON(['status' => 'SUCCESS', 'completed_notifications' => $completed_count]);
+        } else {
+            sendJSON(['status' => 'ERROR', 'message' => 'MAC not paired']);
+        }
+    } catch (Exception $e) {
+        sendJSON(['status' => 'ERROR', 'message' => $e->getMessage()]);
+    }
 }
 
 function handleManualTrigger($method) {
@@ -143,4 +206,6 @@ function handleCompleteCommand($method) {
 }
 
 function handleDeviceHeartbeat($method) { sendJSON(['status' => 'SUCCESS']); }
+function handleSyncDevice($method) { handleUpdateDeviceStatus($method); }
+function handleListDevices($method) { echo json_encode(['status' => 'SUCCESS', 'message' => 'Deprecated']); }
 ?>

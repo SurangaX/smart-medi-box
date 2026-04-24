@@ -874,13 +874,20 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
           };
         });
         
+        // Auto-close modal if notification was dismissed elsewhere (e.g. by opening box door)
+        const currentNotifIds = new Set((data.notifications || []).map(n => n.id));
+        if (activeMedicineAlert && !currentNotifIds.has(activeMedicineAlert.id)) {
+          console.log('🤖 Auto-approving modal: Notification dismissed on server');
+          setActiveMedicineAlert(null);
+          fetchSchedules(); // Refresh to show checkmark
+        }
+
         // Merge with existing notifications, avoiding duplicates by ID
         setNotifications(prev => {
           const existingIds = new Set(prev.map(p => p.id));
           const newOnes = formattedNotifs.filter(n => !existingIds.has(n.id));
           
           // CRITICAL: Only trigger popup for VERY RECENT medicine alarms (created in last 60 seconds)
-          // This prevents old history notifications from popping up when logging in
           const now = new Date();
           const medicineAlarm = newOnes.find(n => {
             if (!n.rawType.startsWith('ALARM_')) return false;
@@ -893,6 +900,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
             setActiveMedicineAlert(medicineAlarm);
           }
           
+          // Only keep notifications that are still pending or were already in the list
           return [...newOnes, ...prev];
         });
         

@@ -57,13 +57,22 @@ void setup() {
 void loop() {
   // 1. Receive sensor data from Leonardo
   if (LeoSerial.available()) {
-    String json = LeoSerial.readStringUntil('\n');
-    DynamicJsonDocument doc(200);
-    if (!deserializeJson(doc, json)) {
-      box.temp = doc["t"];
-      box.hum = doc["h"];
-      box.door = doc["d"];
-      box.alarm = doc["a"];
+    String line = LeoSerial.readStringUntil('\n');
+    line.trim();
+
+    if (line == "MED_TAKEN") {
+      Serial.println("MED_TAKEN signal received from Leonardo!");
+      box.alert = "System Online";
+      renderUI();
+      notifyMedicineTaken();
+    } else if (line.startsWith("{")) {
+      DynamicJsonDocument doc(200);
+      if (!deserializeJson(doc, line)) {
+        box.temp = doc["t"];
+        box.hum = doc["h"];
+        box.door = doc["d"];
+        box.alarm = doc["a"];
+      }
     }
   }
 
@@ -171,6 +180,15 @@ void syncToServer() {
   doc["door_open"] = box.door;
   String payload;
   serializeJson(doc, payload);
+  http.POST(payload);
+  http.end();
+}
+
+void notifyMedicineTaken() {
+  HTTPClient http;
+  http.begin(String(API_BASE) + "/device/med-taken");
+  http.addHeader("Content-Type", "application/json");
+  String payload = "{\"mac_address\":\"" + WiFi.macAddress() + "\"}";
   http.POST(payload);
   http.end();
 }
