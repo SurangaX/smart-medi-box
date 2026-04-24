@@ -11,14 +11,16 @@ header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Get action from $_GET (set by index.php router) or parse from PATH_INFO
-$action = $_GET['action'] ?? '';
+// ONLY set $action if it's not already defined by index.php
+if (!isset($action) || empty($action)) {
+    $action = $_GET['action'] ?? '';
 
-// If action not set, try parsing from PATH_INFO
-if (!$action) {
-    $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
-    // PATH_INFO format: /api/device/action, so action is at index 2
-    $action = $request_uri[2] ?? '';
+    // If action not set, try parsing from PATH_INFO
+    if (!$action) {
+        $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
+        // PATH_INFO format: /api/device/action, so action is at index 2
+        $action = $request_uri[2] ?? '';
+    }
 }
 
 switch ($action) {
