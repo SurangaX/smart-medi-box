@@ -57,8 +57,8 @@ void setup() {
   Serial.println(F("--- LEONARDO STARTUP ---"));
   
   // Serial1 for ESP32 Communication (Pins 0 & 1)
-  Serial1.begin(9600);
-  Serial.println(F("ESP32 Serial (Serial1) Init: OK"));
+  Serial1.begin(115200); // Matched fast baud rate
+  Serial.println(F("ESP32 Serial (Serial1) @ 115200: OK"));
   
   // Hardware Pins
   pinMode(DOOR_PIN, INPUT_PULLUP);

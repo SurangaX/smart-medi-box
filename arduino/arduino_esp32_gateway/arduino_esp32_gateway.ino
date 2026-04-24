@@ -38,7 +38,7 @@ struct {
 
 void setup() {
   Serial.begin(115200);
-  LeoSerial.begin(9600, SERIAL_8N1, 16, 17); // RX=16, TX=17
+  LeoSerial.begin(115200, SERIAL_8N1, 16, 17); // Fast Communication
   
   // Initialize LCD
   u8g2.begin();
@@ -83,13 +83,12 @@ void loop() {
     lastUI = millis();
   }
 
-  // 3. Heartbeat & Sync to Server
+  // 3. Heartbeat & Sync to Server (More frequent for real-time dash)
   static unsigned long lastSync = 0;
-  if (millis() - lastSync > 60000) {
-    LeoSerial.println("req_data"); // Request fresh data from Leonardo
+  if (millis() - lastSync > 10000) { // Sync every 10 seconds
+    LeoSerial.println("req_data"); 
     syncToServer();
     
-    // If still unpaired, retry fetching user info during the sync cycle
     if (box.user == "Unpaired" || box.user == "") {
       fetchUserInfo();
     }
@@ -97,9 +96,9 @@ void loop() {
     lastSync = millis();
   }
 
-  // 4. Poll for commands from server (more frequent for responsiveness)
+  // 4. Poll for commands from server
   static unsigned long lastCmd = 0;
-  if (millis() - lastCmd > 5000) { // Check every 5 seconds
+  if (millis() - lastCmd > 5000) { 
     fetchCommands();
     lastCmd = millis();
   }
@@ -162,7 +161,6 @@ void fetchUserInfo() {
     if (doc["status"] == "SUCCESS" && doc.containsKey("user_name")) {
       box.user = doc["user_name"].as<String>();
     } else {
-      // If status is PENDING, UNPAIRED, or UNKNOWN, the device is not paired
       box.user = "Unpaired";
     }
   }
@@ -210,21 +208,10 @@ void fetchCommands() {
         String commandStr = cmd["command"].as<String>();
         int cmdId = cmd["id"].as<int>();
         
-        // Handle MSG: command on ESP32 directly for LCD
-        if (commandStr.startsWith("MSG:")) {
-          box.alert = commandStr.substring(4);
-        } else if (commandStr == "BUZZ:OFF" || commandStr == "stop_alarm") {
-          box.alert = "System Online";
-        }
-
-        // Forward to Leonardo
         LeoSerial.println(commandStr);
-        Serial.print("Forwarded cmd to Leo: "); Serial.println(commandStr);
+        Serial.print("Forwarded cmd: "); Serial.println(commandStr);
         
-        // Small delay to let Leo process before next command
-        delay(200); 
-
-        // Mark as complete on server
+        delay(50); // Faster processing
         markCommandComplete(cmdId);
       }
     }
