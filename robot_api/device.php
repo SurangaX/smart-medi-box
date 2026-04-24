@@ -136,7 +136,8 @@ function handleCompleteCommand($method) {
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $id = $input['command_id'] ?? null;
     if ($id) {
-        pg_query_params($conn, "UPDATE arduino_commands SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1", array($id));
+        // Use EXECUTED instead of COMPLETED based on database enum check
+        pg_query_params($conn, "UPDATE arduino_commands SET status = 'EXECUTED' WHERE id = $1", array($id));
         sendJSON(['status' => 'SUCCESS']);
     }
 }
