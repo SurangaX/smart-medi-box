@@ -203,6 +203,9 @@ void fetchCommands() {
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd to Leo: "); Serial.println(commandStr);
         
+        // Small delay to let Leo process before next command
+        delay(200); 
+
         // Mark as complete on server
         markCommandComplete(cmdId);
       }

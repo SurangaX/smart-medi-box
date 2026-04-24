@@ -249,6 +249,10 @@ void startAlarm() {
     digitalWrite(SOLENOID_PIN, HIGH); // Unlock solenoid on alarm
     myDFPlayer.play(1); 
     Serial.println(F("ALARM STARTED"));
+  } else {
+    // If alarm is already active, just reset the timer to extend it
+    alarmStartTime = millis();
+    Serial.println(F("ALARM TIMER RESET"));
   }
 }
 
