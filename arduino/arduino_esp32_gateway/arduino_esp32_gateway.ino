@@ -76,6 +76,8 @@ void loop() {
            box.door = doc["d"];
            box.alarm = doc["a"];
            box.lock = doc["l"];
+           // REAL-TIME: Force refresh UI when state packet arrives
+           renderUI(); 
          }
        }
     }

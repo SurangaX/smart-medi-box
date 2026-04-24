@@ -44,6 +44,7 @@ DFRobotDFPlayerMini myDFPlayer;
 float tempC = 0;
 int hum = 0;
 bool doorOpen = false;
+bool lastDoorState = false; // Real-time detection
 bool alarmActive = false;
 bool pendingClose = false; // Tracks if door was opened during alarm
 unsigned long alarmStartTime = 0;
@@ -119,6 +120,13 @@ void loop() {
   
   // Read Door Sensor (HIGH = Open, LOW = Closed to GND)
   doorOpen = (digitalRead(DOOR_PIN) == HIGH);
+
+  // REAL-TIME: Push update to ESP32 immediately if door state changes
+  if (doorOpen != lastDoorState) {
+    Serial.print(F("Door changed to: ")); Serial.println(doorOpen ? "OPEN" : "CLOSED");
+    readAndSendData();
+    lastDoorState = doorOpen;
+  }
 
   // 1. Intelligent Alarm Logic
   if (alarmActive) {
@@ -208,6 +216,7 @@ void readAndSendData() {
   Serial1.print(F(",\"h\":")); Serial1.print(hum);
   Serial1.print(F(",\"d\":")); Serial1.print(doorOpen);
   Serial1.print(F(",\"a\":")); Serial1.print(alarmActive);
+  Serial1.print(F(",\"l\":")); Serial1.print(digitalRead(SOLENOID_PIN)); // Lock state
   Serial1.println('}');
 }
 
