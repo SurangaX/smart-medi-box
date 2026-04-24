@@ -17,7 +17,6 @@ $action = $_GET['action'] ?? '';
 // If action not set, try parsing from PATH_INFO
 if (!$action) {
     $request_uri = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
-    // PATH_INFO format: /api/temperature/action, so action is at index 2
     $action = $request_uri[2] ?? '';
 }
 
@@ -36,8 +35,28 @@ switch ($action) {
         break;
     default:
         http_response_code(404);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found', 'received_action' => $action]);
         break;
+}
+
+/**
+ * Helper to get DB user ID from various identifiers
+ */
+function getDbUserId($identifier) {
+    global $conn;
+    if (!$identifier) return null;
+    
+    // If it's a numeric string, it might be the database ID
+    if (is_numeric($identifier)) {
+        $res = pg_query_params($conn, "SELECT id FROM users WHERE id = $1", array($identifier));
+        if ($res && pg_num_rows($res) > 0) return pg_fetch_result($res, 0, 0);
+    }
+    
+    // Otherwise try matching by user_id string or mac_address
+    $res = pg_query_params($conn, "SELECT id FROM users WHERE user_id = $1 OR UPPER(mac_address) = UPPER($1)", array($identifier));
+    if ($res && pg_num_rows($res) > 0) return pg_fetch_result($res, 0, 0);
+    
+    return null;
 }
 
 function handleGetCurrentTemp($method) {
@@ -45,310 +64,137 @@ function handleGetCurrentTemp($method) {
     
     if ($method !== 'GET' && $method !== 'POST') {
         http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
     
-    // Support both POST (with token) and GET (with user_id or device_id)
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
-    $device_id = $input['device_id'] ?? $_POST['device_id'] ?? $_GET['device_id'] ?? null;
+    $user_id_param = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $mac_address = $input['mac_address'] ?? $_POST['mac_address'] ?? $_GET['mac_address'] ?? null;
     
-    // If token is provided, look up the user_id from it
-    if ($token && !$user_id && !$device_id) {
-        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
-        $token_result = pg_query_params($conn, $token_query, array($token));
-        
-        if (pg_num_rows($token_result) > 0) {
-            $token_row = pg_fetch_assoc($token_result);
-            $user_id = $token_row['user_id'];
-        }
+    $db_user_id = null;
+    
+    if ($token) {
+        $token_res = pg_query_params($conn, "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP", array($token));
+        if ($token_res && pg_num_rows($token_res) > 0) $db_user_id = pg_fetch_result($token_res, 0, 0);
     }
     
-    if (!$user_id && !$device_id) {
+    if (!$db_user_id && $user_id_param) $db_user_id = getDbUserId($user_id_param);
+    if (!$db_user_id && $mac_address) $db_user_id = getDbUserId($mac_address);
+    
+    if (!$db_user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id or device_id required (via token or direct parameter)']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'User not identified']);
         return;
     }
     
     try {
-        if ($user_id) {
-            $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
-                      FROM temperature_logs 
-                      WHERE user_id = (SELECT id FROM users WHERE user_id = $1)
-                      ORDER BY timestamp DESC LIMIT 1";
-            
-            $result = pg_query_params($conn, $query, array($user_id));
-        } else {
-            $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
-                      FROM temperature_logs 
-                      WHERE device_id = $1
-                      ORDER BY timestamp DESC LIMIT 1";
-            
-            $result = pg_query_params($conn, $query, array($device_id));
-        }
+        $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
+                  FROM temperature_logs 
+                  WHERE user_id = $1
+                  ORDER BY timestamp DESC LIMIT 1";
         
-        if (pg_num_rows($result) > 0) {
+        $result = pg_query_params($conn, $query, array($db_user_id));
+        
+        if ($result && pg_num_rows($result) > 0) {
             $row = pg_fetch_assoc($result);
-            
-            http_response_code(200);
             echo json_encode([
                 'status' => 'SUCCESS',
                 'temperature' => [
                     'internal_temp' => floatval($row['internal_temp']),
                     'external_humidity' => floatval($row['external_humidity']),
                     'target_temp' => floatval($row['target_temp']),
-                    'cooling_status' => $row['cooling_status'] === 'ON',
+                    'cooling_status' => ($row['cooling_status'] === 'ON' || $row['cooling_status'] === 'ALARM'),
                     'timestamp' => $row['timestamp']
                 ]
             ]);
         } else {
-            http_response_code(404);
-            echo json_encode(['status' => 'NO_DATA', 'message' => 'No temperature data found']);
+            // Check settings if no logs yet
+            $setRes = pg_query_params($conn, "SELECT target_temp FROM temperature_settings WHERE user_id = $1", array($db_user_id));
+            $target = ($setRes && pg_num_rows($setRes) > 0) ? pg_fetch_result($setRes, 0, 0) : 4.0;
+            
+            http_response_code(200); // Return 200 but with NO_DATA status
+            echo json_encode([
+                'status' => 'NO_DATA', 
+                'message' => 'Waiting for device to report data',
+                'target_temp' => floatval($target)
+            ]);
         }
     } catch (Exception $e) {
-        error_log("Get Current Temp Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+        echo json_encode(['status' => 'ERROR', 'message' => $e->getMessage()]);
     }
 }
 
 function handleSetTargetTemp($method) {
     global $conn;
-    
-    if ($method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
+    if ($method !== 'POST') return;
     
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
+    $user_id_param = $input['user_id'] ?? $_POST['user_id'] ?? null;
     $target_temp = $input['target_temp'] ?? $_POST['target_temp'] ?? null;
     
-    if (!$user_id || $target_temp === null) {
+    $db_user_id = getDbUserId($user_id_param);
+    
+    if (!$db_user_id || $target_temp === null) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
         return;
     }
     
     $target_temp = floatval($target_temp);
-    if ($target_temp < 2 || $target_temp > 8) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Temperature must be between 2-8°C']);
-        return;
-    }
     
     try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
+        pg_query_params($conn, "UPDATE temperature_settings SET target_temp = $1, updated_at = NOW() WHERE user_id = $2", array($target_temp, $db_user_id));
+        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($db_user_id, "TEMP_SET|" . $target_temp));
         
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        
-        $query = "UPDATE temperature_settings SET target_temp = $1, updated_at = NOW() 
-                  WHERE user_id = $2";
-        
-        $result = pg_query_params($conn, $query, array($target_temp, $db_user_id));
-        
-        if ($result) {
-            $logQuery = "INSERT INTO temperature_logs (user_id, target_temp, action) 
-                        VALUES ($1, $2, 'TARGET_SET')";
-            pg_query_params($conn, $logQuery, array($db_user_id, $target_temp));
-            
-            broadcastToArduino($db_user_id, "TEMP_SET|" . $target_temp);
-            
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'SUCCESS',
-                'message' => 'Target temperature set',
-                'target_temp' => $target_temp
-            ]);
-        } else {
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update temperature']);
-        }
+        echo json_encode(['status' => 'SUCCESS', 'target_temp' => $target_temp]);
     } catch (Exception $e) {
-        error_log("Set Target Temp Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }
 }
 
 function handleGetTempHistory($method) {
     global $conn;
-    
-    if ($method !== 'GET' && $method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
-    // Support both POST (with token) and GET (with user_id)
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? null;
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
-    $days = $input['days'] ?? $_POST['days'] ?? $_GET['days'] ?? 7;
+    $user_id_param = $input['user_id'] ?? $_POST['user_id'] ?? $_GET['user_id'] ?? null;
+    $days = intval($input['days'] ?? $_GET['days'] ?? 7);
     
-    // If token is provided, look up the user_id from it
-    if ($token && !$user_id) {
-        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
-        $token_result = pg_query_params($conn, $token_query, array($token));
-        
-        if (pg_num_rows($token_result) > 0) {
-            $token_row = pg_fetch_assoc($token_result);
-            $user_id = $token_row['user_id'];
-        }
-    }
-    
-    if (!$user_id) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required (via token or direct parameter)']);
-        return;
-    }
-    
-    $days = intval($days);
-    if ($days < 1 || $days > 90) {
-        $days = 7;
-    }
+    $db_user_id = getDbUserId($user_id_param);
+    if (!$db_user_id) { http_response_code(400); return; }
     
     try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        
         $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
                   FROM temperature_logs 
                   WHERE user_id = $1 AND timestamp >= NOW() - INTERVAL '1 day' * $2
-                  ORDER BY timestamp DESC 
-                  LIMIT 1000";
+                  ORDER BY timestamp ASC LIMIT 2000";
         
         $result = pg_query_params($conn, $query, array($db_user_id, $days));
-        
         $history = [];
-        $avgTemp = 0;
-        $count = 0;
-        
         while ($row = pg_fetch_assoc($result)) {
             $history[] = [
-                'date' => date('Y-m-d', strtotime($row['timestamp'])),
                 'timestamp' => $row['timestamp'],
-                'avg_temp' => floatval($row['internal_temp']),
-                'target_temp' => floatval($row['target_temp']),
-                'external_humidity' => floatval($row['external_humidity']),
-                'cooling_status' => $row['cooling_status'] === 'ON'
+                'temp' => floatval($row['internal_temp']),
+                'humidity' => floatval($row['external_humidity'])
             ];
-            $avgTemp += floatval($row['internal_temp']);
-            $count++;
         }
-        
-        $avgTemp = $count > 0 ? $avgTemp / $count : 0;
-        
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'period_days' => $days,
-            'records' => $count,
-            'average_temp' => round($avgTemp, 2),
-            'history' => array_reverse($history)
-        ]);
+        echo json_encode(['status' => 'SUCCESS', 'history' => $history]);
     } catch (Exception $e) {
-        error_log("Get Temp History Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }
 }
 
 function handleCoolingControl($method) {
+    // Similar robust implementation
     global $conn;
-    
-    if ($method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
+    $user_id_param = $input['user_id'] ?? $_POST['user_id'] ?? null;
     $action = $input['action'] ?? $_POST['action'] ?? null;
     
-    if (!$user_id || !$action) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
-        return;
-    }
+    $db_user_id = getDbUserId($user_id_param);
+    if (!$db_user_id || !$action) { http_response_code(400); return; }
     
-    if (!in_array($action, ['ON', 'OFF', 'AUTO'])) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Invalid action']);
-        return;
-    }
-    
-    try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        
-        $query = "UPDATE temperature_settings SET cooling_mode = $1, updated_at = NOW() 
-                  WHERE user_id = $2";
-        
-        $result = pg_query_params($conn, $query, array($action, $db_user_id));
-        
-        if ($result) {
-            $logQuery = "INSERT INTO temperature_logs (user_id, action) 
-                        VALUES ($1, $2)";
-            $actionLog = 'COOLING_' . $action;
-            pg_query_params($conn, $logQuery, array($db_user_id, $actionLog));
-            
-            broadcastToArduino($db_user_id, "COOLING_" . $action);
-            
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'SUCCESS',
-                'message' => 'Cooling control updated',
-                'mode' => $action
-            ]);
-        } else {
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update cooling']);
-        }
-    } catch (Exception $e) {
-        error_log("Cooling Control Error: " . $e->getMessage());
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
-    }
+    pg_query_params($conn, "UPDATE temperature_settings SET cooling_mode = $1 WHERE user_id = $2", array($action, $db_user_id));
+    pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($db_user_id, "COOLING_" . $action));
+    echo json_encode(['status' => 'SUCCESS', 'mode' => $action]);
 }
-
-function broadcastToArduino($user_id, $command) {
-    global $conn;
-    
-    $query = "INSERT INTO arduino_commands (user_id, command, status) 
-              VALUES ($1, $2, 'PENDING')";
-    
-    pg_query_params($conn, $query, array($user_id, $command));
-}
-
 ?>

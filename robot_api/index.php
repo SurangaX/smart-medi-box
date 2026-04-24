@@ -79,8 +79,8 @@ if (isset($request_parts[0]) && $request_parts[0] === 'index.php') {
 }
 
 // Expected format: /api/{module}/{action}
-// Example: /api/auth/verify
-if (count($request_parts) < 3 || $request_parts[0] !== 'api') {
+// Example: /api/auth/verify or /api/status
+if (count($request_parts) < 2 || $request_parts[0] !== 'api') {
     error_log("INDEX.PHP - Invalid API request. Count: " . count($request_parts) . ", First part: " . ($request_parts[0] ?? 'EMPTY'));
     http_response_code(400);
     echo json_encode([
