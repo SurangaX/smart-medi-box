@@ -39,7 +39,7 @@ const Dashboard = ({ user, onLogout }) => {
     const scheduleInterval = setInterval(fetchSchedules, 60000);
     const statusInterval = setInterval(fetchDeviceStatus, 5000);
     const tempInterval = setInterval(fetchTemperatureData, 10000); // Poll temp every 10s
-    const notifInterval = setInterval(fetchNotifications, 30000);
+    const notifInterval = setInterval(fetchNotifications, 5000); // Increased frequency
 
     return () => {
       clearInterval(scheduleInterval);
