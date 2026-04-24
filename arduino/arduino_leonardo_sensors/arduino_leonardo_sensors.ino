@@ -202,13 +202,13 @@ void checkIncomingCommands() {
     
     if (cmd.indexOf("req_data") >= 0) {
       readAndSendData();
-    } else if (cmd.indexOf("trigger_alarm") >= 0) {
+    } else if (cmd.indexOf("trigger_alarm") >= 0 || cmd.indexOf("BUZZ:ON") >= 0) {
       startAlarm();
-    } else if (cmd.indexOf("stop_alarm") >= 0) {
+    } else if (cmd.indexOf("stop_alarm") >= 0 || cmd.indexOf("BUZZ:OFF") >= 0) {
       stopAlarm();
-    } else if (cmd.indexOf("lock") >= 0) {
+    } else if (cmd.indexOf("lock") >= 0 || cmd.indexOf("SOL:LOCK") >= 0) {
       digitalWrite(SOLENOID_PIN, LOW);
-    } else if (cmd.indexOf("unlock") >= 0) {
+    } else if (cmd.indexOf("unlock") >= 0 || cmd.indexOf("SOL:UNLOCK") >= 0) {
       digitalWrite(SOLENOID_PIN, HIGH);
     } else if (cmd.indexOf("play:") >= 0) {
       int track = cmd.substring(5).toInt();
@@ -216,6 +216,9 @@ void checkIncomingCommands() {
     } else if (cmd.indexOf("servo:") >= 0) {
       int pos = cmd.substring(6).toInt();
       myServo.write(pos);
+    } else if (cmd.indexOf("ACT:CALIBRATE") >= 0) {
+      Serial.println(F("Actuator calibration signal received (Future feature)"));
+      // Future: Add calibration logic here
     }
   }
 }

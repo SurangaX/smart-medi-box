@@ -86,6 +86,13 @@ void loop() {
     
     lastSync = millis();
   }
+
+  // 4. Poll for commands from server (more frequent for responsiveness)
+  static unsigned long lastCmd = 0;
+  if (millis() - lastCmd > 5000) { // Check every 5 seconds
+    fetchCommands();
+    lastCmd = millis();
+  }
 }
 
 void renderUI() {
@@ -148,9 +155,6 @@ void fetchUserInfo() {
       // If status is PENDING, UNPAIRED, or UNKNOWN, the device is not paired
       box.user = "Unpaired";
     }
-  } else {
-    // Optional: Log error code for debugging
-    // Serial.print("User info fetch failed: "); Serial.println(code);
   }
   http.end();
 }
@@ -166,6 +170,44 @@ void syncToServer() {
   doc["door_open"] = box.door;
   String payload;
   serializeJson(doc, payload);
+  http.POST(payload);
+  http.end();
+}
+
+void fetchCommands() {
+  HTTPClient http;
+  String url = String(API_BASE) + "/device/check-commands?mac_address=" + WiFi.macAddress();
+  http.begin(url);
+  int code = http.GET();
+  
+  if (code == 200) {
+    DynamicJsonDocument doc(2048);
+    String response = http.getString();
+    deserializeJson(doc, response);
+    
+    if (doc["status"] == "SUCCESS") {
+      JsonArray cmds = doc["commands"].as<JsonArray>();
+      for (JsonObject cmd : cmds) {
+        String commandStr = cmd["command"].as<String>();
+        int cmdId = cmd["id"].as<int>();
+        
+        // Forward to Leonardo
+        LeoSerial.println(commandStr);
+        Serial.print("Forwarded cmd to Leo: "); Serial.println(commandStr);
+        
+        // Mark as complete on server
+        markCommandComplete(cmdId);
+      }
+    }
+  }
+  http.end();
+}
+
+void markCommandComplete(int cmdId) {
+  HTTPClient http;
+  http.begin(String(API_BASE) + "/device/complete-command");
+  http.addHeader("Content-Type", "application/json");
+  String payload = "{\"command_id\":" + String(cmdId) + "}";
   http.POST(payload);
   http.end();
 }

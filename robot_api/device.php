@@ -34,6 +34,9 @@ switch ($action) {
     case 'update-status':
         handleUpdateDeviceStatus($method);
         break;
+    case 'complete-command':
+        handleCompleteCommand($method);
+        break;
     case 'heartbeat':
         handleDeviceHeartbeat($method);
         break;
@@ -275,4 +278,40 @@ function handleCheckCommands($method) {
 
 function handleSyncDevice($method) { handleUpdateDeviceStatus($method); }
 function handleListDevices($method) { echo json_encode(['status' => 'SUCCESS', 'message' => 'Deprecated']); }
+
+/**
+ * Mark a command as completed
+ */
+function handleCompleteCommand($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        return;
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $command_id = $input['command_id'] ?? $_POST['command_id'] ?? null;
+    
+    if (!$command_id) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'command_id required']);
+        return;
+    }
+    
+    try {
+        $query = "UPDATE arduino_commands SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1";
+        $result = pg_query_params($conn, $query, array($command_id));
+        
+        if ($result) {
+            echo json_encode(['status' => 'SUCCESS', 'message' => 'Command marked as completed']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to update command']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => $e->getMessage()]);
+    }
+}
 ?>
