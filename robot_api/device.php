@@ -9,6 +9,8 @@ require_once 'db_config.php';
 
 // Turn off error displaying to prevent corrupting JSON output
 ini_set('display_errors', 0);
+error_reporting(0);
+
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -22,31 +24,31 @@ if (!isset($action) || empty($action)) {
     }
 }
 
+// Function to output pure JSON and exit
+function sendJSON($data) {
+    if (ob_get_length()) ob_clean(); // Clear any accidental output/logs
+    echo json_encode($data);
+    exit;
+}
+
 switch ($action) {
     case 'register': handleRegisterDevice($method); break;
     case 'update-status': handleUpdateDeviceStatus($method); break;
     case 'complete-command': handleCompleteCommand($method); break;
     case 'heartbeat': handleDeviceHeartbeat($method); break;
     case 'check-commands': handleCheckCommands($method); break;
-    case 'trigger-manual': handleManualTrigger($method); break; // New manual trigger
+    case 'trigger-manual': handleManualTrigger($method); break;
     default:
         http_response_code(404);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found', 'received_action' => $action]);
+        sendJSON(['status' => 'ERROR', 'message' => 'Endpoint not found', 'received_action' => $action]);
         break;
 }
 
-/**
- * Manually inject a command for testing
- */
 function handleManualTrigger($method) {
     global $conn;
     $mac = $_GET['mac_address'] ?? '';
     $type = $_GET['type'] ?? 'BUZZ:ON';
-    
-    if (!$mac) {
-        echo json_encode(['status' => 'ERROR', 'message' => 'mac_address required']);
-        return;
-    }
+    if (!$mac) { sendJSON(['status' => 'ERROR', 'message' => 'mac_address required']); }
     
     try {
         $q = "SELECT dum.user_id FROM devices d JOIN device_user_map dum ON d.id = dum.device_id WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
@@ -54,26 +56,17 @@ function handleManualTrigger($method) {
         if ($res && pg_num_rows($res) > 0) {
             $user_id = pg_fetch_result($res, 0, 0);
             pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, $type));
-            echo json_encode(['status' => 'SUCCESS', 'message' => 'Manual command queued: ' . $type]);
+            sendJSON(['status' => 'SUCCESS', 'message' => 'Manual command queued: ' . $type]);
         } else {
-            echo json_encode(['status' => 'ERROR', 'message' => 'MAC not paired']);
+            sendJSON(['status' => 'ERROR', 'message' => 'MAC not paired']);
         }
-    } catch (Exception $e) {
-        echo json_encode(['status' => 'ERROR', 'message' => $e->getMessage()]);
-    }
+    } catch (Exception $e) { sendJSON(['status' => 'ERROR', 'message' => $e->getMessage()]); }
 }
 
-/**
- * Fetch pending commands
- */
 function handleCheckCommands($method) {
     global $conn;
     $mac = trim($_GET['mac_address'] ?? '');
-    
-    if (!$mac) {
-        echo json_encode(['status' => 'ERROR', 'message' => 'mac_address required']);
-        return;
-    }
+    if (!$mac) { sendJSON(['status' => 'ERROR', 'message' => 'mac_address required']); }
     
     try {
         $q = "SELECT dum.user_id FROM devices d JOIN device_user_map dum ON d.id = dum.device_id WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
@@ -85,28 +78,20 @@ function handleCheckCommands($method) {
             
             $cmds = [];
             while ($r = pg_fetch_assoc($cmdRes)) {
-                $cmds[] = [
-                    'id' => (int)$r['id'],
-                    'command' => $r['command']
-                ];
+                $cmds[] = ['id' => (int)$r['id'], 'command' => $r['command']];
             }
-            
-            // Output pure JSON
-            echo json_encode(['status' => 'SUCCESS', 'commands' => $cmds]);
+            sendJSON(['status' => 'SUCCESS', 'commands' => $cmds]);
         } else {
-            echo json_encode(['status' => 'SUCCESS', 'commands' => []]);
+            sendJSON(['status' => 'SUCCESS', 'commands' => []]);
         }
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'DB Error']);
-    }
+    } catch (Exception $e) { sendJSON(['status' => 'ERROR', 'message' => 'DB Error']); }
 }
 
 function handleRegisterDevice($method) {
     global $conn;
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $mac = trim($input['mac_address'] ?? $_POST['mac_address'] ?? '');
-    if (!$mac) { echo json_encode(['status' => 'ERROR', 'message' => 'MAC required']); return; }
+    if (!$mac) { sendJSON(['status' => 'ERROR', 'message' => 'MAC required']); }
 
     try {
         $q = "SELECT d.device_id, u.name as user_name 
@@ -117,11 +102,11 @@ function handleRegisterDevice($method) {
         $res = pg_query_params($conn, $q, array($mac));
         if ($res && pg_num_rows($res) > 0) {
             $data = pg_fetch_assoc($res);
-            echo json_encode(['status' => 'SUCCESS', 'user_name' => $data['user_name'], 'device_id' => $data['device_id']]);
+            sendJSON(['status' => 'SUCCESS', 'user_name' => $data['user_name'], 'device_id' => $data['device_id']]);
         } else {
-            echo json_encode(['status' => 'UNPAIRED']);
+            sendJSON(['status' => 'UNPAIRED']);
         }
-    } catch (Exception $e) { echo json_encode(['status' => 'ERROR']); }
+    } catch (Exception $e) { sendJSON(['status' => 'ERROR']); }
 }
 
 function handleUpdateDeviceStatus($method) {
@@ -141,7 +126,7 @@ function handleUpdateDeviceStatus($method) {
                     array($user_id, $input['temperature'], $input['humidity']));
             }
             pg_query_params($conn, "UPDATE devices SET last_sync = NOW() WHERE id = $1", array($data['id']));
-            echo json_encode(['status' => 'SUCCESS']);
+            sendJSON(['status' => 'SUCCESS']);
         }
     } catch (Exception $e) { }
 }
@@ -152,9 +137,9 @@ function handleCompleteCommand($method) {
     $id = $input['command_id'] ?? null;
     if ($id) {
         pg_query_params($conn, "UPDATE arduino_commands SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1", array($id));
-        echo json_encode(['status' => 'SUCCESS']);
+        sendJSON(['status' => 'SUCCESS']);
     }
 }
 
-function handleDeviceHeartbeat($method) { echo json_encode(['status' => 'SUCCESS']); }
+function handleDeviceHeartbeat($method) { sendJSON(['status' => 'SUCCESS']); }
 ?>
