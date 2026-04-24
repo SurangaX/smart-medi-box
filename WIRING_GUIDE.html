@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Medi Box - Comprehensive Wiring Guide</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 950px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        h1, h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        .module { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .wiring-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wiring-table th, .wiring-table td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+        .wiring-table th { background-color: #f8f9fa; font-weight: bold; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
+        .tag-power { background-color: #ffeaa7; color: #d35400; }
+        .tag-ground { background-color: #dfe6e9; color: #2d3436; }
+        .tag-data { background-color: #dff9fb; color: #0984e3; }
+        .warning { background-color: #ff7675; color: white; padding: 10px; border-radius: 4px; margin: 10px 0; font-weight: bold; }
+        .info { background-color: #81ecec; color: #2d3436; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .conflict { color: #e74c3c; font-weight: bold; text-decoration: underline; }
+        code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+        pre { background: #2d3436; color: #fff; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Smart Medi Box - Wiring & Integration Master Guide</h1>
+    <p>This document provides the consolidated wiring instructions for the Smart Medi Box, integrating the Arduino Leonardo (Sensors/Actuators) and the ESP32 (Gateway).</p>
+
+    <div class="module">
+        <h2>🚀 CORE: ESP32 to Leonardo (Serial Bridge)</h2>
+        <p>This link allows the ESP32 to send commands and receive sensor data. We use the <strong>MD0067 Logic Level Shifter</strong> to protect the 3.3V ESP32 from the 5V Leonardo.</p>
+        
+        <div class="warning">
+            <strong>⚠️ IMPORTANT: THE SHIFTER REQUIRES POWER TO OPERATE</strong><br>
+            You MUST connect the 5V and 3.3V "Reference" pins (HV and LV) or no data will pass through.
+        </div>
+
+        <h3>The 8-Wire Mandatory Checklist (Using Channels 2 & 3)</h3>
+        <table class="wiring-table">
+            <thead>
+                <tr>
+                    <th>Wire #</th>
+                    <th>Shifter Pin</th>
+                    <th>Connect To</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td><strong>HV (Ref)</strong></td><td>Leonardo <strong>5V</strong></td><td>Power Reference (High)</td></tr>
+                <tr><td>2</td><td><strong>LV (Ref)</strong></td><td>ESP32 <strong>3.3V</strong></td><td>Power Reference (Low)</td></tr>
+                <tr><td>3</td><td><strong>GND (HV)</strong></td><td>Leonardo <strong>GND</strong></td><td>Ground Reference (High)</td></tr>
+                <tr><td>4</td><td><strong>GND (LV)</strong></td><td>ESP32 <strong>GND</strong></td><td>Ground Reference (Low)</td></tr>
+                <tr style="background-color: #f1f2f6;"><td>5</td><td><strong>HV2</strong></td><td>Leonardo <strong>Pin 1 (TX1)</strong></td><td>Data Out: Leo &rarr; ESP</td></tr>
+                <tr style="background-color: #f1f2f6;"><td>6</td><td><strong>LV2</strong></td><td>ESP32 <strong>GPIO 22 (RX)</strong></td><td>Data In: ESP Receives from Leo</td></tr>
+                <tr style="background-color: #f1f2f6;"><td>6</td><td><strong>LV2</strong></td><td>ESP32 <strong>GPIO 16 (RX)</strong></td><td>Data In: ESP Receives from Leo</td></tr>
+                <tr style="background-color: #f1f2f6;"><td>8</td><td><strong>LV3</strong></td><td>ESP32 <strong>GPIO 17 (TX)</strong></td><td>Data Out: ESP &rarr; Leo</td></tr>
+            </tbody>
+        </table>
+        
+        <div class="info">
+            <strong>Software Note:</strong> Use <code>Serial1</code> on the Leonardo to talk to these pins. <code>Serial</code> is for your USB/PC only.
+        </div>
+    </div>
+
+    <div class="module">
+        <h2>🛠️ Arduino Leonardo - Master Pin Mapping (Optimized)</h2>
+        <p>Since the Leonardo has limited pins, several original assignments have been shifted to avoid <span class="conflict">I2C (SDA/SCL) conflicts</span>.</p>
+        <table class="wiring-table">
+            <thead>
+                <tr>
+                    <th>Pin</th>
+                    <th>Function</th>
+                    <th>Component</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>0 (RX1)</td><td>Serial RX</td><td>From ESP32 TX</td><td>Hardware Serial1</td></tr>
+                <tr><td>1 (TX1)</td><td>Serial TX</td><td>To ESP32 RX</td><td>Via Level Shifter</td></tr>
+                <tr><td>2 (SDA)</td><td>I2C Data</td><td>DS3231 RTC</td><td><span class="conflict">Conflict with original Door Pin</span></td></tr>
+                <tr><td>3 (SCL)</td><td>I2C Clock</td><td>DS3231 RTC</td><td><span class="conflict">Conflict with original Cooling Pin</span></td></tr>
+                <tr><td>4</td><td>Digital Out</td><td>Stepper STEP</td><td>EasyDriver HW-135</td></tr>
+                <tr><td>5 (PWM)</td><td>Digital Out</td><td>Solenoid</td><td>N-MOSFET Switch</td></tr>
+                <tr><td>6</td><td>Digital Out</td><td>RFID RST</td><td>RC522 Reset</td></tr>
+                <tr><td>7</td><td>Digital Out</td><td>Buzzer</td><td>BC337 Base</td></tr>
+                <tr><td>8</td><td>Digital Out</td><td>LCD RST</td><td>ST7920 Reset</td></tr>
+                <tr><td>9</td><td>Digital Out</td><td>RFID SS (CS)</td><td>RC522 Chip Select</td></tr>
+                <tr><td>10 (PWM)</td><td>Digital Out</td><td>LCD RS (CS)</td><td>ST7920 CS</td></tr>
+                <tr><td>11 (PWM)</td><td>Digital Out</td><td>LCD RW (Data)</td><td>ST7920 Data</td></tr>
+                <tr><td>12</td><td>Digital Out</td><td>Stepper DIR</td><td>EasyDriver HW-135</td></tr>
+                <tr><td>13 (PWM)</td><td>Digital Out</td><td>LCD E (Clock)</td><td>ST7920 Clock</td></tr>
+                <tr><td>A0 (D18)</td><td>Analog/Digital</td><td>DHT22 Data</td><td>4.7k Pull-up</td></tr>
+                <tr><td>A1 (D19)</td><td>Analog/Digital</td><td>DS18B20 Data</td><td>4.7k Pull-up</td></tr>
+                <tr><td>A2 (D20)</td><td>Servo Signal</td><td>MG995 Servo</td><td>Dispenser Gate</td></tr>
+                <tr><td>A3 (D21)</td><td>SoftSerial RX</td><td>DFPlayer TX</td><td>Audio receive</td></tr>
+                <tr><td>A4 (D22)</td><td>SoftSerial TX</td><td>DFPlayer RX</td><td>Via 1k resistor</td></tr>
+                <tr><td><strong>A5 (D23)</strong></td><td>Digital In</td><td><strong>Door Switch</strong></td><td><strong>Shifted from Pin 2</strong></td></tr>
+            </tbody>
+        </table>
+        <div class="warning">⚠️ COOLING MODULE (PIN 3): Since Pin 3 is required for the RTC (SCL), move the Cooling MOSFET signal to the ESP32 or use an I2C expander.</div>
+    </div>
+
+    <div class="module">
+        <h2>📱 ESP32 Gateway Pinout (Final Definitive Config)</h2>
+        <table class="wiring-table">
+            <tr><th>ESP32 Pin</th><th>Component</th><th>Connection</th></tr>
+            <tr><td>GPIO 16</td><td>Leonardo TX</td><td>From Leonardo Pin 1 (via shifter)</td></tr>
+            <tr><td>GPIO 17</td><td>Leonardo RX</td><td>To Leonardo Pin 0 (via shifter)</td></tr>
+            <tr><td>GPIO 26</td><td>GSM RX</td><td>SIM800L TX</td></tr>
+            <tr><td>GPIO 27</td><td>GSM TX</td><td>SIM800L RX</td></tr>
+            <tr><td>VIN / GND</td><td>Power</td><td>5V Supply / Common GND</td></tr>
+            <tr><td>TX0 / RX0</td><td>USB / PC</td><td>Reserved for code upload & Serial Monitor</td></tr>
+        </table>
+        <div class="info">✅ This layout allows you to upload code without unplugging anything and keeps the GSM and Leonardo signals completely separate.</div>
+    </div>
+
+    <div class="module">
+        <h2>📦 Component-Specific Notes</h2>
+        <h3>LCD (ST7920)</h3>
+        <ul>
+            <li><strong>PSB Pin:</strong> Must be connected to GND for Serial mode.</li>
+            <li><strong>Backlight:</strong> BLA to 5V, BLK to GND.</li>
+            <li><strong>Constructor:</strong> <code>U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, 13, 11, 10, 8);</code></li>
+        </ul>
+
+        <h3>RFID (RC522)</h3>
+        <ul>
+            <li><strong>Voltage:</strong> Connect VCC to <strong>3.3V</strong> (Leonardo has a 3.3V pin).</li>
+            <li><strong>SPI:</strong> Use the 6-pin ICSP header on Leonardo for MOSI, MISO, and SCK.</li>
+        </ul>
+
+        <h3>Stepper & Solenoid</h3>
+        <ul>
+            <li><strong>Power:</strong> Do not power the stepper or solenoid from Leonardo pins. Use an external 12V PSU.</li>
+            <li><strong>Common Ground:</strong> Ensure the external 12V PSU ground is connected to Leonardo/ESP32 GND.</li>
+        </ul>
+
+        <h3>Buzzer (Active)</h3>
+        <ul>
+            <li><strong>Wiring:</strong> Pin 7 -> 1k Resistor -> BC337 Base.</li>
+            <li><strong>Protection:</strong> Add a flyback diode (1N4007) across the buzzer.</li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <h3>💡 Pro-Tip: Debugging</h3>
+        <p>Use the <strong>USB Serial</strong> on Leonardo to monitor <code>Serial.print</code> debug messages while the hardware <code>Serial1</code> handles the background communication with the ESP32.</p>
+    </div>
+
+</body>
+</html>
