@@ -31,6 +31,7 @@ struct {
   float temp = 0;
   int hum = 0;
   bool door = false;
+  bool lock = false; // true = UNLOCKED
   String user = "Unpaired";
   String alert = "System Online";
   int alarm = 0;
@@ -72,6 +73,7 @@ void loop() {
         box.hum = doc["h"];
         box.door = doc["d"];
         box.alarm = doc["a"];
+        box.lock = doc["l"];
       }
     }
   }
@@ -171,11 +173,14 @@ void syncToServer() {
   HTTPClient http;
   http.begin(String(API_BASE) + "/device/update-status");
   http.addHeader("Content-Type", "application/json");
-  DynamicJsonDocument doc(200);
+  DynamicJsonDocument doc(256);
   doc["mac_address"] = WiFi.macAddress();
   doc["temperature"] = box.temp;
   doc["humidity"] = box.hum;
   doc["door_open"] = box.door;
+  doc["lock_open"] = box.lock;
+  doc["alarm_active"] = (box.alarm > 0);
+  
   String payload;
   serializeJson(doc, payload);
   http.POST(payload);
