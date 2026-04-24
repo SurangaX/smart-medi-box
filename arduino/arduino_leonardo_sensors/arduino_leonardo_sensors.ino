@@ -45,6 +45,7 @@ float tempC = 0;
 int hum = 0;
 bool doorOpen = false;
 bool alarmActive = false;
+unsigned long alarmStartTime = 0;
 unsigned long lastUpdate = 0;
 bool rtcOk = false;
 
@@ -115,7 +116,26 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   
-  // Handle USB Serial Commands (Debug)
+  // 1. Pulsing Alarm Logic (Beep effect)
+  if (alarmActive) {
+    // Auto-stop after 1 minute
+    if (now - alarmStartTime > 60000) {
+      Serial.println(F("Alarm timeout (1min)"));
+      stopAlarm();
+    } 
+    // Stop if door is opened
+    else if (doorOpen) {
+      Serial.println(F("Door opened - Stopping alarm"));
+      stopAlarm();
+    }
+    // Pulsing beep (500ms on, 500ms off)
+    else {
+      bool beepState = (now / 500) % 2;
+      digitalWrite(BUZZER_PIN, beepState);
+    }
+  }
+
+  // 2. Handle USB Serial Commands (Debug)
   if (Serial.available()) {
     String usbCmd = Serial.readStringUntil('\n');
     usbCmd.trim();
@@ -129,16 +149,16 @@ void loop() {
     }
   }
 
-  // 1. Send Data to ESP32 every 1 minute (Heartbeat) or when requested
+  // 3. Send Data to ESP32 every 1 minute (Heartbeat) or when requested
   if (now - lastUpdate > 60000) {
     readAndSendData();
     lastUpdate = now;
   }
 
-  // 2. Handle RFID
+  // 4. Handle RFID
   checkRFID();
 
-  // 3. Process Commands from ESP32
+  // 5. Process Commands from ESP32
   checkIncomingCommands();
 }
 
@@ -218,23 +238,26 @@ void checkIncomingCommands() {
       myServo.write(pos);
     } else if (cmd.indexOf("ACT:CALIBRATE") >= 0) {
       Serial.println(F("Actuator calibration signal received (Future feature)"));
-      // Future: Add calibration logic here
     }
   }
 }
 
 void startAlarm() {
-  alarmActive = true;
-  digitalWrite(BUZZER_PIN, HIGH);
-  digitalWrite(SOLENOID_PIN, HIGH);
-  myDFPlayer.play(1); // Play alarm sound
+  if (!alarmActive) {
+    alarmActive = true;
+    alarmStartTime = millis();
+    digitalWrite(SOLENOID_PIN, HIGH); // Unlock solenoid on alarm
+    myDFPlayer.play(1); 
+    Serial.println(F("ALARM STARTED"));
+  }
 }
 
 void stopAlarm() {
   alarmActive = false;
   digitalWrite(BUZZER_PIN, LOW);
-  digitalWrite(SOLENOID_PIN, LOW);
+  digitalWrite(SOLENOID_PIN, LOW); // Relock
   myDFPlayer.stop();
+  Serial.println(F("ALARM STOPPED"));
 }
 
 void runHardwareTest() {
