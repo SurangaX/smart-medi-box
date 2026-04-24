@@ -42,10 +42,13 @@ switch ($action) {
         break;
     default:
         http_response_code(404);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found', 'received_action' => $action]);
         break;
 }
 
+/**
+ * Handle device registration/pairing lookup
+ */
 function handleRegisterDevice($method) {
     global $conn;
     
@@ -56,11 +59,7 @@ function handleRegisterDevice($method) {
     }
     
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
-    $device_name = $input['device_name'] ?? $_POST['device_name'] ?? 'Arduino Leonardo';
-    $device_type = $input['device_type'] ?? $_POST['device_type'] ?? 'ARDUINO_LEONARDO';
     $mac_address = $input['mac_address'] ?? $_POST['mac_address'] ?? null;
-    $firmware_version = $input['firmware_version'] ?? $_POST['firmware_version'] ?? '1.0.0';
     
     if (!$mac_address) {
         http_response_code(400);
@@ -68,336 +67,84 @@ function handleRegisterDevice($method) {
         return;
     }
 
+    $mac_address = trim($mac_address);
+
     try {
-        // First check if device already exists by MAC (Case-Insensitive)
-        $checkQuery = "SELECT dr.id, dr.user_id, u.name as user_name 
-                      FROM device_registry dr
-                      LEFT JOIN users u ON dr.user_id = u.id
-                      WHERE UPPER(dr.mac_address) = UPPER($1)";
-        $checkResult = pg_query_params($conn, $checkQuery, array($mac_address));
+        $query = "SELECT d.id as device_db_id, d.device_id, u.id as user_db_id, u.name as user_name 
+                  FROM devices d
+                  LEFT JOIN device_user_map dum ON d.id = dum.device_id
+                  LEFT JOIN users u ON dum.user_id = u.id
+                  WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
         
-        if (pg_num_rows($checkResult) > 0) {
-            $device_data = pg_fetch_assoc($checkResult);
+        $result = pg_query_params($conn, $query, array($mac_address));
+        
+        if (pg_num_rows($result) > 0) {
+            $data = pg_fetch_assoc($result);
             
-            // If already registered and paired to a user, return success with user name
-            if ($device_data['user_id']) {
+            if ($data['user_db_id']) {
                 http_response_code(200);
                 echo json_encode([
                     'status' => 'SUCCESS', 
-                    'message' => 'Device already paired',
-                    'device_id' => $device_data['id'],
-                    'user_name' => $device_data['user_name'] ?? 'Paired User'
+                    'message' => 'Device recognized',
+                    'device_id' => $data['device_id'],
+                    'user_name' => $data['user_name'] ?? 'Paired User'
                 ]);
-                return;
-            }
-            
-            // If registered but not paired, and no user_id provided to pair it with
-            if (!$user_id) {
+            } else {
                 http_response_code(200);
                 echo json_encode([
                     'status' => 'PENDING',
-                    'message' => 'Device registered but not paired to a user',
-                    'device_id' => $device_data['id']
+                    'message' => 'Device found but not paired',
+                    'device_id' => $data['device_id']
                 ]);
-                return;
+            }
+        } else {
+            // Check users table for legacy MAC mapping
+            $userQuery = "SELECT id, name, user_id FROM users WHERE UPPER(TRIM(mac_address)) = UPPER($1)";
+            $userRes = pg_query_params($conn, $userQuery, array($mac_address));
+            
+            if (pg_num_rows($userRes) > 0) {
+                $userData = pg_fetch_assoc($userRes);
+                http_response_code(200);
+                echo json_encode([
+                    'status' => 'SUCCESS',
+                    'message' => 'Device recognized via legacy mapping',
+                    'device_id' => 'LEGACY_' . $userData['user_id'],
+                    'user_name' => $userData['name']
+                ]);
+            } else {
+                http_response_code(200);
+                echo json_encode([
+                    'status' => 'UNPAIRED',
+                    'message' => 'Device not found'
+                ]);
             }
         }
-        
-        // If we reach here, we need to either Register or Pair the device
-        if (!$user_id) {
-            // Can't create NEW registration without a user_id in this logic
-            // But we can return a 200 with "UNPAIRED" status
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'UNPAIRED',
-                'message' => 'Device not found or not paired'
-            ]);
-            return;
-        }
-
-        $user_query = "SELECT id, name FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        $user_real_name = $user_data['name'] ?? 'User';
-        
-        // Final registration/update logic
-        if (pg_num_rows($checkResult) > 0) {
-            // Update existing record with new user_id
-            $device_data = pg_fetch_assoc($checkResult);
-            $query = "UPDATE device_registry SET user_id = $1, status = 'ACTIVE' WHERE id = $2";
-            pg_query_params($conn, $query, array($db_user_id, $device_data['id']));
-            $device_id = $device_data['id'];
-        } else {
-            // Insert new record
-            $device_id = 'DEVICE_' . bin2hex(random_bytes(8));
-            $query = "INSERT INTO device_registry 
-                      (id, user_id, device_name, device_type, mac_address, firmware_version, status)
-                      VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')";
-            pg_query_params($conn, $query, 
-                array($device_id, $db_user_id, $device_name, $device_type, $mac_address, $firmware_version));
-        }
-        
-        http_response_code(201);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'message' => 'Device registered and paired',
-            'device_id' => $device_id,
-            'user_name' => $user_real_name
-        ]);
-
     } catch (Exception $e) {
         error_log("Register Device Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+        echo json_encode(['status' => 'ERROR', 'message' => $e->getMessage()]);
     }
 }
 
-function handleListDevices($method) {
-    global $conn;
-    
-    if ($method !== 'GET') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
-    $user_id = $_GET['user_id'] ?? null;
-    
-    if (!$user_id) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required']);
-        return;
-    }
-    
-    try {
-        $query = "SELECT id, device_name, device_type, mac_address, firmware_version, 
-                         status, last_sync, created_at
-                  FROM device_registry
-                  WHERE user_id = (SELECT id FROM users WHERE user_id = $1) 
-                  AND status != 'DELETED'
-                  ORDER BY created_at DESC";
-        
-        $result = pg_query_params($conn, $query, array($user_id));
-        
-        $devices = [];
-        while ($row = pg_fetch_assoc($result)) {
-            $devices[] = [
-                'device_id' => $row['id'],
-                'name' => $row['device_name'],
-                'type' => $row['device_type'],
-                'mac_address' => $row['mac_address'],
-                'firmware_version' => $row['firmware_version'],
-                'status' => $row['status'],
-                'last_sync' => $row['last_sync'],
-                'created_at' => $row['created_at']
-            ];
-        }
-        
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'count' => count($devices),
-            'devices' => $devices
-        ]);
-    } catch (Exception $e) {
-        error_log("List Devices Error: " . $e->getMessage());
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
-    }
-}
-
-function handleSyncDevice($method) {
-    global $conn;
-    
-    if ($method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
-    $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $device_id = $input['device_id'] ?? $_POST['device_id'] ?? null;
-    $user_id = $input['user_id'] ?? $_POST['user_id'] ?? null;
-    $firmware_version = $input['firmware_version'] ?? $_POST['firmware_version'] ?? null;
-    
-    if (!$device_id || !$user_id) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters']);
-        return;
-    }
-    
-    try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
-        
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
-            return;
-        }
-        
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
-        
-        if ($firmware_version) {
-            $query = "UPDATE device_registry SET last_sync = NOW(), firmware_version = $1
-                      WHERE id = $2 AND user_id = $3";
-            pg_query_params($conn, $query, array($firmware_version, $device_id, $db_user_id));
-        } else {
-            $query = "UPDATE device_registry SET last_sync = NOW() WHERE id = $1 AND user_id = $2";
-            pg_query_params($conn, $query, array($device_id, $db_user_id));
-        }
-        
-        $commandQuery = "SELECT id, command FROM arduino_commands 
-                        WHERE user_id = $1 AND status = 'PENDING'
-                        ORDER BY created_at ASC LIMIT 10";
-        
-        $cmdResult = pg_query_params($conn, $commandQuery, array($db_user_id));
-        
-        $commands = [];
-        while ($row = pg_fetch_assoc($cmdResult)) {
-            $commands[] = [
-                'id' => $row['id'],
-                'command' => $row['command']
-            ];
-        }
-        
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'message' => 'Device synced',
-            'pending_commands' => $commands
-        ]);
-    } catch (Exception $e) {
-        error_log("Sync Device Error: " . $e->getMessage());
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
-    }
-}
-
+/**
+ * Update device status and log sensor data
+ */
 function handleUpdateDeviceStatus($method) {
     global $conn;
     
     if ($method !== 'POST') {
         http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
         return;
     }
     
     $raw_input = file_get_contents('php://input');
     $input = json_decode($raw_input, true) ?? [];
     
-    // Debug logging
-    error_log("Update Device Status - Raw Input: " . $raw_input);
-    
-    $device_id = $input['device_id'] ?? $_POST['device_id'] ?? null;
     $mac_address = $input['mac_address'] ?? $_POST['mac_address'] ?? null;
-    $status = $input['status'] ?? $_POST['status'] ?? null;
-    
-    // Sensor data
     $temp = $input['temperature'] ?? null;
     $humidity = $input['humidity'] ?? null;
     $door_open = $input['door_open'] ?? null;
     $alarm_active = $input['alarm_active'] ?? null;
-    
-    if (!$device_id && !$mac_address) {
-        error_log("Update Device Status - Error: Missing device_id and mac_address");
-        http_response_code(400);
-        echo json_encode([
-            'status' => 'ERROR', 
-            'message' => 'device_id or mac_address required',
-            'debug_received' => array_keys($input)
-        ]);
-        return;
-    }
-    
-    try {
-        // If mac_address is provided, find the user_id and device_id
-        $db_user_id = null;
-        $db_device_id = $device_id;
-        
-        if ($mac_address) {
-            // Use case-insensitive matching for MAC address
-            $macQuery = "SELECT id, user_id FROM device_registry WHERE UPPER(mac_address) = UPPER($1)";
-            $macResult = pg_query_params($conn, $macQuery, array($mac_address));
-            if (pg_num_rows($macResult) > 0) {
-                $macData = pg_fetch_assoc($macResult);
-                $db_user_id = $macData['user_id'];
-                $db_device_id = $macData['id'];
-            } else {
-                error_log("Update Device Status - Warning: MAC address $mac_address not found in registry");
-            }
-        }
-        
-        if (!$db_device_id) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Device not found for provided identifiers']);
-            return;
-        }
-        
-        // Log sensor data if present
-        if ($db_user_id && $temp !== null) {
-            $logQuery = "INSERT INTO temperature_logs 
-                        (user_id, internal_temp, external_humidity, cooling_status, timestamp) 
-                        VALUES ($1, $2, $3, $4, NOW())";
-            
-            // Handle different types for alarm_active
-            $is_alarm = ($alarm_active === true || $alarm_active === 1 || $alarm_active === 'true' || $alarm_active === '1');
-            $cooling_status = $is_alarm ? 'ALARM' : 'NORMAL';
-            
-            pg_query_params($conn, $logQuery, array($db_user_id, $temp, $humidity, $cooling_status));
-        }
-        
-        // Update device registry
-        $updateQuery = "UPDATE device_registry SET last_sync = NOW()";
-        $params = [];
-        
-        if ($status) {
-            $updateQuery .= ", status = $1 WHERE id = $2";
-            $params = [$status, $db_device_id];
-        } else {
-            $updateQuery .= " WHERE id = $1";
-            $params = [$db_device_id];
-        }
-        
-        pg_query_params($conn, $updateQuery, $params);
-        
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'SUCCESS',
-            'message' => 'Device status/data updated',
-            'device_id' => $db_device_id,
-            'sensor_logged' => ($temp !== null)
-        ]);
-        
-    } catch (Exception $e) {
-        error_log("Update Device Status Error: " . $e->getMessage());
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-}
-
-function handleDeviceHeartbeat($method) {
-    global $conn;
-    
-    if ($method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
-    $input = json_decode(file_get_contents('php://input'), true) ?? [];
-    $mac_address = $input['mac_address'] ?? null;
-    $status = $input['status'] ?? 'ACTIVE';
-    $wifi_signal = $input['wifi_signal'] ?? null;
     
     if (!$mac_address) {
         http_response_code(400);
@@ -405,86 +152,127 @@ function handleDeviceHeartbeat($method) {
         return;
     }
     
+    $mac_address = trim($mac_address);
+    
     try {
-        $query = "UPDATE device_registry SET 
-                  last_sync = NOW(), 
-                  status = $1 
-                  WHERE mac_address = $2";
+        // Try new schema first
+        $query = "SELECT d.id as device_db_id, dum.user_id 
+                  FROM devices d
+                  LEFT JOIN device_user_map dum ON d.id = dum.device_id
+                  WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
         
-        $result = pg_query_params($conn, $query, array($status, $mac_address));
-        
-        if ($result) {
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'SUCCESS',
-                'message' => 'Heartbeat received'
-            ]);
-        } else {
-            http_response_code(500);
-            echo json_encode(['status' => 'ERROR', 'message' => 'Failed to process heartbeat']);
-        }
-    } catch (Exception $e) {
-        error_log("Device Heartbeat Error: " . $e->getMessage());
-        http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
-    }
-}
+        $result = pg_query_params($conn, $query, array($mac_address));
+        $user_id = null;
+        $device_db_id = null;
 
-function handleCheckCommands($method) {
-    global $conn;
-    
-    if ($method !== 'GET') {
-        http_response_code(405);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
-        return;
-    }
-    
-    $user_id = $_GET['user_id'] ?? null;
-    
-    if (!$user_id) {
-        http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id required']);
-        return;
-    }
-    
-    try {
-        $user_query = "SELECT id FROM users WHERE user_id = $1";
-        $user_result = pg_query_params($conn, $user_query, array($user_id));
+        if ($result && pg_num_rows($result) > 0) {
+            $data = pg_fetch_assoc($result);
+            $device_db_id = $data['device_db_id'];
+            $user_id = $data['user_id'];
+        } else {
+            // Try legacy users table mapping
+            $legacyQuery = "SELECT id FROM users WHERE UPPER(TRIM(mac_address)) = UPPER($1)";
+            $legacyRes = pg_query_params($conn, $legacyQuery, array($mac_address));
+            if ($legacyRes && pg_num_rows($legacyRes) > 0) {
+                $user_id = pg_fetch_result($legacyRes, 0, 0);
+                error_log("Update Device Status - Using legacy user mapping for $mac_address");
+            }
+        }
         
-        if (pg_num_rows($user_result) === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
+        if (!$user_id && !$device_db_id) {
+            error_log("Update Device Status - Warning: MAC $mac_address not found anywhere");
+            http_response_code(200); // Return 200 to ESP32 to stop retries, but with UNKNOWN status
+            echo json_encode(['status' => 'UNKNOWN', 'message' => 'Device not recognized']);
             return;
         }
         
-        $user_data = pg_fetch_assoc($user_result);
-        $db_user_id = $user_data['id'];
+        // Log sensor data
+        if ($user_id && $temp !== null) {
+            $logQuery = "INSERT INTO temperature_logs 
+                        (user_id, internal_temp, external_humidity, cooling_status, timestamp) 
+                        VALUES ($1, $2, $3, $4, NOW())";
+            
+            $is_alarm = ($alarm_active === true || $alarm_active === 1 || $alarm_active === 'true' || $alarm_active === '1');
+            $cooling_status = $is_alarm ? 'ALARM' : 'NORMAL';
+            
+            pg_query_params($conn, $logQuery, array($user_id, $temp, $humidity, $cooling_status));
+        }
         
-        $query = "SELECT id, command FROM arduino_commands 
-                  WHERE user_id = $1 AND status = 'PENDING'
-                  ORDER BY created_at ASC";
-        
-        $result = pg_query_params($conn, $query, array($db_user_id));
-        
-        $commands = [];
-        while ($row = pg_fetch_assoc($result)) {
-            $commands[] = [
-                'id' => $row['id'],
-                'command' => $row['command']
-            ];
+        // Update heartbeat if device exists in devices table
+        if ($device_db_id) {
+            pg_query_params($conn, "UPDATE devices SET last_sync = NOW() WHERE id = $1", array($device_db_id));
         }
         
         http_response_code(200);
         echo json_encode([
             'status' => 'SUCCESS',
-            'pending_count' => count($commands),
-            'commands' => $commands
+            'message' => 'Status updated',
+            'user_id' => $user_id
         ]);
+        
     } catch (Exception $e) {
-        error_log("Check Commands Error: " . $e->getMessage());
+        error_log("Update Device Status Error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+        echo json_encode(['status' => 'ERROR', 'message' => $e->getMessage()]);
     }
 }
 
+/**
+ * Heartbeat
+ */
+function handleDeviceHeartbeat($method) {
+    global $conn;
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $mac = trim($input['mac_address'] ?? '');
+    
+    if (!$mac) {
+        http_response_code(400);
+        return;
+    }
+    
+    try {
+        pg_query_params($conn, "UPDATE devices SET last_sync = NOW() WHERE UPPER(TRIM(mac_address)) = UPPER($1)", array($mac));
+        echo json_encode(['status' => 'SUCCESS']);
+    } catch (Exception $e) {
+        http_response_code(500);
+    }
+}
+
+/**
+ * Commands
+ */
+function handleCheckCommands($method) {
+    global $conn;
+    $mac = trim($_GET['mac_address'] ?? '');
+    
+    if (!$mac) {
+        http_response_code(400);
+        return;
+    }
+    
+    try {
+        // Try finding user_id from devices table or users table
+        $q = "SELECT user_id FROM (
+                SELECT dum.user_id FROM devices d JOIN device_user_map dum ON d.id = dum.device_id WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)
+                UNION
+                SELECT id FROM users WHERE UPPER(TRIM(mac_address)) = UPPER($1)
+              ) AS combined LIMIT 1";
+        
+        $res = pg_query_params($conn, $q, array($mac));
+        if ($res && pg_num_rows($res) > 0) {
+            $user_id = pg_fetch_result($res, 0, 0);
+            $cmdRes = pg_query_params($conn, "SELECT id, command FROM arduino_commands WHERE user_id = $1 AND status = 'PENDING' ORDER BY created_at ASC", array($user_id));
+            $cmds = [];
+            while ($r = pg_fetch_assoc($cmdRes)) { $cmds[] = $r; }
+            echo json_encode(['status' => 'SUCCESS', 'commands' => $cmds]);
+        } else {
+            echo json_encode(['status' => 'SUCCESS', 'commands' => []]);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+    }
+}
+
+function handleSyncDevice($method) { handleUpdateDeviceStatus($method); }
+function handleListDevices($method) { echo json_encode(['status' => 'SUCCESS', 'message' => 'Deprecated']); }
 ?>
