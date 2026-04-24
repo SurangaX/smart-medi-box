@@ -61,20 +61,23 @@ void loop() {
     String line = LeoSerial.readStringUntil('\n');
     line.trim();
 
-    if (line == "MED_TAKEN") {
-      Serial.println("MED_TAKEN signal received from Leonardo!");
-      box.alert = "System Online";
-      renderUI();
-      notifyMedicineTaken();
-    } else if (line.startsWith("{")) {
-      DynamicJsonDocument doc(200);
-      if (!deserializeJson(doc, line)) {
-        box.temp = doc["t"];
-        box.hum = doc["h"];
-        box.door = doc["d"];
-        box.alarm = doc["a"];
-        box.lock = doc["l"];
-      }
+    if (line.length() > 0) {
+       // Debug received lines
+       if (line == "MED_TAKEN") {
+         Serial.println(">>> MED_TAKEN detected. Notifying server...");
+         box.alert = "System Online";
+         renderUI();
+         notifyMedicineTaken();
+       } else if (line.startsWith("{")) {
+         DynamicJsonDocument doc(200);
+         if (!deserializeJson(doc, line)) {
+           box.temp = doc["t"];
+           box.hum = doc["h"];
+           box.door = doc["d"];
+           box.alarm = doc["a"];
+           box.lock = doc["l"];
+         }
+       }
     }
   }
 
@@ -189,10 +192,18 @@ void syncToServer() {
 
 void notifyMedicineTaken() {
   HTTPClient http;
-  http.begin(String(API_BASE) + "/device/med-taken");
+  String url = String(API_BASE) + "/device/med-taken";
+  Serial.print("HTTP POST: "); Serial.println(url);
+  
+  http.begin(url);
   http.addHeader("Content-Type", "application/json");
   String payload = "{\"mac_address\":\"" + WiFi.macAddress() + "\"}";
-  http.POST(payload);
+  int code = http.POST(payload);
+  
+  Serial.print("HTTP Result: "); Serial.println(code);
+  if (code > 0) {
+    Serial.println("Response: " + http.getString());
+  }
   http.end();
 }
 
