@@ -771,45 +771,24 @@ function handleTriggerDueSchedules($method) {
                 error_log("TRIGGER_DUE - Inserted notification ID: " . $notifId . " for user: " . $user_db_id);
             }
 
-            // Check if user has a paired device and if it's recently synced
-            $devQuery = "SELECT d.id, d.status, d.last_sync 
-                         FROM device_user_map dum 
-                         JOIN devices d ON d.id = dum.device_id 
-                         WHERE dum.user_id = $1 LIMIT 1";
-            $devRes = pg_query_params($conn, $devQuery, array($user_db_id));
-
-            $device_available = false;
-            if ($devRes && pg_num_rows($devRes) > 0) {
-                $dev = pg_fetch_assoc($devRes);
-                // Consider device available if status = ACTIVE and last_sync within last 2 minutes
-                if ($dev['status'] === 'ACTIVE' && $dev['last_sync']) {
-                    $lastSync = new DateTime($dev['last_sync']);
-                    $diff = $now->getTimestamp() - $lastSync->getTimestamp();
-                    if ($diff >= 0 && $diff <= 120) {
-                        $device_available = true;
-                    }
-                }
-            }
-
+            // Always queue arduino commands when a schedule triggers
+            // The ESP32 will poll these and execute them even if it was offline at the exact moment of trigger
+            $commands = [
+                "BUZZ:ON",
+                "DISP:SHOW_" . strtoupper($type),
+                "SOL:UNLOCK"
+            ];
+            
             $commands_queued = 0;
-            if ($device_available) {
-                // Queue arduino commands similar to notifications.php
-                $commands = [
-                    "BUZZ:ON",
-                    "DISP:SHOW_" . strtoupper($type),
-                    "SOL:UNLOCK"
-                ];
-                foreach ($commands as $cmd) {
-                    pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_db_id, $cmd));
-                    $commands_queued++;
-                }
+            foreach ($commands as $cmd) {
+                pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_db_id, $cmd));
+                $commands_queued++;
             }
 
             $triggered[] = [
                 'schedule_id' => intval($schedule_db_id),
                 'user_id' => intval($user_db_id),
                 'alarm_id' => $alarm_id ? intval($alarm_id) : null,
-                'device_available' => $device_available,
                 'commands_queued' => $commands_queued
             ];
         }
