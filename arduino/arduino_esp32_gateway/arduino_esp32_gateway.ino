@@ -137,12 +137,20 @@ void fetchUserInfo() {
   String mac = WiFi.macAddress();
   String payload = "{\"mac_address\":\"" + mac + "\"}";
   int code = http.POST(payload);
+  
   if (code == 200 || code == 201) {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, http.getString());
+    
     if (doc["status"] == "SUCCESS" && doc.containsKey("user_name")) {
       box.user = doc["user_name"].as<String>();
+    } else {
+      // If status is PENDING, UNPAIRED, or UNKNOWN, the device is not paired
+      box.user = "Unpaired";
     }
+  } else {
+    // Optional: Log error code for debugging
+    // Serial.print("User info fetch failed: "); Serial.println(code);
   }
   http.end();
 }
