@@ -775,7 +775,7 @@ function handleTriggerDueSchedules($method) {
             // The ESP32 will poll these and execute them even if it was offline at the exact moment of trigger
             $commands = [
                 "BUZZ:ON",
-                "DISP:SHOW_" . strtoupper($type),
+                "MSG:Time for " . $med_name,
                 "SOL:UNLOCK"
             ];
             

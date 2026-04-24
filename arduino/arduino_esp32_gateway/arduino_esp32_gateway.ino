@@ -32,6 +32,7 @@ struct {
   int hum = 0;
   bool door = false;
   String user = "Unpaired";
+  String alert = "System Online";
   int alarm = 0;
 } box;
 
@@ -128,7 +129,7 @@ void renderUI() {
 
   if (box.alarm) {
     u8g2.drawFrame(0, 50, 128, 14);
-    u8g2.drawStr(25, 62, "ALARM ACTIVE!");
+    u8g2.drawStr(5, 62, box.alert.c_str());
   } else {
     u8g2.drawStr(0, 62, "Status: Online");
   }
@@ -191,6 +192,13 @@ void fetchCommands() {
         String commandStr = cmd["command"].as<String>();
         int cmdId = cmd["id"].as<int>();
         
+        // Handle MSG: command on ESP32 directly for LCD
+        if (commandStr.startsWith("MSG:")) {
+          box.alert = commandStr.substring(4);
+        } else if (commandStr == "BUZZ:OFF" || commandStr == "stop_alarm") {
+          box.alert = "System Online";
+        }
+
         // Forward to Leonardo
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd to Leo: "); Serial.println(commandStr);
