@@ -3486,6 +3486,32 @@ strong.offline {
 
 
 /* ==================== Unique Unassign Confirmation Modal ==================== */
+@media (max-width: 768px) {
+  .profile-modal-content {
+    width: 95% !important;
+    height: auto !important;
+    max-height: 95vh !important;
+    padding: 16px !important;
+    margin: 10px auto !important;
+    overflow-y: auto !important;
+  }
+
+  .profile-auth-form .form-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .profile-modal-footer {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+    margin-top: 20px !important;
+  }
+
+  .profile-modal-footer button {
+    width: 100% !important;
+  }
+}
+
 .unassign-confirm-overlay {
   position: fixed;
   top: 0;
