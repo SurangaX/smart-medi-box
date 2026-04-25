@@ -2540,7 +2540,7 @@ strong.offline {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 12px !important;
-  margin-top: 24px !important;
+  margin-top: 12px !important;
 }
 
 .profile-modal-footer button {
