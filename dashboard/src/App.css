@@ -2537,34 +2537,50 @@ strong.offline {
 }
 
 .profile-modal-content {
-  padding: 14px 20px !important;
-  max-width: 480px !important;
+  padding: 18px 24px !important;
+  max-width: 500px !important;
 }
 
 .profile-auth-form {
-  gap: 8px !important;
+  gap: 12px !important;
 }
 
 .profile-auth-form .form-group {
-  gap: 4px !important;
+  gap: 6px !important;
+}
+
+.profile-auth-form .form-row {
+  display: flex !important;
+  gap: 16px !important;
+  margin-bottom: 4px !important;
+}
+
+.profile-auth-form .form-row .form-group {
+  flex: 1 !important;
 }
 
 .profile-auth-form .form-group label {
-  margin-bottom: 2px !important;
+  margin-bottom: 4px !important;
   font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
 }
 
 .profile-auth-form .form-group input,
 .profile-auth-form .form-group select {
-  padding: 8px 12px !important;
-  height: 38px !important;
+  padding: 10px 14px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border) !important;
+  color: white !important;
 }
 
 .profile-modal-footer {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 12px !important;
-  margin-top: 16px !important;
+  margin-top: 12px !important;
 }
 
 .profile-modal-footer button {

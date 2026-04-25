@@ -410,6 +410,7 @@ function handlePatientUpdate($method) {
     $name = $input['name'] ?? null;
     $email = $input['email'] ?? null;
     $phone = $input['phone'] ?? null;
+    $nic = $input['nic'] ?? null;
     $blood_type = $input['blood_type'] ?? null;
     $transplanted_organ = $input['transplanted_organ'] ?? null;
     $transplantation_date = $input['transplantation_date'] ?? null;
@@ -461,6 +462,7 @@ function handlePatientUpdate($method) {
                 $pUpdates[] = "phone_number = $" . $pIdx++; $pParams[] = $validatedPhone;
              }
         }
+        if ($nic) { $pUpdates[] = "nic = $" . $pIdx++; $pParams[] = $nic; }
         if ($blood_type) { $pUpdates[] = "blood_type = $" . $pIdx++; $pParams[] = $blood_type; }
         if ($transplanted_organ) { $pUpdates[] = "transplanted_organ = $" . $pIdx++; $pParams[] = $transplanted_organ; }
         if (isset($input['transplantation_date'])) { $pUpdates[] = "transplantation_date = $" . $pIdx++; $pParams[] = $transplantation_date; }
@@ -483,11 +485,12 @@ function handlePatientUpdate($method) {
             $uRow = pg_fetch_assoc($uR);
             $profile = array_merge($profile, [ 'name' => $uRow['name'], 'email' => $uRow['email'], 'phone_number' => $uRow['phone'] ]);
         }
-        $pQ = "SELECT blood_type, transplanted_organ, transplantation_date, emergency_contact FROM patients WHERE user_id = $1";
+        $pQ = "SELECT nic, blood_type, transplanted_organ, transplantation_date, emergency_contact FROM patients WHERE user_id = $1";
         $pR = pg_query_params($conn, $pQ, [$user_id]);
         if ($pR && pg_num_rows($pR) > 0) {
             $pRow = pg_fetch_assoc($pR);
             $profile = array_merge($profile, [
+                'nic' => $pRow['nic'],
                 'blood_type' => $pRow['blood_type'],
                 'transplanted_organ' => $pRow['transplanted_organ'],
                 'transplantation_date' => $pRow['transplantation_date'],

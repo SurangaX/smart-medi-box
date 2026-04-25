@@ -769,6 +769,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
     name: '',
     email: '',
     phone: '',
+    nic: '',
     blood_type: '',
     transplanted_organ: '',
     transplantation_date: '',
@@ -783,6 +784,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       name: profile.name || '',
       email: profile.email || '',
       phone: profile.phone_number || profile.phone || '',
+      nic: profile.nic || '',
       blood_type: (profile.blood_type || 'UNKNOWN').toString().toUpperCase(),
       transplanted_organ: currentOrgan,
       transplantation_date: profile.transplantation_date || '',
@@ -3140,14 +3142,25 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   required
                 />
               </div>
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="tel"
-                  value={editProfileData.phone}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
-                  required
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input
+                    type="tel"
+                    value={editProfileData.phone}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>NIC Number</label>
+                  <input
+                    type="text"
+                    value={editProfileData.nic}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, nic: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
