@@ -2508,8 +2508,25 @@ strong.offline {
   }
 
   .card-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important; /* Default to start for cards without buttons */
+    gap: 12px !important;
+  }
+
+  /* Specific handling for User Profile which has a button and needs space-between */
+  .card-header[style*="justify-content: space-between"],
+  .card-header[style*="justifyContent: 'space-between'"] {
+     justify-content: space-between !important;
+  }
+
+  .card-header h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+  }
+
+  .card-header svg {
+    flex-shrink: 0 !important;
   }
 
   .header-actions {
