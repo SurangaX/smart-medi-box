@@ -62,6 +62,8 @@ switch ($action) {
     case 'patient':
         if ($subaction === 'signup') {
             handlePatientSignup($method);
+        } elseif ($subaction === 'update') {
+            handlePatientUpdate($method);
         } else {
             errorResponse(404, 'Endpoint not found');
         }
@@ -388,6 +390,121 @@ function handlePatientSignup($method) {
     } catch (Exception $e) {
         error_log("PATIENT SIGNUP ERROR: " . $e->getMessage());
         return errorResponse(500, 'Signup failed: ' . $e->getMessage());
+    }
+}
+
+// ============================================================================
+// HANDLER: PATIENT UPDATE
+// ============================================================================
+function handlePatientUpdate($method) {
+    global $conn;
+
+    if ($method !== 'POST') {
+        return errorResponse(405, 'Method not allowed');
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    error_log("PATIENT UPDATE INPUT: " . json_encode($input));
+
+    $user_id = $input['user_id'] ?? null;
+    $name = $input['name'] ?? null;
+    $email = $input['email'] ?? null;
+    $phone = $input['phone'] ?? null;
+    $blood_type = $input['blood_type'] ?? null;
+    $transplanted_organ = $input['transplanted_organ'] ?? null;
+    $transplantation_date = $input['transplantation_date'] ?? null;
+    $emergency_contact = $input['emergency_contact'] ?? null;
+
+    if (!$user_id) {
+        return errorResponse(400, 'User ID required');
+    }
+
+    // Convert empty strings to NULL
+    if ($transplantation_date === '') $transplantation_date = null;
+    if ($transplanted_organ === 'NONE') $transplantation_date = null;
+
+    try {
+        pg_query($conn, "BEGIN");
+
+        // 1. Update users table
+        $uUpdates = [];
+        $uParams = [];
+        $pIdx = 1;
+
+        if ($name) { $uUpdates[] = "name = $" . $pIdx++; $uParams[] = $name; }
+        if ($email) { $uUpdates[] = "email = $" . $pIdx++; $uParams[] = $email; }
+        if ($phone) { 
+            $validatedPhone = validatePhoneNumber($phone);
+            if ($validatedPhone) {
+                $uUpdates[] = "phone = $" . $pIdx++; $uParams[] = $validatedPhone;
+            } else {
+                return errorResponse(400, 'Invalid phone number');
+            }
+        }
+
+        if (!empty($uUpdates)) {
+            $uQuery = "UPDATE users SET " . implode(", ", $uUpdates) . ", updated_at = NOW() WHERE id = $" . $pIdx;
+            $uParams[] = $user_id;
+            $uResult = pg_query_params($conn, $uQuery, $uParams);
+            if (!$uResult) throw new Exception("Failed to update users table: " . pg_last_error($conn));
+        }
+
+        // 2. Update patients table
+        $pUpdates = [];
+        $pParams = [];
+        $pIdx = 1;
+
+        if ($name) { $pUpdates[] = "name = $" . $pIdx++; $pParams[] = $name; }
+        if ($phone) { 
+             $validatedPhone = validatePhoneNumber($phone);
+             if ($validatedPhone) {
+                $pUpdates[] = "phone_number = $" . $pIdx++; $pParams[] = $validatedPhone;
+             }
+        }
+        if ($blood_type) { $pUpdates[] = "blood_type = $" . $pIdx++; $pParams[] = $blood_type; }
+        if ($transplanted_organ) { $pUpdates[] = "transplanted_organ = $" . $pIdx++; $pParams[] = $transplanted_organ; }
+        if (isset($input['transplantation_date'])) { $pUpdates[] = "transplantation_date = $" . $pIdx++; $pParams[] = $transplantation_date; }
+        if ($emergency_contact) { $pUpdates[] = "emergency_contact = $" . $pIdx++; $pParams[] = $emergency_contact; }
+
+        if (!empty($pUpdates)) {
+            $pQuery = "UPDATE patients SET " . implode(", ", $pUpdates) . ", updated_at = NOW() WHERE user_id = $" . $pIdx;
+            $pParams[] = $user_id;
+            $pResult = pg_query_params($conn, $pQuery, $pParams);
+            if (!$pResult) throw new Exception("Failed to update patients table: " . pg_last_error($conn));
+        }
+
+        pg_query($conn, "COMMIT");
+
+        // Fetch updated profile to return
+        $profile = [ 'id' => $user_id, 'email' => $email, 'role' => 'PATIENT' ];
+        $uQ = "SELECT name, email, phone FROM users WHERE id = $1";
+        $uR = pg_query_params($conn, $uQ, [$user_id]);
+        if ($uR && pg_num_rows($uR) > 0) {
+            $uRow = pg_fetch_assoc($uR);
+            $profile = array_merge($profile, [ 'name' => $uRow['name'], 'email' => $uRow['email'], 'phone_number' => $uRow['phone'] ]);
+        }
+        $pQ = "SELECT blood_type, transplanted_organ, transplantation_date, emergency_contact FROM patients WHERE user_id = $1";
+        $pR = pg_query_params($conn, $pQ, [$user_id]);
+        if ($pR && pg_num_rows($pR) > 0) {
+            $pRow = pg_fetch_assoc($pR);
+            $profile = array_merge($profile, [
+                'blood_type' => $pRow['blood_type'],
+                'transplanted_organ' => $pRow['transplanted_organ'],
+                'transplantation_date' => $pRow['transplantation_date'],
+                'emergency_contact' => $pRow['emergency_contact']
+            ]);
+        }
+
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Profile updated successfully',
+            'profile' => $profile
+        ]);
+
+    } catch (Exception $e) {
+        pg_query($conn, "ROLLBACK");
+        error_log("PATIENT UPDATE ERROR: " . $e->getMessage());
+        return errorResponse(500, 'Update failed: ' . $e->getMessage());
     }
 }
 

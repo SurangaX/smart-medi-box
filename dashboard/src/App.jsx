@@ -724,7 +724,7 @@ const SignupScreen = ({ onSignupSuccess }) => {
 };
 
 // ==================== Patient Dashboard ====================
-const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
+const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
@@ -763,6 +763,60 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
   const [activeMedicineAlert, setActiveMedicineAlert] = useState(null);
   const [isCompletingInModal, setIsCompletingInModal] = useState(false);
   const [isSnoozingInModal, setIsSnoozingInModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    blood_type: '',
+    transplanted_organ: '',
+    transplantation_date: '',
+    emergency_contact: ''
+  });
+
+  const handleEditProfileClick = () => {
+    setEditProfileData({
+      name: profile.name || '',
+      email: profile.email || '',
+      phone: profile.phone_number || profile.phone || '',
+      blood_type: profile.blood_type || 'UNKNOWN',
+      transplanted_organ: profile.transplanted_organ || 'NONE',
+      transplantation_date: profile.transplantation_date || '',
+      emergency_contact: profile.emergency_contact || ''
+    });
+    setIsEditingProfile(true);
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    try {
+      const response = await fetch(`${API_URL}/index.php/api/auth/patient/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: profile.id || profile.user_id,
+          ...editProfileData
+        })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'Profile updated successfully', type: 'success' });
+        setIsEditingProfile(false);
+        if (onProfileUpdate) {
+          onProfileUpdate(data.profile);
+        }
+      } else {
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to update profile'), type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      window.appNotify({ message: 'Network error updating profile', type: 'error' });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
   
   // Helper to get current HH:mm
   const getCurrentTime = () => {
@@ -2359,11 +2413,19 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
               </div>
 
               <div className="card">
-                <div className="card-header">
-                  <Users size={24} />
-                  <h3>User Profile</h3>
-                </div>
-                <div className="card-content">
+                <div className="card-header" style={{ justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Users size={24} />
+                    <h3>User Profile</h3>
+                  </div>
+                  <button 
+                   className="btn-icon" 
+                   onClick={handleEditProfileClick}
+                   title="Edit Profile"
+                   style={{ padding: '8px', background: 'rgba(255,255,255,0.05)' }}
+                  >
+                    <Edit size={18} />
+                  </button>                </div>                <div className="card-content">
                   <div className="user-info">
                     <p><strong>Name:</strong> {profile.name}</p>
                     <p><strong>Email:</strong> {profile.email}</p>
@@ -3038,6 +3100,105 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile }) => {
               <X size={24} />
             </button>
             <img src={expandedPhoto} alt="Medication Full" style={{ width: '100%', borderRadius: '12px', display: 'block', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }} />
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {isEditingProfile && (
+        <div className="modal-overlay" style={{ zIndex: 2500 }}>
+          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
+            <div className="modal-header">
+              <h3>Edit Profile</h3>
+              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>×</button>
+            </div>
+            <form onSubmit={handleProfileUpdate} className="auth-form">
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  value={editProfileData.name}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  value={editProfileData.email}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input
+                  type="tel"
+                  value={editProfileData.phone}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Blood Type</label>
+                  <select
+                    value={editProfileData.blood_type}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, blood_type: e.target.value })}
+                  >
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="UNKNOWN">UNKNOWN</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Transplanted Organ</label>
+                  <select
+                    value={editProfileData.transplanted_organ}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, transplanted_organ: e.target.value })}
+                  >
+                    <option value="NONE">NONE</option>
+                    <option value="KIDNEY">KIDNEY</option>
+                    <option value="LIVER">LIVER</option>
+                    <option value="HEART">HEART</option>
+                    <option value="LUNG">LUNG</option>
+                    <option value="PANCREAS">PANCREAS</option>
+                  </select>
+                </div>
+              </div>
+              {editProfileData.transplanted_organ !== 'NONE' && (
+                <div className="form-group">
+                  <label>Transplantation Date</label>
+                  <input
+                    type="date"
+                    value={editProfileData.transplantation_date}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, transplantation_date: e.target.value })}
+                  />
+                </div>
+              )}
+              <div className="form-group">
+                <label>Emergency Contact</label>
+                <input
+                  type="tel"
+                  value={editProfileData.emergency_contact}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, emergency_contact: e.target.value })}
+                  placeholder="Relative's phone number"
+                />
+              </div>
+              <div className="modal-footer" style={{ marginTop: '20px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsEditingProfile(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile}>
+                  {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -4415,6 +4576,11 @@ export default function App() {
           token={currentUser.token}
           onLogout={handleLogout}
           isMobile={isMobile}
+          onProfileUpdate={(newProfile) => {
+            const updatedProfile = { ...currentUser.profile, ...newProfile };
+            setCurrentUser(prev => ({ ...prev, profile: updatedProfile }));
+            localStorage.setItem('profile', JSON.stringify(updatedProfile));
+          }}
         />
       ) : (
         <DoctorDashboard
