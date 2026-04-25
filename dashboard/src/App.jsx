@@ -934,8 +934,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         });
         
         // Auto-close modal if notification was dismissed elsewhere (e.g. by opening box door)
-        const currentNotifIds = new Set((data.notifications || []).map(n => n.id));
-        if (activeMedicineAlert && !currentNotifIds.has(activeMedicineAlert.id)) {
+        const currentNotifIds = new Set((data.notifications || []).map(n => String(n.id)));
+        if (activeMedicineAlert && !currentNotifIds.has(String(activeMedicineAlert.id))) {
           console.log('🤖 Auto-approving modal: Notification dismissed on server');
           setActiveMedicineAlert(null);
           fetchSchedules(); // Refresh to show checkmark
@@ -999,7 +999,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
   // Set up periodic notification checks
   useEffect(() => {
-    const interval = setInterval(fetchNotifications, 30000); // Check every 30 seconds
+    const interval = setInterval(fetchNotifications, 5000); // Check every 5 seconds for better responsiveness
     return () => clearInterval(interval);
   }, [profile?.id, token]);
 
