@@ -776,12 +776,15 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   });
 
   const handleEditProfileClick = () => {
+    // Determine the current organ value, with fallbacks for different naming conventions
+    const currentOrgan = (profile.transplanted_organ || profile.organ || profile.transplant || 'NONE').toString().toUpperCase();
+
     setEditProfileData({
       name: profile.name || '',
       email: profile.email || '',
       phone: profile.phone_number || profile.phone || '',
-      blood_type: (profile.blood_type || 'UNKNOWN').toUpperCase(),
-      transplanted_organ: (profile.transplanted_organ || 'NONE').toUpperCase(),
+      blood_type: (profile.blood_type || 'UNKNOWN').toString().toUpperCase(),
+      transplanted_organ: currentOrgan,
       transplantation_date: profile.transplantation_date || '',
       emergency_contact: profile.emergency_contact || ''
     });
@@ -3176,6 +3179,10 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                     <option value="HEART">HEART</option>
                     <option value="LUNG">LUNG</option>
                     <option value="PANCREAS">PANCREAS</option>
+                    <option value="INTESTINE">INTESTINE</option>
+                    <option value="CORNEA">CORNEA</option>
+                    <option value="BONE_MARROW">BONE MARROW</option>
+                    <option value="TISSUE">TISSUE</option>
                   </select>
                 </div>
               </div>
