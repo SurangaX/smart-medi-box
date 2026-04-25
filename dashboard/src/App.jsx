@@ -780,8 +780,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       name: profile.name || '',
       email: profile.email || '',
       phone: profile.phone_number || profile.phone || '',
-      blood_type: profile.blood_type || 'UNKNOWN',
-      transplanted_organ: profile.transplanted_organ || 'NONE',
+      blood_type: (profile.blood_type || 'UNKNOWN').toUpperCase(),
+      transplanted_organ: (profile.transplanted_organ || 'NONE').toUpperCase(),
       transplantation_date: profile.transplantation_date || '',
       emergency_contact: profile.emergency_contact || ''
     });
@@ -3108,9 +3108,13 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       {isEditingProfile && (
         <div className="modal-overlay" style={{ zIndex: 2500 }}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
-            <div className="modal-header">
-              <h3>Edit Profile</h3>
-              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Edit Profile</h3>
+              <button 
+                className="close-btn" 
+                onClick={() => setIsEditingProfile(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -3147,7 +3151,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   <label>Blood Type</label>
                   <select
                     value={editProfileData.blood_type}
-                    onChange={(e) => setEditProfileData({ ...editProfileData, blood_type: e.target.value })}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, blood_type: e.target.value.toUpperCase() })}
                   >
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
@@ -3164,7 +3168,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   <label>Transplanted Organ</label>
                   <select
                     value={editProfileData.transplanted_organ}
-                    onChange={(e) => setEditProfileData({ ...editProfileData, transplanted_organ: e.target.value })}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, transplanted_organ: e.target.value.toUpperCase() })}
                   >
                     <option value="NONE">NONE</option>
                     <option value="KIDNEY">KIDNEY</option>
@@ -3175,7 +3179,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   </select>
                 </div>
               </div>
-              {editProfileData.transplanted_organ !== 'NONE' && (
+              {editProfileData.transplanted_organ && editProfileData.transplanted_organ !== 'NONE' && (
                 <div className="form-group">
                   <label>Transplantation Date</label>
                   <input
