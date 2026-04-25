@@ -3198,11 +3198,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   placeholder="Relative's phone number"
                 />
               </div>
-              <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsEditingProfile(false)} disabled={isUpdatingProfile}>
+              <div className="modal-buttons" style={{ marginTop: '20px' }}>
+                <button type="button" className="btn-secondary" onClick={() => setIsEditingProfile(false)} disabled={isUpdatingProfile}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button type="submit" className="btn-primary" disabled={isUpdatingProfile}>
                   {isUpdatingProfile ? (
                     <>
                       <div className="spinner-mini" style={{ width: '16px', height: '16px', borderTopColor: 'white' }}></div>
