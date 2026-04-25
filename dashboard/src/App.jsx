@@ -2441,13 +2441,13 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                 </div>
               </div>
 
-              {stats && (
-                <div className="card">
-                  <div className="card-header">
-                    <CheckCircle2 size={24} />
-                    <h3>Quick Stats</h3>
-                  </div>
-                  <div className="card-content">
+              <div className="card">
+                <div className="card-header">
+                  <CheckCircle2 size={24} />
+                  <h3>Quick Stats</h3>
+                </div>
+                <div className="card-content">
+                  {stats ? (
                     <div className="stats-quick">
                       <div className="stat-item">
                         <div className="stat-value">{stats.adherence_rate?.toFixed(1) || 0}%</div>
@@ -2458,9 +2458,14 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                         <div className="stat-label">Completed Today</div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
+                      <div className="spinner-mini" style={{ marginBottom: '10px' }}></div>
+                      <p className="placeholder">⏳ Loading statistics...</p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
