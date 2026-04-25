@@ -3110,8 +3110,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       {/* Edit Profile Modal */}
       {isEditingProfile && (
         <div className="modal-overlay" style={{ zIndex: 2500 }} onClick={() => setIsEditingProfile(false)}>
-          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div className="modal-content profile-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <h3 style={{ margin: 0 }}>Edit Profile</h3>
               <button 
                 className="close-btn" 
@@ -3121,7 +3121,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleProfileUpdate} className="auth-form">
+            <form onSubmit={handleProfileUpdate} className="auth-form profile-auth-form">
               <div className="form-group">
                 <label>Full Name</label>
                 <input

@@ -2536,11 +2536,20 @@ strong.offline {
   }
 }
 
+.profile-modal-content {
+  padding: 16px !important;
+  max-width: 480px !important;
+}
+
+.profile-auth-form {
+  gap: 10px !important;
+}
+
 .profile-modal-footer {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 12px !important;
-  margin-top: 12px !important;
+  margin-top: -12px !important;
 }
 
 .profile-modal-footer button {
