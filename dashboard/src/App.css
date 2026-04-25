@@ -2536,7 +2536,52 @@ strong.offline {
   }
 }
 
-/* ==================== Photo Upload ==================== */
+.profile-modal-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  margin-top: 24px !important;
+}
+
+.profile-modal-footer button {
+  flex: none !important;
+  width: 140px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.profile-btn-cancel {
+  background: #3f3f46 !important;
+  color: white !important;
+}
+
+.profile-btn-cancel:hover {
+  background: #52525b !important;
+}
+
+.profile-btn-save {
+  background: var(--primary) !important;
+  color: white !important;
+}
+
+.profile-btn-save:hover {
+  background: var(--primary-dark) !important;
+}
+
+.profile-btn-save:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
 .photo-upload-group {
   position: relative;
   margin-bottom: 20px;

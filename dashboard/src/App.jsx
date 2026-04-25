@@ -3198,16 +3198,16 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   placeholder="Relative's phone number"
                 />
               </div>
-              <div className="modal-buttons" style={{ marginTop: '20px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsEditingProfile(false)} disabled={isUpdatingProfile}>
+              <div className="profile-modal-footer">
+                <button type="button" className="profile-btn-cancel" onClick={() => setIsEditingProfile(false)} disabled={isUpdatingProfile}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary" disabled={isUpdatingProfile}>
+                <button type="submit" className="profile-btn-save" disabled={isUpdatingProfile}>
                   {isUpdatingProfile ? (
-                    <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                       <div className="spinner-mini" style={{ width: '16px', height: '16px', borderTopColor: 'white' }}></div>
-                      Saving...
-                    </>
+                      <span>Saving...</span>
+                    </div>
                   ) : 'Save Changes'}
                 </button>
               </div>
