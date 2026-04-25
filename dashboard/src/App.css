@@ -3486,6 +3486,11 @@ strong.offline {
 
 
 /* ==================== Unique Unassign Confirmation Modal ==================== */
+.profile-auth-form .form-group select option {
+  background: var(--surface) !important;
+  color: white !important;
+}
+
 @media (max-width: 768px) {
   .profile-modal-content {
     width: 95% !important;
@@ -3496,9 +3501,14 @@ strong.offline {
     overflow-y: auto !important;
   }
 
-  .profile-auth-form .form-row {
+  .profile-auth-form .form-row:not(.row-mobile) {
     flex-direction: column !important;
     gap: 12px !important;
+  }
+
+  .profile-auth-form .form-row.row-mobile {
+    flex-direction: row !important;
+    gap: 10px !important;
   }
 
   .profile-modal-footer {

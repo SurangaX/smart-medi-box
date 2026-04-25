@@ -3142,7 +3142,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   required
                 />
               </div>
-              <div className="form-row">
+              <div className="form-row row-mobile">
                 <div className="form-group">
                   <label>Phone Number</label>
                   <input
