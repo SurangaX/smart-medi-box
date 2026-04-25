@@ -3111,7 +3111,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       {isEditingProfile && (
         <div className="modal-overlay" style={{ zIndex: 2500 }} onClick={() => setIsEditingProfile(false)}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0 }}>Edit Profile</h3>
               <button 
                 className="close-btn" 
