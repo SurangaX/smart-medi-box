@@ -438,7 +438,7 @@ function handleGetTodaySchedules($method) {
                     s.id, s.type, s.medicine_name, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date,
                     dr.d as current_day,
                     (SELECT COUNT(*) > 0 FROM schedule_logs sl 
-                     WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
+                     WHERE sl.schedule_id = s.id AND sl.action LIKE 'COMPLETED%' 
                      AND DATE(sl.created_at) = dr.d) as day_completed
                   FROM schedules s
                   CROSS JOIN date_range dr

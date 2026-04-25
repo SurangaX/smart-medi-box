@@ -170,7 +170,7 @@ function handleMedicineTaken($method) {
                         pg_query_params($conn, $updateSched, array($sched_id));
 
                         // Log the action
-                        pg_query_params($conn, "INSERT INTO schedule_logs (user_id, schedule_id, action) VALUES ($1, $2, 'COMPLETED_VIA_DOOR')", array($user_id, $sched_id));
+                        pg_query_params($conn, "INSERT INTO schedule_logs (user_id, schedule_id, action, details) VALUES ($1, $2, 'COMPLETED', 'Via Door')", array($user_id, $sched_id));
                     }
 
                     // Dismiss the notification

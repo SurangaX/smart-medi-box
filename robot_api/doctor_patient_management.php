@@ -186,10 +186,9 @@ class DoctorPatientManager {
                         s.*,
                         (CASE 
                             WHEN s.is_recurring = FALSE THEN s.is_completed
-                            ELSE (SELECT COUNT(*) > 0 FROM schedule_logs sl 
-                                  WHERE sl.schedule_id = s.id AND sl.action = 'COMPLETED' 
-                                  AND DATE(sl.created_at) = CURRENT_DATE)
-                         END) as calculated_completed
+                            ELSE (SELECT COUNT(*) > 0 FROM schedule_logs sl
+                                  WHERE sl.schedule_id = s.id AND sl.action LIKE 'COMPLETED%'
+                                  AND DATE(sl.created_at) = CURRENT_DATE)                         END) as calculated_completed
                       FROM schedules s 
                       WHERE s.user_id = $1 AND s.status = 'ACTIVE'
                       ORDER BY s.schedule_date DESC, s.hour DESC, s.minute DESC";
