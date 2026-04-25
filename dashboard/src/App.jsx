@@ -3110,7 +3110,9 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
             <div className="modal-header">
               <h3>Edit Profile</h3>
-              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>×</button>
+              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>
+                <X size={20} />
+              </button>
             </div>
             <form onSubmit={handleProfileUpdate} className="auth-form">
               <div className="form-group">
@@ -3192,10 +3194,17 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                   placeholder="Relative's phone number"
                 />
               </div>
-              <div className="modal-footer" style={{ marginTop: '20px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsEditingProfile(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile}>
-                  {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+              <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsEditingProfile(false)} disabled={isUpdatingProfile}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {isUpdatingProfile ? (
+                    <>
+                      <div className="spinner-mini" style={{ width: '16px', height: '16px', borderTopColor: 'white' }}></div>
+                      Saving...
+                    </>
+                  ) : 'Save Changes'}
                 </button>
               </div>
             </form>
