@@ -2418,7 +2418,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
               </div>
 
               <div className="card">
-                <div className="card-header" style={{ justifyContent: 'space-between' }}>
+                <div className="card-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Users size={24} />
                     <h3>User Profile</h3>
@@ -2427,10 +2427,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                    className="btn-icon" 
                    onClick={handleEditProfileClick}
                    title="Edit Profile"
-                   style={{ padding: '8px', background: 'rgba(255,255,255,0.05)' }}
+                   style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex' }}
                   >
                     <Edit size={18} />
-                  </button>                </div>                <div className="card-content">
+                  </button>
+                </div>                <div className="card-content">
                   <div className="user-info">
                     <p><strong>Name:</strong> {profile.name}</p>
                     <p><strong>Email:</strong> {profile.email}</p>
