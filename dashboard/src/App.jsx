@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu, ChevronDown, ChevronUp, Unlock } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
 import './App.css';
 
@@ -1507,6 +1507,35 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
     }
   };
 
+  const handleManualTriggerDispense = async (scheduleId) => {
+    try {
+      if (!token) {
+        window.appNotify({ message: 'Authentication token missing', type: 'error' });
+        return;
+      }
+      
+      const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/dispense-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          schedule_id: scheduleId, 
+          token,
+          user_id: profile?.id || profile?.user_id
+        })
+      });
+      
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: 'Solenoid trigger sent to device', type: 'success' });
+      } else {
+        window.appNotify({ message: data.message || 'Failed to trigger dispense', type: 'error' });
+      }
+    } catch (err) {
+      console.error('Trigger dispense error:', err);
+      window.appNotify({ message: 'Network error while triggering dispense', type: 'error' });
+    }
+  };
+
   const generatePairingToken = async () => {
     try {
       // Prevent creating a pairing token if user already has a device (one account -> one device)
@@ -2762,7 +2791,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                           <div className="card-top">
                             <h4>{sched.medicine_name || sched.type}</h4>
                             <span className={`status-pill ${sched.status === 'MISSED' ? 'danger' : (sched.is_completed ? 'done' : 'pending')}`}>
-                              {sched.status === 'MISSED' ? 'Missed' : (sched.is_completed ? 'Completed' : 'Upcoming')}
+                              {sched.status === 'MISSED' ? 'MISSED' : (sched.is_completed ? 'Completed' : 'Upcoming')}
                             </span>
                           </div>
                           <div className="card-meta-details">
@@ -2781,13 +2810,22 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                           ) : (
                             <>
                               {!sched.is_completed && sched.status !== 'MISSED' && (
-                                <button
-                                  className="btn-action-done"
-                                  onClick={() => handleCompleteSchedule(sched.schedule_id)}
-                                  title="Mark as complete"
-                                >
-                                  <Check size={18} />
-                                </button>
+                                <>
+                                  <button
+                                    className="btn-action-trigger"
+                                    onClick={() => handleManualTriggerDispense(sched.schedule_id)}
+                                    title="Dispense Now"
+                                  >
+                                    <Unlock size={18} />
+                                  </button>
+                                  <button
+                                    className="btn-action-done"
+                                    onClick={() => handleCompleteSchedule(sched.schedule_id)}
+                                    title="Mark as complete"
+                                  >
+                                    <Check size={18} />
+                                  </button>
+                                </>
                               )}
                               <button
                                 className="btn-action-delete"

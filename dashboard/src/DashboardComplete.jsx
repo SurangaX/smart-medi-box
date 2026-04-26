@@ -321,7 +321,9 @@ const OverviewSection = ({ schedules, tempData, currentTemp, deviceStatus }) => 
                 <div className="schedule-type">{schedule.type}</div>
                 <div className="schedule-status">
                   {schedule.status === 'MISSED' ? (
-                    <X size={16} className="danger" />
+                    <span className="badge danger" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                      <X size={14} /> MISSED
+                    </span>
                   ) : schedule.is_completed ? (
                     <CheckCircle2 size={16} className="success" />
                   ) : (

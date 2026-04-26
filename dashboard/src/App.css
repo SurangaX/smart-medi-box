@@ -1074,6 +1074,11 @@ button, a { user-select: none; cursor: pointer; }
   color: var(--success);
 }
 
+.status-pill.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
 .card-desc {
   margin: 0;
   font-size: 13px;
@@ -1102,6 +1107,26 @@ button, a { user-select: none; cursor: pointer; }
 
 .btn-action-done:hover {
   transform: scale(1.1);
+}
+
+.btn-action-trigger {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-action-trigger:hover {
+  transform: scale(1.1);
+  background: var(--primary);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 .btn-action-delete {
