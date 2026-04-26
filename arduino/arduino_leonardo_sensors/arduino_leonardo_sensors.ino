@@ -1,6 +1,6 @@
 /*
   ============================================================================
-  SMART MEDI BOX - Leonardo (STABLE SENSORS & HARDWARE SYNC)
+  SMART MEDI BOX - LEONARDO (FINAL FIXED + ORIGINAL ESP SEND SYSTEM)
   ============================================================================
 */
 
@@ -15,9 +15,9 @@
 #include <SoftwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
 
-// Pins from Working Notes
-#define DOOR_PIN     8   // Moved from 2 to avoid I2C conflict
-#define COOLING_PIN  13  // Moved from 3 to avoid I2C conflict
+// ================= PINS =================
+#define DOOR_PIN     8
+#define COOLING_PIN  13
 #define STEP_PIN     4
 #define SOLENOID_PIN 5
 #define RFID_RST     6
@@ -27,334 +27,299 @@
 #define DHT_PIN      A0
 #define DS18B20_PIN  A1
 #define SERVO_PIN    A2
-#define DF_RX        A3 // Leonardo receives from DFPlayer TX
-#define DF_TX        A4 // Leonardo sends to DFPlayer RX
+#define DF_RX        A3
+#define DF_TX        A4
 
-// Objects
+// ================= OBJECTS =================
 RTC_DS3231 rtc;
 DHT dht(DHT_PIN, DHT22);
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature sensors(&oneWire);
 MFRC522 rfid(RFID_SS, RFID_RST);
 Servo myServo;
-SoftwareSerial dfSerial(DF_RX, DF_TX); // RX, TX
+SoftwareSerial dfSerial(DF_RX, DF_TX);
 DFRobotDFPlayerMini myDFPlayer;
 
-// Globals
+// ================= GLOBALS =================
 float tempC = 0;
 int hum = 0;
+
 bool doorOpen = false;
-bool lastDoorState = false; // Real-time detection
+bool lastDoorState = false;
+
+// State tracking flags
 bool alarmActive = false;
-bool pendingClose = false; // Tracks if door was opened during alarm
+bool solenoidUnlocked = false;
+bool waitingForDoorOpen = false;
+bool doorWasOpened = false;
+bool medTakenSent = false;  // CRITICAL: Prevents multiple MED_TAKEN sends
+
 unsigned long alarmStartTime = 0;
 unsigned long lastUpdate = 0;
-bool rtcOk = false;
 
+// ================= SETUP =================
 void setup() {
-  // Serial for Debugging
   Serial.begin(115200);
-  delay(2000); // Give time for Serial Monitor to open
-  Serial.println(F("--- LEONARDO STARTUP ---"));
-  
-  // Serial1 for ESP32 Communication (Pins 0 & 1)
-  Serial1.begin(115200); // Matched fast baud rate
-  Serial.println(F("ESP32 Serial (Serial1) @ 115200: OK"));
-  
-  // Hardware Pins
+  delay(2000);
+
+  Serial1.begin(115200);
+
   pinMode(DOOR_PIN, INPUT_PULLUP);
   pinMode(SOLENOID_PIN, OUTPUT);
   pinMode(COOLING_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
-  Serial.println(F("Digital Pins (8, 13 for Door/Cool) Init: OK"));
 
-  // Initialize Sensors
-  Serial.println(F("Starting DHT22 (Pin A0)..."));
+  // Ensure all outputs start LOW
+  digitalWrite(SOLENOID_PIN, LOW);
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(COOLING_PIN, LOW);
+
   dht.begin();
-  Serial.println(F("DHT22 Init: OK"));
-
-  Serial.println(F("Starting DS18B20 (Pin A1)..."));
   sensors.begin();
-  Serial.println(F("DS18B20 Init: OK"));
 
-  delay(1000); 
-
-  // RE-ENABLING I2C/RTC after Pin Conflict Fix
-  Serial.println(F("Starting I2C (Wire)..."));
   Wire.begin();
-  Wire.setClock(100000);
-  Serial.println(F("I2C Init: OK. Testing RTC..."));
-  if (rtc.begin()) {
-    rtcOk = true;
-    Serial.println(F("RTC Init: SUCCESS"));
-  } else {
-    Serial.println(F("RTC Init: NOT FOUND"));
-  }
-  
-  // Initialize RFID
+  rtc.begin();
+
   SPI.begin();
   rfid.PCD_Init();
-  Serial.println(F("RFID Init: OK"));
 
-  // Initialize Servo
   myServo.attach(SERVO_PIN);
   myServo.write(0);
-  Serial.println(F("Servo Init: OK (Pin A2)"));
 
-  // Initialize DFPlayer
   dfSerial.begin(9600);
   if (myDFPlayer.begin(dfSerial)) {
     myDFPlayer.volume(20);
-    Serial.println(F("DFPlayer Init: OK (Pins A3/A4)"));
-  } else {
-    Serial.println(F("DFPlayer Init: FAILED"));
   }
-  Serial.println(F("--- SETUP COMPLETE ---"));
-  Serial.println(F("Type 'force_read' for sensors or 'test_all' for hardware test."));
+
+  Serial.println(F("SYSTEM READY"));
 }
 
-void loop() {
-  unsigned long now = millis();
-  
-  // Read Door Sensor (HIGH = Open, LOW = Closed to GND)
-  doorOpen = (digitalRead(DOOR_PIN) == HIGH);
-
-  // REAL-TIME: Push update to ESP32 immediately if door state changes
-  if (doorOpen != lastDoorState) {
-    Serial.print(F("Door changed to: ")); Serial.println(doorOpen ? "OPEN" : "CLOSED");
-    readAndSendData();
-    lastDoorState = doorOpen;
-  }
-
-  // 1. Intelligent Alarm Logic
-  if (alarmActive) {
-    // Auto-stop after 1 minute if no interaction
-    if (now - alarmStartTime > 60000) {
-      Serial.println(F("Alarm timeout (1min)"));
-      stopAlarm();
-    } 
-    // Step 1: Door Opening stops buzzer but keeps solenoid unlocked
-    else if (doorOpen && !pendingClose) {
-      Serial.println(F("Door opened - Stopping buzzer, waiting for close"));
-      digitalWrite(BUZZER_PIN, LOW);
-      myDFPlayer.stop();
-      pendingClose = true;
-    }
-    // Step 2: Door Closing relocks and completes the medicine taken cycle
-    else if (pendingClose && !doorOpen) {
-      Serial.println(F("Door closed - Relocking and completing cycle"));
-      Serial1.println(F("MED_TAKEN")); // Notify ESP32
-      stopAlarm();
-      pendingClose = false;
-    }
-    // Pulsing beep while active and door not yet opened
-    else if (!pendingClose) {
-      bool beepState = (now / 500) % 2;
-      digitalWrite(BUZZER_PIN, beepState);
-    }
-  }
-
-  // 2. Handle USB Serial Commands (Debug)
-  if (Serial.available()) {
-    String usbCmd = Serial.readStringUntil('\n');
-    usbCmd.trim();
-    if (usbCmd == "force_read") {
-      Serial.println(F("Manual Trigger Received..."));
-      readAndSendData();
-    } else if (usbCmd == "test_all") {
-      runHardwareTest();
-    } else if (usbCmd == "test_rfid") {
-      runRFIDTest();
-    }
-  }
-
-  // 3. Send Data to ESP32 every 1 minute (Heartbeat) or when requested
-  if (now - lastUpdate > 60000) {
-    readAndSendData();
-    lastUpdate = now;
-  }
-
-  // 4. Handle RFID
-  checkRFID();
-
-  // 5. Process Commands from ESP32
-  checkIncomingCommands();
+// ================= STABLE DOOR =================
+bool readDoor() {
+  return (digitalRead(DOOR_PIN) == HIGH);
 }
 
+// ================= SEND (UNCHANGED LOGIC) =================
 void readAndSendData() {
-  Serial.println(F("Performing sensor read..."));
-  // Read DHT22
   float h = dht.readHumidity();
   float t = dht.readTemperature();
-  
-  // Read DS18B20
+
   sensors.requestTemperatures();
   float t2 = sensors.getTempCByIndex(0);
 
-  // Check if any reads failed
-  if (isnan(h) || isnan(t)) {
-    Serial.println(F("!! ERROR: DHT22 Read Failed !!"));
-  } else {
+  if (!isnan(h) && !isnan(t)) {
     tempC = t;
     hum = (int)h;
   }
 
-  // Update door state before sending
-  doorOpen = (digitalRead(DOOR_PIN) == HIGH);
+  doorOpen = readDoor();
 
-  // Debug to USB Serial
-  Serial.print(F("Sensors -> DHT_T:")); Serial.print(tempC);
-  Serial.print(F(" DHT_H:")); Serial.print(hum);
-  Serial.print(F(" DS18_T:")); Serial.print(t2);
-  Serial.print(F(" Door:")); Serial.println(doorOpen ? "Open" : "Closed");
-
-  // Send to ESP32 via Serial1
-  Serial.println(F("Forwarding data to ESP32..."));
-  Serial1.print(F("{\"t\":")); Serial1.print(tempC, 1);
-  Serial1.print(F(",\"h\":")); Serial1.print(hum);
-  Serial1.print(F(",\"d\":")); Serial1.print(doorOpen);
-  Serial1.print(F(",\"a\":")); Serial1.print(alarmActive);
-  Serial1.print(F(",\"l\":")); Serial1.print(digitalRead(SOLENOID_PIN)); // Lock state
+  // YOUR ORIGINAL SEND FORMAT (UNCHANGED)
+  Serial1.print(F("{\"t\":"));
+  Serial1.print(tempC, 1);
+  Serial1.print(F(",\"h\":"));
+  Serial1.print(hum);
+  Serial1.print(F(",\"d\":"));
+  Serial1.print(doorOpen);
+  Serial1.print(F(",\"a\":"));
+  Serial1.print(alarmActive ? 1 : 0);
+  Serial1.print(F(",\"l\":"));
+  Serial1.print(digitalRead(SOLENOID_PIN));
   Serial1.println('}');
 }
 
-void checkRFID() {
-  if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-    if (alarmActive) { 
-      Serial.println(F("RFID Dismissal - Completing cycle"));
-      Serial1.println(F("MED_TAKEN"));
-      stopAlarm();
-      pendingClose = false;
-      // Rotate stepper as feedback
-      digitalWrite(DIR_PIN, HIGH);
-      for(int i=0; i<200; i++) { 
-        digitalWrite(STEP_PIN, HIGH); 
-        delayMicroseconds(800); 
-        digitalWrite(STEP_PIN, LOW); 
-        delayMicroseconds(800); 
-      }
-    }
-    rfid.PICC_HaltA(); 
-    rfid.PCD_StopCrypto1();
-  }
-}
-
-void checkIncomingCommands() {
-  if (Serial1.available()) {
-    String cmd = Serial1.readStringUntil('\n');
-    Serial.print(F("ESP Cmd: ")); Serial.println(cmd);
-    
-    if (cmd.indexOf("req_data") >= 0) {
-      readAndSendData();
-    } else if (cmd.indexOf("trigger_alarm") >= 0 || cmd.indexOf("BUZZ:ON") >= 0) {
-      startAlarm();
-    } else if (cmd.indexOf("stop_alarm") >= 0 || cmd.indexOf("BUZZ:OFF") >= 0) {
-      stopAlarm();
-      pendingClose = false;
-    } else if (cmd.indexOf("lock") >= 0 || cmd.indexOf("SOL:LOCK") >= 0) {
-      digitalWrite(SOLENOID_PIN, LOW);
-    } else if (cmd.indexOf("unlock") >= 0 || cmd.indexOf("SOL:UNLOCK") >= 0) {
-      digitalWrite(SOLENOID_PIN, HIGH);
-    } else if (cmd.indexOf("play:") >= 0) {
-      int track = cmd.substring(5).toInt();
-      myDFPlayer.play(track);
-    } else if (cmd.indexOf("servo:") >= 0) {
-      int pos = cmd.substring(6).toInt();
-      myServo.write(pos);
-    } else if (cmd.indexOf("ACT:CALIBRATE") >= 0) {
-      Serial.println(F("Actuator calibration signal received (Future feature)"));
-    }
-  }
-}
-
+// ================= ALARM FUNCTIONS =================
 void startAlarm() {
-  if (!alarmActive) {
-    alarmActive = true;
-    alarmStartTime = millis();
-    pendingClose = false;
-    digitalWrite(SOLENOID_PIN, HIGH); // Unlock solenoid on alarm
-    myDFPlayer.play(1); 
-    Serial.println(F("ALARM STARTED"));
-  } else {
-    alarmStartTime = millis();
-    Serial.println(F("ALARM TIMER RESET"));
-  }
+  Serial.println("DEBUG: startAlarm() called");
+  
+  // Complete reset of all states before starting new alarm
+  resetAllStates();
+  
+  // Now set new alarm
+  alarmActive = true;
+  solenoidUnlocked = true;
+  waitingForDoorOpen = true;
+  doorWasOpened = false;
+  medTakenSent = false;
+  
+  alarmStartTime = millis();
+  
+  // Unlock solenoid
+  digitalWrite(SOLENOID_PIN, HIGH);
+  Serial.println("DEBUG: Solenoid UNLOCKED");
+  
+  // Audio player disabled for now
+  // myDFPlayer.play(1);
 }
 
 void stopAlarm() {
+  Serial.println("DEBUG: stopAlarm() called");
+  
+  // Only send MED_TAKEN if not already sent
+  if (alarmActive && !medTakenSent) {
+    Serial1.println(F("MED_TAKEN"));
+    medTakenSent = true;
+    Serial.println("DEBUG: MED_TAKEN sent");
+  }
+  
+  resetAllStates();
+}
+
+void resetAllStates() {
   alarmActive = false;
+  solenoidUnlocked = false;
+  waitingForDoorOpen = false;
+  doorWasOpened = false;
+  
   digitalWrite(BUZZER_PIN, LOW);
-  digitalWrite(SOLENOID_PIN, LOW); // Relock
-  myDFPlayer.stop();
-  Serial.println(F("ALARM STOPPED"));
+  digitalWrite(SOLENOID_PIN, LOW);
+  
+  // myDFPlayer.stop();
+  
+  Serial.println("DEBUG: All states reset");
 }
 
-void runHardwareTest() {
-  Serial.println(F("\n--- STARTING HARDWARE SELF-TEST ---"));
-  
-  Serial.println(F("1. Buzzer (1s)"));
-  digitalWrite(BUZZER_PIN, HIGH); delay(1000); digitalWrite(BUZZER_PIN, LOW);
-  
-  Serial.println(F("2. Solenoid (1s)"));
-  digitalWrite(SOLENOID_PIN, HIGH); delay(1000); digitalWrite(SOLENOID_PIN, LOW);
-  
-  Serial.println(F("3. Cooling Fan/TEC (2s)"));
-  digitalWrite(COOLING_PIN, HIGH); delay(2000); digitalWrite(COOLING_PIN, LOW);
-  
-  Serial.println(F("4. Servo Move (0 -> 90 -> 0)"));
-  myServo.write(90); delay(1000); myServo.write(0); delay(1000);
-  
-  Serial.println(F("5. Stepper Motor (200 steps)"));
-  digitalWrite(DIR_PIN, HIGH);
-  for(int i=0; i<200; i++) { 
-    digitalWrite(STEP_PIN, HIGH); delayMicroseconds(1000); 
-    digitalWrite(STEP_PIN, LOW); delayMicroseconds(1000); 
+// ================= RFID =================
+void checkRFID() {
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial())
+    return;
+
+  Serial.println("DEBUG: RFID detected");
+
+  // If alarm is active, treat RFID as medicine taken
+  if (alarmActive) {
+    stopAlarm();
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+    return;
   }
+
+  // Manual RFID unlock (no alarm)
+  digitalWrite(SOLENOID_PIN, HIGH);
+  solenoidUnlocked = true;
+  waitingForDoorOpen = true;
+  doorWasOpened = false;
+  medTakenSent = false;
   
-  Serial.println(F("6. DFPlayer (Track 1)"));
-  myDFPlayer.play(1); delay(3000); myDFPlayer.stop();
-  
-  Serial.println(F("7. RFID - Please scan a tag now..."));
-  unsigned long start = millis();
-  while (millis() - start < 5000) {
-    if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-      Serial.println(F("   RFID Tag FOUND!"));
-      rfid.PICC_HaltA(); rfid.PCD_StopCrypto1();
-      break;
-    }
-  }
-  
-  Serial.println(F("8. Sensors Check"));
-  readAndSendData();
-  
-  Serial.println(F("--- TEST COMPLETE ---\n"));
+  Serial.println("DEBUG: Manual RFID unlock");
+
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
 }
 
-void runRFIDTest() {
-  Serial.println(F("\n--- RFID MANUAL CHECK ---"));
-  Serial.println(F("Scanning for 10 seconds... Please tap your tag."));
+// ================= DOOR MONITORING =================
+void monitorDoor() {
+  doorOpen = readDoor();
   
-  unsigned long start = millis();
-  bool found = false;
-  
-  while (millis() - start < 10000) {
-    if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-      Serial.print(F("Found Tag! UID:"));
-      for (byte i = 0; i < rfid.uid.size; i++) {
-        Serial.print(rfid.uid.uidByte[i] < 0x10 ? " 0" : " ");
-        Serial.print(rfid.uid.uidByte[i], HEX);
+  // Detect door state changes
+  if (doorOpen != lastDoorState) {
+    Serial.print("DEBUG: Door changed to: ");
+    Serial.println(doorOpen ? "OPEN" : "CLOSED");
+    
+    // Door opened
+    if (doorOpen) {
+      if (solenoidUnlocked && waitingForDoorOpen) {
+        doorWasOpened = true;
+        waitingForDoorOpen = false;
+        digitalWrite(BUZZER_PIN, LOW);  // Stop buzzer when door opens
+        Serial.println("DEBUG: Door opened after unlock");
       }
-      Serial.println();
-      
-      rfid.PICC_HaltA();
-      rfid.PCD_StopCrypto1();
-      found = true;
-      break;
+    }
+    // Door closed
+    else {
+      if (solenoidUnlocked && doorWasOpened) {
+        // Medicine taken - close everything
+        Serial.println("DEBUG: Door closed - medicine taken");
+        
+        if (!medTakenSent) {
+          Serial1.println(F("MED_TAKEN"));
+          medTakenSent = true;
+          Serial.println("DEBUG: MED_TAKEN sent");
+        }
+        
+        // Complete reset
+        resetAllStates();
+      }
+    }
+    
+    // Send updated data immediately on door change
+    readAndSendData();
+    lastDoorState = doorOpen;
+  }
+}
+
+// ================= COMMANDS =================
+void checkIncomingCommands() {
+  if (!Serial1.available()) return;
+
+  String cmd = Serial1.readStringUntil('\n');
+  cmd.trim();
+  
+  if (cmd.length() == 0) return;
+  
+  Serial.print("DEBUG: Received: '");
+  Serial.print(cmd);
+  Serial.println("'");
+
+  if (cmd.indexOf("req_data") >= 0) {
+    readAndSendData();
+  }
+  else if (cmd.indexOf("BUZZ:ON") >= 0 || cmd.indexOf("trigger_alarm") >= 0) {
+    startAlarm();
+  }
+  else if (cmd.indexOf("BUZZ:OFF") >= 0 || cmd.indexOf("stop_alarm") >= 0) {
+    stopAlarm();
+  }
+  else if (cmd.indexOf("SOL:UNLOCK") >= 0) {
+    // Only unlock if not already in alarm state
+    if (!alarmActive) {
+      digitalWrite(SOLENOID_PIN, HIGH);
+      solenoidUnlocked = true;
+      waitingForDoorOpen = true;
+      doorWasOpened = false;
+      medTakenSent = false;
+      Serial.println("DEBUG: Manual SOL:UNLOCK");
     }
   }
-  
-  if (!found) Serial.println(F("No tag detected. Check wiring (SS=9, RST=6, MOSI/MISO/SCK on ICSP)."));
-  Serial.println(F("--- RFID TEST COMPLETE ---\n"));
+  else if (cmd.indexOf("SOL:LOCK") >= 0) {
+    resetAllStates();
+  }
+}
+
+// ================= LOOP =================
+void loop() {
+  unsigned long now = millis();
+
+  // Monitor door state changes
+  monitorDoor();
+
+  // Alarm timeout logic
+  if (alarmActive && (now - alarmStartTime > 60000)) {
+    Serial.println("DEBUG: Alarm timeout");
+    stopAlarm();
+  }
+
+  // Buzzer logic when alarm active
+  if (alarmActive && waitingForDoorOpen) {
+    // Beep until door opens
+    bool beep = (now / 500) % 2;
+    digitalWrite(BUZZER_PIN, beep);
+  }
+  else if (!alarmActive) {
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  // Check RFID
+  checkRFID();
+
+  // Check ESP commands
+  checkIncomingCommands();
+
+  // Periodic data send
+  if (now - lastUpdate > 60000) {
+    readAndSendData();
+    lastUpdate = now;
+  }
 }

@@ -386,7 +386,7 @@ function handleTriggerAlarm($method) {
         // Queue commands to Arduino: activate buzzer, display, unlock solenoid
         $commands = [
             "BUZZ:ON",  // Activate buzzer
-            "DISP:SHOW_" . strtoupper($schedule_type),  // Show message on display
+            "ALARM_DATA|" . strtoupper($schedule_type) . "|NOW",
             "SOL:UNLOCK"  // Unlock solenoid
         ];
         

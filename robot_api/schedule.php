@@ -772,10 +772,10 @@ function handleTriggerDueSchedules($method) {
             }
 
             // Always queue arduino commands when a schedule triggers
-            // The ESP32 will poll these and execute them even if it was offline at the exact moment of trigger
+            $time_str = str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ":" . str_pad($row['minute'], 2, '0', STR_PAD_LEFT);
             $commands = [
                 "BUZZ:ON",
-                "MSG:Time for " . $med_name,
+                "ALARM_DATA|" . $med_name . "|" . $time_str,
                 "SOL:UNLOCK"
             ];
             

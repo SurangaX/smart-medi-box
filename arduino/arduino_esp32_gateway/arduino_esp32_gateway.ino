@@ -35,6 +35,8 @@ struct {
   String user = "Unpaired";
   String alert = "System Online";
   int alarm = 0;
+  String sched_name = "Medicine";
+  String sched_time = "Now";
 } box;
 
 void setup() {
@@ -62,10 +64,10 @@ void loop() {
     line.trim();
 
     if (line.length() > 0) {
-       // Debug received lines
        if (line == "MED_TAKEN") {
          Serial.println(">>> MED_TAKEN detected. Notifying server...");
          box.alert = "System Online";
+         box.alarm = 0; // Clear local alarm state immediately
          renderUI();
          notifyMedicineTaken();
        } else if (line.startsWith("{")) {
@@ -112,40 +114,72 @@ void loop() {
 }
 
 void renderUI() {
-  struct tm timeinfo;
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
-
-  if (getLocalTime(&timeinfo)) {
-    char dateStr[12];
-    char timeStr[6];
-    strftime(dateStr, 12, "%Y-%m-%d", &timeinfo);
-    strftime(timeStr, 6, "%H:%M", &timeinfo);
-    
-    u8g2.setCursor(0, 10);
-    u8g2.print(dateStr);
-    u8g2.print(" | ");
-    u8g2.print(timeStr);
-  } else {
-    u8g2.setCursor(0, 10);
-    u8g2.print("Time Sync Error");
-  }
-
-  u8g2.setCursor(0, 22);
-  u8g2.print("User: ");
-  u8g2.print(box.user);
-
-  u8g2.setCursor(0, 35);
-  u8g2.print("T: "); u8g2.print(box.temp, 1);
-  u8g2.print("C  H: "); u8g2.print(box.hum); u8g2.print("%");
-
-  u8g2.setCursor(0, 48);
-  u8g2.print(box.door ? "Door: OPEN" : "Door: CLOSED");
-
+  
   if (box.alarm) {
+    // --- ALARM ACTIVE UI ---
+    // Cycle through info every 2 seconds
+    int cycle = (millis() / 2000) % 4;
+    u8g2.setFont(u8g2_font_7x14_tf); 
+    
+    String text = "";
+    if (cycle == 0) text = box.sched_name;
+    else if (cycle == 1) text = "Time: " + box.sched_time;
+    else if (cycle == 2) {
+       // Shorten user name (First name only)
+       String shortUser = box.user;
+       int spaceIdx = shortUser.indexOf(' ');
+       if (spaceIdx != -1) shortUser = shortUser.substring(0, spaceIdx);
+       if (shortUser.length() > 10) shortUser = shortUser.substring(0, 10);
+       text = "User: " + shortUser;
+    }
+    else if (cycle == 3) text = "DOOR UNLOCKED";
+
+    // Center the text
+    int x = (128 - u8g2.getStrWidth(text.c_str())) / 2;
+    u8g2.drawStr(x > 0 ? x : 0, 32, text.c_str());
+    
+    // Bottom status bar
+    u8g2.setFont(u8g2_font_6x10_tf);
     u8g2.drawFrame(0, 50, 128, 14);
-    u8g2.drawStr(5, 62, box.alert.c_str());
+    int labelX = (128 - u8g2.getStrWidth("TAKE MEDICINE!")) / 2;
+    u8g2.drawStr(labelX, 62, "TAKE MEDICINE!");
+
   } else {
+    // --- NORMAL UI ---
+    struct tm timeinfo;
+    u8g2.setFont(u8g2_font_6x10_tf);
+
+    if (getLocalTime(&timeinfo)) {
+      char dateStr[12];
+      char timeStr[6];
+      strftime(dateStr, 12, "%Y-%m-%d", &timeinfo);
+      strftime(timeStr, 6, "%H:%M", &timeinfo);
+      
+      u8g2.setCursor(0, 10);
+      u8g2.print(dateStr);
+      u8g2.print(" | ");
+      u8g2.print(timeStr);
+    } else {
+      u8g2.setCursor(0, 10);
+      u8g2.print("Time Sync Error");
+    }
+
+    u8g2.setCursor(0, 22);
+    u8g2.print("User: ");
+    u8g2.print(box.user);
+
+    u8g2.setCursor(0, 35);
+    u8g2.print("T: "); u8g2.print(box.temp, 1);
+    u8g2.print("C  H: "); u8g2.print(box.hum); u8g2.print("%");
+
+    u8g2.setCursor(0, 48);
+    u8g2.print(box.door ? "Door: OPEN" : "Door: CLOSED");
+
+    if (box.lock) {
+      u8g2.drawStr(80, 48, "| UNLOCKED");
+    }
+
     u8g2.drawStr(0, 62, "Status: Online");
   }
 
@@ -226,6 +260,17 @@ void fetchCommands() {
         String commandStr = cmd["command"].as<String>();
         int cmdId = cmd["id"].as<int>();
         
+        // Handle ALARM_DATA for display
+        if (commandStr.startsWith("ALARM_DATA|")) {
+           int firstPipe = commandStr.indexOf('|');
+           int secondPipe = commandStr.indexOf('|', firstPipe + 1);
+           if (firstPipe != -1 && secondPipe != -1) {
+             box.sched_name = commandStr.substring(firstPipe + 1, secondPipe);
+             box.sched_time = commandStr.substring(secondPipe + 1);
+             Serial.println("Received Sched: " + box.sched_name + " @ " + box.sched_time);
+           }
+        }
+
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd: "); Serial.println(commandStr);
         
