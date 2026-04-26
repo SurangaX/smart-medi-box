@@ -912,7 +912,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       const data = await response.json();
       if (data.status === 'SUCCESS' && !isClearingRef.current) {
         // Map the backend notifications to the frontend format
-        const formattedNotifs = data.notifications.map(n => {
+        const formattedNotifs = (data.notifications || []).map(n => {
           let medName = n.medicine_name;
           
           // Fallback: If medicine_name is missing but it's an alarm, try to extract from message
@@ -938,37 +938,34 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         });
         
         // Auto-close modal if notification was dismissed elsewhere (e.g. by opening box door)
-        const currentNotifIds = new Set((data.notifications || []).map(n => String(n.id)));
+        const currentNotifIds = new Set(formattedNotifs.map(n => String(n.id)));
         if (activeMedicineAlert && !currentNotifIds.has(String(activeMedicineAlert.id))) {
           console.log('🤖 Auto-approving modal: Notification dismissed on server');
           setActiveMedicineAlert(null);
           fetchSchedules(); // Refresh to show checkmark
         }
 
-        // Merge with existing notifications, avoiding duplicates by ID
-        setNotifications(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newOnes = formattedNotifs.filter(n => !existingIds.has(n.id));
-          
-          // CRITICAL: Only trigger popup for VERY RECENT medicine alarms (created in last 60 seconds)
-          const now = new Date();
-          const medicineAlarm = newOnes.find(n => {
-            if (!n.rawType.startsWith('ALARM_') || n.rawType === 'ALARM_MISSED') return false;
-            const created = new Date(n.timestamp);
-            const diffSeconds = (now - created) / 1000;
-            return diffSeconds < 60; // Only if created in the last minute
-          });
-          
-          if (medicineAlarm) {
-            setActiveMedicineAlert(medicineAlarm);
-          }
-          
-          // Only keep notifications that are still pending or were already in the list
-          return [...newOnes, ...prev];
+        // SYNC with server: use the server's list as the source of truth
+        setNotifications(formattedNotifs);
+        
+        // CRITICAL: Trigger popup for VERY RECENT medicine alarms (created in last 60 seconds)
+        // We check against the NEWLY fetched formattedNotifs
+        const now = new Date();
+        const medicineAlarm = formattedNotifs.find(n => {
+          if (!n.rawType.startsWith('ALARM_') || n.rawType === 'ALARM_MISSED') return false;
+          // Only show popup if it wasn't already shown (we can check a 'shown' set or similar, 
+          // but checking recency is usually enough for auto-triggered alarms)
+          const created = new Date(n.timestamp);
+          const diffSeconds = (now - created) / 1000;
+          return diffSeconds < 60; 
         });
         
+        if (medicineAlarm && (!activeMedicineAlert || activeMedicineAlert.id !== medicineAlarm.id)) {
+          setActiveMedicineAlert(medicineAlarm);
+        }
+        
         if (formattedNotifs.length > 0) {
-          console.log(`✅ Fetched ${formattedNotifs.length} notifications`);
+          console.log(`✅ Synced ${formattedNotifs.length} notifications from server`);
         }
       }
     } catch (err) {
@@ -3695,15 +3692,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.status === 'SUCCESS') {
+      if (data.status === 'SUCCESS' && !isClearingRef.current) {
         const formatted = (data.notifications || []).map(n => ({
           id: n.id, message: n.message, type: 'info', rawType: n.type, timestamp: n.created_at, read: false
         }));
-        setNotifications(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newOnes = formatted.filter(n => !existingIds.has(n.id));
-          return [...newOnes, ...prev];
-        });
+        setNotifications(formatted);
       }
     } catch (err) {
       console.error('Failed to fetch doctor notifications:', err);
