@@ -286,7 +286,7 @@ void fetchCommands() {
            renderUI();
         }
 
-        if (commandStr == "SOL:UNLOCK") {
+        if (commandStr == "SOL:UNLOCK" && box.alarm == 0) {
            box.sched_name = "MANUAL TRIGGER";
            box.sched_time = "NOW";
            box.alarm = 1; // Reuse alarm UI for clear visual indication
