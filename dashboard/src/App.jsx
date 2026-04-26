@@ -4632,16 +4632,26 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const updatePushTokenOnBackend = async (userId, pushToken) => {
-    if (!userId || !pushToken) return;
+    if (!userId || !pushToken) {
+      console.log('Skipping push token update: userId or pushToken missing', { userId, pushToken });
+      return;
+    }
+    console.log(`Sending push token to backend for user ${userId}...`);
     try {
       const response = await fetch(`${API_URL}/api/user/update-push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, expo_push_token: pushToken })
       });
-      console.log('Push token update response:', await response.json());
+      const data = await response.json();
+      console.log('Push token update response:', data);
+      if (data.status === 'SUCCESS') {
+        console.log('✅ Push token registered successfully');
+      } else {
+        console.warn('⚠️ Push token registration failed:', data.message);
+      }
     } catch (err) {
-      console.error('Failed to update push token on backend:', err);
+      console.error('❌ Failed to update push token on backend:', err);
     }
   };
 
