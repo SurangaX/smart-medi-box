@@ -286,6 +286,20 @@ void fetchCommands() {
            renderUI();
         }
 
+        if (commandStr == "SOL:UNLOCK") {
+           box.sched_name = "MANUAL TRIGGER";
+           box.sched_time = "NOW";
+           box.alarm = 1; // Reuse alarm UI for clear visual indication
+           renderUI();
+        }
+
+        if (commandStr.startsWith("DISPLAY:")) {
+           box.sched_name = "DISPENSING...";
+           box.sched_time = commandStr.substring(8);
+           box.alarm = 1;
+           renderUI();
+        }
+
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd: "); Serial.println(commandStr);
         

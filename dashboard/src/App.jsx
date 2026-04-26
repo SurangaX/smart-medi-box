@@ -743,6 +743,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
   const [isDeletingSchedule, setIsDeletingSchedule] = useState(null);
+  const [isTriggering, setIsTriggering] = useState(null);
   const [tempHistory, setTempHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [pairingToken, setPairingToken] = useState('');
@@ -1513,6 +1514,12 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         window.appNotify({ message: 'Authentication token missing', type: 'error' });
         return;
       }
+
+      setIsTriggering(scheduleId);
+      window.appNotify({ 
+        message: 'Requesting dispense... Solenoid will open within 30 seconds.', 
+        type: 'info' 
+      });
       
       const response = await fetchWithRetry(`${API_URL}/index.php/api/schedule/dispense-now`, {
         method: 'POST',
@@ -1526,13 +1533,15 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       
       const data = await response.json();
       if (data.status === 'SUCCESS') {
-        window.appNotify({ message: 'Solenoid trigger sent to device', type: 'success' });
+        window.appNotify({ message: 'Trigger sent! Box is unlocking...', type: 'success' });
       } else {
         window.appNotify({ message: data.message || 'Failed to trigger dispense', type: 'error' });
       }
     } catch (err) {
       console.error('Trigger dispense error:', err);
       window.appNotify({ message: 'Network error while triggering dispense', type: 'error' });
+    } finally {
+      setIsTriggering(null);
     }
   };
 
@@ -2815,8 +2824,13 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                                     className="btn-action-trigger"
                                     onClick={() => handleManualTriggerDispense(sched.schedule_id)}
                                     title="Dispense Now"
+                                    disabled={isTriggering === sched.schedule_id}
                                   >
-                                    <Unlock size={18} />
+                                    {isTriggering === sched.schedule_id ? (
+                                      <div className="spinner-mini" style={{ width: 14, height: 14 }}></div>
+                                    ) : (
+                                      <Unlock size={18} />
+                                    )}
                                   </button>
                                   <button
                                     className="btn-action-done"
