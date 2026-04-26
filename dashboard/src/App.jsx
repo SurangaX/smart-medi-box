@@ -3402,6 +3402,12 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
 // ==================== Doctor Dashboard ====================
 const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
+  // Friendly fallbacks for various backend field names
+  // Prefer real name fields; DO NOT fall back to email to avoid showing email in header
+  const displayName = (profile && (profile.name || profile.full_name || profile.display_name || profile.username)) || '';
+  const displaySpecialization = (profile && (profile.specialty || profile.specialization || profile.speciality || profile.field)) || '';
+  const displayHospital = (profile && (profile.hospital || profile.hospital_name || profile.clinic || profile.affiliation)) || '';
+
   const [activeTab, setActiveTab] = useState('patients');
 
   // Handle remote tab change from mobile wrapper
