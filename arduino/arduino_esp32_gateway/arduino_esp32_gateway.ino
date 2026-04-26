@@ -37,6 +37,7 @@ struct {
   int alarm = 0;
   String sched_name = "Medicine";
   String sched_time = "Now";
+  float target_temp = 25.0; // Default target
 } box;
 
 void setup() {
@@ -170,7 +171,7 @@ void renderUI() {
 
     u8g2.setCursor(0, 35);
     u8g2.print("T: "); u8g2.print(box.temp, 1);
-    u8g2.print("C  H: "); u8g2.print(box.hum); u8g2.print("%");
+    u8g2.print("C / "); u8g2.print(box.target_temp, 1); u8g2.print("C");
 
     u8g2.setCursor(0, 48);
     u8g2.print(box.door ? "Door: OPEN" : "Door: CLOSED");
@@ -270,6 +271,13 @@ void fetchCommands() {
              Serial.println("Received Sched: " + box.sched_name + " @ " + box.sched_time);
              renderUI(); // Immediate refresh
            }
+        }
+        
+        // Handle TEMP_SET for display
+        if (commandStr.startsWith("TEMP_SET|")) {
+           box.target_temp = commandStr.substring(9).toFloat();
+           Serial.println("Target Temp Updated: " + String(box.target_temp));
+           renderUI();
         }
 
         LeoSerial.println(commandStr);

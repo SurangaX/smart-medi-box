@@ -750,6 +750,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [manualMacInput, setManualMacInput] = useState('');
   const [temperature, setTemperature] = useState(null);
+  const [targetTempInput, setTargetTempInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const [scannerStarted, setScannerStarted] = useState(false);
@@ -1266,6 +1267,35 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       }
     } catch (err) {
       console.error('🚨 Stats fetch exception:', err);
+    }
+  };
+
+  const handleSetTargetTemp = async (newTemp) => {
+    if (!newTemp) return;
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/index.php/api/temperature/set-target`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token,
+          user_id: profile?.id || profile?.user_id,
+          target_temp: parseFloat(newTemp)
+        })
+      });
+      const data = await response.json();
+      if (data.status === 'SUCCESS') {
+        window.appNotify({ message: `Target temperature set to ${newTemp}°C`, type: 'success' });
+        fetchTemperature();
+        setTargetTempInput('');
+      } else {
+        window.appNotify({ message: 'Error: ' + (data.message || 'Failed to set temperature'), type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to set target temperature:', err);
+      window.appNotify({ message: 'Network error setting temperature', type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2374,6 +2404,23 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                         Humidity: {temperature.external_humidity}%<br/>
                         Status: {temperature.cooling_status ? '🟢 Cooling ON' : '⚪ Cooling OFF'}
                       </div>
+                      <div className="temp-control-minimal" style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          placeholder="Set °C" 
+                          value={targetTempInput}
+                          onChange={(e) => setTargetTempInput(e.target.value)}
+                          style={{ width: '70px', padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '13px' }}
+                        />
+                        <button 
+                          className="btn-primary" 
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                          onClick={() => handleSetTargetTemp(targetTempInput)}
+                          disabled={loading || !targetTempInput}
+                        >
+                          Set
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2782,10 +2829,80 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         )}
         {activeTab === 'temperature' && (
           <div className="section">
+            <div className="dashboard-grid" style={{ marginBottom: '20px' }}>
+              <div className="card">
+                <div className="card-header">
+                  <Thermometer size={24} />
+                  <h3>Current Temperature</h3>
+                </div>
+                {temperature ? (
+                  <div className="card-content">
+                    <div className="temp-display">
+                      <div className="temp-main">{temperature.internal_temp}°C</div>
+                      <div className="temp-sub">Current Internal Temperature</div>
+                      <div className="temp-info">
+                        Humidity: {temperature.external_humidity}%<br/>
+                        Last Updated: {new Date(temperature.created_at).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ) : <LoadingSpinner />}
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <Lock size={24} />
+                  <h3>Target Temperature</h3>
+                </div>
+                {temperature ? (
+                  <div className="card-content">
+                    <div className="temp-display">
+                      <div className="temp-main">{temperature.target_temp}°C</div>
+                      <div className="temp-sub">Cooling Threshold</div>
+                      <div className="temp-info" style={{ color: temperature.cooling_status ? 'var(--success)' : 'var(--text-secondary)' }}>
+                        Status: {temperature.cooling_status ? '🟢 Active Cooling' : '⚪ Monitoring Only'}
+                      </div>
+                    </div>
+                  </div>
+                ) : <LoadingSpinner />}
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <Edit size={24} />
+                  <h3>Set Target Temperature</h3>
+                </div>
+                <div className="card-content">
+                  <p style={{ fontSize: '13px', opacity: 0.7, marginBottom: '15px' }}>
+                    Trigger cooling when temperature exceeds this value.
+                  </p>
+                  <div className="control-group" style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      className="input-field"
+                      placeholder="e.g. 25.0"
+                      value={targetTempInput}
+                      onChange={(e) => setTargetTempInput(e.target.value)}
+                      style={{ flex: 1, padding: '12px', borderRadius: '10px', background: 'var(--background)', border: '1px solid var(--border)', color: 'white' }}
+                    />
+                    <button 
+                      className="btn-primary"
+                      onClick={() => handleSetTargetTemp(targetTempInput)}
+                      disabled={loading || !targetTempInput}
+                      style={{ padding: '0 20px' }}
+                    >
+                      {loading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="card card-wide">
               <div className="card-header">
-                <Thermometer size={24} />
-                <h3>Temperature Graph (Last 7 Days)</h3>
+                <Activity size={24} />
+                <h3>Temperature History (7 Days)</h3>
               </div>
               {tempHistory.length > 0 ? (
                 <div style={{ width: '100%', height: 300 }}>

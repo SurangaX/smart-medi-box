@@ -35,6 +35,7 @@ RTC_DS3231 rtc;
 DHT dht(DHT_PIN, DHT22);
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature sensors(&oneWire);
+DeviceAddress insideThermometer; // Array to hold device address
 MFRC522 rfid(RFID_SS, RFID_RST);
 Servo myServo;
 SoftwareSerial dfSerial(DF_RX, DF_TX);
@@ -43,6 +44,8 @@ DFRobotDFPlayerMini myDFPlayer;
 // ================= GLOBALS =================
 float tempC = 0;
 int hum = 0;
+float targetTemp = 25.0;  // Default target temperature
+bool targetTempSet = false;
 
 bool doorOpen = false;
 bool lastDoorState = false;
@@ -77,7 +80,13 @@ void setup() {
   digitalWrite(COOLING_PIN, LOW);
 
   dht.begin();
+  
+  // Initialize DS18B20
   sensors.begin();
+  if (!sensors.getAddress(insideThermometer, 0)) {
+    Serial.println(F("Unable to find address for DS18B20 Device 0"));
+  }
+  sensors.setResolution(insideThermometer, 9); // Set resolution to 9 bit for speed/accuracy
 
   Wire.begin();
   rtc.begin();
@@ -103,15 +112,22 @@ bool readDoor() {
 
 // ================= SEND (UNCHANGED LOGIC) =================
 void readAndSendData() {
+  // Read humidity from DHT22
   float h = dht.readHumidity();
-  float t = dht.readTemperature();
-
+  
+  // Read temperature from DS18B20
   sensors.requestTemperatures();
-  float t2 = sensors.getTempCByIndex(0);
+  float t = sensors.getTempC(insideThermometer);
 
-  if (!isnan(h) && !isnan(t)) {
-    tempC = t;
+  // Validation
+  if (!isnan(h)) {
     hum = (int)h;
+  }
+  
+  if (t != DEVICE_DISCONNECTED_C) {
+    tempC = t;
+  } else {
+    Serial.println(F("Error: Could not read DS18B20 temperature"));
   }
 
   doorOpen = readDoor();
@@ -286,6 +302,12 @@ void checkIncomingCommands() {
   else if (cmd.indexOf("SOL:LOCK") >= 0) {
     resetAllStates();
   }
+  else if (cmd.indexOf("TEMP_SET|") >= 0) {
+    targetTemp = cmd.substring(9).toFloat();
+    targetTempSet = true;
+    Serial.print("DEBUG: Target Temp Set: ");
+    Serial.println(targetTemp);
+  }
 }
 
 // ================= LOOP =================
@@ -316,6 +338,16 @@ void loop() {
 
   // Check ESP commands
   checkIncomingCommands();
+
+  // Cooling logic based on target temperature
+  if (targetTempSet) {
+    if (tempC >= targetTemp + 0.5) {
+      digitalWrite(COOLING_PIN, HIGH);
+    } 
+    else if (tempC <= targetTemp) {
+      digitalWrite(COOLING_PIN, LOW);
+    }
+  }
 
   // Periodic data send
   if (now - lastUpdate > 60000) {
