@@ -56,6 +56,7 @@ bool solenoidUnlocked = false;
 bool waitingForDoorOpen = false;
 bool doorWasOpened = false;
 bool medTakenSent = false;  // CRITICAL: Prevents multiple MED_TAKEN sends
+bool manualTriggerActive = false; // Flag for dashboard manual triggers (dispense-now)
 
 unsigned long alarmStartTime = 0;
 unsigned long lastUpdate = 0;
@@ -178,6 +179,7 @@ void stopAlarm() {
 void resetAllStates() {
   alarmActive = false;
   solenoidUnlocked = false;
+  manualTriggerActive = false;
   waitingForDoorOpen = false;
   doorWasOpened = false;
   
@@ -251,9 +253,9 @@ void monitorDoor() {
         // Medicine taken - close everything
         Serial.println("DEBUG: Door closed");
         
-        // Send MED_TAKEN if door was opened and closed after an alarm OR manual unlock
+        // Send MED_TAKEN if door was opened and closed after an alarm OR manual dashboard trigger
         // This avoids sending MED_TAKEN for generic unlocks (like RFID/DEBUG) that aren't tied to medicine
-        if ((alarmActive || solenoidUnlocked) && !medTakenSent) {
+        if ((alarmActive || manualTriggerActive) && !medTakenSent) {
           Serial1.println(F("MED_TAKEN"));
           medTakenSent = true;
           Serial.println("DEBUG: MED_TAKEN sent");
@@ -297,6 +299,7 @@ void checkIncomingCommands() {
     if (!alarmActive) {
       digitalWrite(SOLENOID_PIN, HIGH);
       solenoidUnlocked = true;
+      manualTriggerActive = true;
       waitingForDoorOpen = true;
       doorWasOpened = false;
       medTakenSent = false;
