@@ -1116,10 +1116,13 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
   const clearNotifications = async (type = null) => {
     try {
-      console.log(type ? `🧹 Clearing ${type} notifications...` : '🧹 Clearing all notifications permanently...');
+      // If called as event handler, type will be the event object
+      const actualType = (type && typeof type === 'string') ? type : null;
+      
+      console.log(actualType ? `🧹 Clearing ${actualType} notifications...` : '🧹 Clearing all notifications permanently...');
 
-      if (type) {
-        setNotifications(prev => prev.filter(n => n.rawType !== type));
+      if (actualType) {
+        setNotifications(prev => prev.filter(n => n.rawType !== actualType));
       } else {
         setNotifications([]);
         setNotifPanelOpen(false);
@@ -1130,7 +1133,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           user_id: profile?.id || profile?.user_id,
-          type: type 
+          type: actualType 
         })
       });
 
@@ -1139,7 +1142,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         if (text) {
           try {
             const data = JSON.parse(text);
-            if (data.status === 'SUCCESS' && !type) {
+            if (data.status === 'SUCCESS' && !actualType) {
               window.appNotify({ message: 'All notifications cleared permanently', type: 'info', toastOnly: true });
             }
           } catch (e) {
@@ -2125,7 +2128,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                 Sync Now
               </button>
             </div>
-            <button className="btn-link" onClick={clearNotifications}>Clear</button>
+            <button className="btn-link" onClick={() => clearNotifications()}>Clear</button>
           </div>
           <div className="notif-list">
             {notifsLoading && <LoadingSpinner size={20} padding="15px" />}
@@ -3707,8 +3710,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const clearNotificationsDoc = async (type = null) => {
     try {
-      if (type) {
-        setNotifications(prev => prev.filter(n => n.rawType !== type));
+      // If called as event handler, type will be the event object
+      const actualType = (type && typeof type === 'string') ? type : null;
+
+      if (actualType) {
+        setNotifications(prev => prev.filter(n => n.rawType !== actualType));
       } else {
         setNotifications([]);
         setNotifPanelOpen(false);
@@ -3719,11 +3725,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           user_id: profile?.id || profile?.user_id,
-          type: type
+          type: actualType
         })
       });
 
-      if (!type) {
+      if (!actualType) {
         window.appNotify({ message: 'Notifications cleared', type: 'info', toastOnly: true });
       }
     } catch (err) {
@@ -3945,7 +3951,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         <div className="notif-panel" ref={notifPanelRefDoc} style={notifPanelStyleDoc}>
           <div className="notif-panel-header">
             <strong>Notifications</strong>
-            <button className="btn-link" onClick={clearNotificationsDoc}>Clear</button>
+            <button className="btn-link" onClick={() => clearNotificationsDoc()}>Clear</button>
           </div>
           <div className="notif-list">
             {notifsLoading && (
