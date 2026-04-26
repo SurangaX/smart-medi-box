@@ -54,6 +54,8 @@ switch ($action) {
             handleDismissAllNotifications($method);
         } elseif ($subaction === 'mark-read') {
             handleMarkNotificationsRead($method);
+        } elseif ($subaction === 'test-push') {
+            handleTestPush($method);
         }
         break;
     
@@ -106,7 +108,7 @@ function handleSendNotification($method) {
     try {
         // Get user phone if not provided
         if (!$phone) {
-            $userQuery = "SELECT phone FROM users WHERE user_id = $1";
+            $userQuery = "SELECT phone FROM users WHERE id = $1";
             $userResult = pg_query_params($conn, $userQuery, [$user_id]);
             if ($userResult && pg_num_rows($userResult) > 0) {
                 $user = pg_fetch_assoc($userResult);
@@ -142,7 +144,7 @@ function handleSendNotification($method) {
         $app_sent = false;
         
         // Get user's expo_push_token
-        $tokenQuery = "SELECT expo_push_token FROM users WHERE user_id = $1";
+        $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
         if ($tokenResult && pg_num_rows($tokenResult) > 0) {
             $user = pg_fetch_assoc($tokenResult);
@@ -405,7 +407,7 @@ function handleTriggerAlarm($method) {
 
         // Send Push Notification
         $app_sent = false;
-        $tokenQuery = "SELECT expo_push_token FROM users WHERE user_id = $1";
+        $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
         if ($tokenResult && pg_num_rows($tokenResult) > 0) {
             $user = pg_fetch_assoc($tokenResult);
@@ -638,6 +640,53 @@ function handleRFIDUnlock($method) {
     } catch (Exception $e) {
         error_log("RFID_UNLOCK ERROR: " . $e->getMessage());
         return errorResponse(500, 'RFID unlock failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Test Push Notification Endpoint
+ * Usage: GET /api/notifications/test-push?user_id=55
+ */
+function handleTestPush($method) {
+    global $conn;
+    
+    $user_id = $_GET['user_id'] ?? null;
+    if (!$user_id) {
+        return errorResponse(400, 'user_id required');
+    }
+    
+    try {
+        $query = "SELECT expo_push_token, name FROM users WHERE id = $1";
+        $result = pg_query_params($conn, $query, [$user_id]);
+        
+        if ($result && pg_num_rows($result) > 0) {
+            $user = pg_fetch_assoc($result);
+            $token = $user['expo_push_token'];
+            $name = $user['name'];
+            
+            if (!$token) {
+                return errorResponse(404, "No push token found for user $name (ID: $user_id). Please log in on the app first.");
+            }
+            
+            $title = "Test Notification";
+            $message = "Hello $name! This is a test push notification from Smart Medi Box.";
+            $sent = sendExpoPushNotification($token, $title, $message, ['test' => true]);
+            
+            if ($sent) {
+                http_response_code(200);
+                echo json_encode([
+                    'status' => 'SUCCESS',
+                    'message' => "Push notification sent to $name",
+                    'token' => $token
+                ]);
+            } else {
+                return errorResponse(500, "Failed to send push notification via Expo API.");
+            }
+        } else {
+            return errorResponse(404, "User not found");
+        }
+    } catch (Exception $e) {
+        return errorResponse(500, "Test Push Error: " . $e->getMessage());
     }
 }
 

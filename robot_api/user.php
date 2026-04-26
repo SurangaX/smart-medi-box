@@ -65,7 +65,7 @@ function handleGetProfile($method) {
                          u.created_at, ts.target_temp, ts.cooling_mode
                   FROM users u
                   LEFT JOIN temperature_settings ts ON u.id = ts.user_id
-                  WHERE u.user_id = $1";
+                  WHERE u.id = $1";
         
         $result = pg_query_params($conn, $query, array($user_id));
         
@@ -398,6 +398,8 @@ function validatePhoneNumber($phone) {
 function handleUpdatePushToken($method) {
     global $conn;
     
+    error_log("UPDATE_PUSH_TOKEN CALLED: method=$method");
+    
     if ($method !== 'POST') {
         http_response_code(405);
         echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
@@ -405,6 +407,8 @@ function handleUpdatePushToken($method) {
     }
     
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    error_log("UPDATE_PUSH_TOKEN INPUT: " . json_encode($input));
+    
     $user_id = $input['user_id'] ?? null;
     $push_token = $input['expo_push_token'] ?? null;
     
@@ -415,7 +419,7 @@ function handleUpdatePushToken($method) {
     }
     
     try {
-        $query = "UPDATE users SET expo_push_token = $1, updated_at = NOW() WHERE user_id = $2";
+        $query = "UPDATE users SET expo_push_token = $1, updated_at = NOW() WHERE id = $2";
         $result = pg_query_params($conn, $query, array($push_token, $user_id));
         
         if ($result && pg_affected_rows($result) > 0) {

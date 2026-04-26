@@ -177,7 +177,11 @@ async function registerForPushNotificationsAsync() {
     }
     
     // Get project ID from constants if using EAS
-    const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? 
+                      Constants?.easConfig?.projectId ?? 
+                      '41eed6f7-ee0b-4659-8299-8c3f8e5ea585';
+    
+    console.log('Using Project ID:', projectId);
     
     token = (await Notifications.getExpoPushTokenAsync({
       projectId: projectId
