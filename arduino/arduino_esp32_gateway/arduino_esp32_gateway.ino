@@ -79,6 +79,12 @@ void loop() {
            box.door = doc["d"];
            box.alarm = doc["a"];
            box.lock = doc["l"];
+           
+           // If door is closed, force exit alarm UI mode immediately
+           if (box.door == 0) {
+             box.alarm = 0;
+           }
+           
            // REAL-TIME: Force refresh UI when state packet arrives
            renderUI(); 
          }
