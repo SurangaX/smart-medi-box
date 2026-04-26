@@ -747,10 +747,36 @@ function handleTriggerDueSchedules($method) {
             $type = $row['type'];
             $med_name = $row['medicine_name'] ?? $type;
 
-            // Avoid duplicate triggers: check alarm_logs for an existing TRIGGERED for this schedule today
-            $checkAlarm = pg_query_params($conn, "SELECT id FROM alarm_logs WHERE schedule_id = $1 AND DATE(triggered_at) = $2 AND status = 'TRIGGERED' LIMIT 1", array($schedule_db_id, $date));
-            if ($checkAlarm && pg_num_rows($checkAlarm) > 0) {
-                continue; // already triggered today
+            // Check for existing alarms today to handle repeat reminders (every 5 mins up to 30 mins)
+            $lastAlarmQuery = "SELECT triggered_at FROM alarm_logs 
+                               WHERE schedule_id = $1 AND DATE(triggered_at) = $2 
+                               ORDER BY triggered_at DESC LIMIT 1";
+            $lastAlarmResult = pg_query_params($conn, $lastAlarmQuery, array($schedule_db_id, $date));
+            
+            $is_repeat = false;
+            if ($lastAlarmResult && pg_num_rows($lastAlarmResult) > 0) {
+                $lastAlarmRow = pg_fetch_assoc($lastAlarmResult);
+                $lastTriggered = new DateTime($lastAlarmRow['triggered_at']);
+                
+                // Calculate original scheduled time for today to determine the 30-min window
+                $schedTime = clone $now;
+                $schedTime->setTime($row['hour'], $row['minute']);
+                
+                // Use absolute difference in case of slight clock skews
+                $diff_minutes_from_schedule = abs($now->getTimestamp() - $schedTime->getTimestamp()) / 60;
+                $mins_since_last_alarm = ($now->getTimestamp() - $lastTriggered->getTimestamp()) / 60;
+                
+                if ($diff_minutes_from_schedule > 30) {
+                    error_log("TRIGGER_DUE - Skipping schedule $schedule_db_id: past 30-minute window ($diff_minutes_from_schedule mins)");
+                    continue; 
+                }
+                if ($mins_since_last_alarm < 5) {
+                    // Too soon for a repeat
+                    continue; 
+                }
+                
+                $is_repeat = true;
+                error_log("TRIGGER_DUE - Triggering REPEAT alarm for schedule $schedule_db_id ($diff_minutes_from_schedule mins since scheduled)");
             }
 
             // Create alarm_log
@@ -761,6 +787,11 @@ function handleTriggerDueSchedules($method) {
             $message = "It's time for your $med_name, please check the box.";
             if ($type === 'FOOD') $message = "It's time for your meal: $med_name.";
             if ($type === 'BLOOD_CHECK') $message = "Time to check your blood sugar for $med_name.";
+            
+            // Mark as repeat if applicable
+            if ($is_repeat) {
+                $message = "Repeat Reminder: " . $message;
+            }
 
             // Insert notification (dashboard)
             $notifResult = pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, sms_sent, app_sent) VALUES ($1, $2, $3, $4, false, false) RETURNING id", array($user_db_id, $schedule_db_id, 'ALARM_' . $type, $message));
