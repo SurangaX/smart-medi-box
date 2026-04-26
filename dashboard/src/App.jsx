@@ -737,7 +737,6 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   const headerRef = useRef(null);
   const notifPanelRef = useRef(null);
   const bellBtnRef = useRef(null);
-  const [notifPanelStyle, setNotifPanelStyle] = useState({});
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
@@ -933,7 +932,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
             rawType: n.type,
             timestamp: n.created_at,
             photo: n.photo,
-            read: false
+            read: n.is_read === 't' || n.is_read === true || n.is_read === '1'
           };
         });
         
@@ -1062,54 +1061,20 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const positionNotifPanel = () => {
-    try {
-      if (!headerRef.current) return setNotifPanelStyle({ top: 64 });
-      const hdr = headerRef.current.getBoundingClientRect();
-      
-      if (isMobile) {
-        setNotifPanelStyle({
-          position: 'fixed',
-          top: `${hdr.bottom}px`,
-          left: '10px',
-          right: '10px',
-          width: 'calc(100% - 20px)',
-          maxWidth: 'none',
-          zIndex: 2000,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-          borderRadius: '0 0 12px 12px'
-        });
-        return;
-      }
-      
-      const panelWidth = 340;
-      const top = Math.round(hdr.bottom + window.scrollY + 8);
-      let left = Math.round(hdr.right - panelWidth - 8);
-      if (left < 8) left = 8;
-      if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
-      setNotifPanelStyle({ top: `${top}px`, left: `${left}px`, position: 'fixed', maxWidth: '340px' });
-    } catch (e) { console.error('positionNotifPanel error', e); }
-  };
-
-  useEffect(() => {
-    if (!notifPanelOpen) return;
-    positionNotifPanel();
-    const onScroll = () => positionNotifPanel();
-    const onResize = () => positionNotifPanel();
+  useEffect(() => {    if (!notifPanelOpen) return;
     const onDocClick = (e) => {
       const tgt = e.target;
+      // If the target is no longer in the document, ignore it (likely unmounted during a state update)
+      if (!document.body.contains(tgt)) return;
+      
       if (notifPanelRef.current && bellBtnRef.current) {
         if (!notifPanelRef.current.contains(tgt) && !bellBtnRef.current.contains(tgt)) {
           setNotifPanelOpen(false);
         }
       }
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
     document.addEventListener('mousedown', onDocClick);
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
       document.removeEventListener('mousedown', onDocClick);
     };
   }, [notifPanelOpen]);
@@ -2150,7 +2115,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       </div>
 
       {notifPanelOpen && (
-        <div className="notif-panel" ref={notifPanelRef} style={notifPanelStyle}>
+        <div className="notif-panel" ref={notifPanelRef}>
           <div className="notif-panel-header">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <strong>Notifications</strong>
@@ -3675,7 +3640,6 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
   const headerRefDoc = useRef(null);
   const notifPanelRefDoc = useRef(null);
   const bellBtnRefDoc = useRef(null);
-  const [notifPanelStyleDoc, setNotifPanelStyleDoc] = useState({});
 
   const fetchNotificationsDoc = async () => {
     try {
@@ -3694,7 +3658,12 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       const data = await response.json();
       if (data.status === 'SUCCESS' && !isClearingRef.current) {
         const formatted = (data.notifications || []).map(n => ({
-          id: n.id, message: n.message, type: 'info', rawType: n.type, timestamp: n.created_at, read: false
+          id: n.id, 
+          message: n.message, 
+          type: 'info', 
+          rawType: n.type, 
+          timestamp: n.created_at, 
+          read: n.is_read === 't' || n.is_read === true || n.is_read === '1'
         }));
         setNotifications(formatted);
       }
@@ -3711,58 +3680,22 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
     return () => clearInterval(interval);
   }, [profile?.id, token]);
 
-  const positionNotifPanelDoc = () => {
-    try {
-      if (!headerRefDoc.current) return setNotifPanelStyleDoc({ top: 64 });
-      const hdr = headerRefDoc.current.getBoundingClientRect();
-      
-      if (isMobile) {
-        setNotifPanelStyleDoc({
-          position: 'fixed',
-          top: `${hdr.bottom}px`,
-          left: '10px',
-          right: '10px',
-          width: 'calc(100% - 20px)',
-          maxWidth: 'none',
-          zIndex: 2000,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-          borderRadius: '0 0 12px 12px'
-        });
-        return;
-      }
-      
-      const panelWidth = 340;
-      const top = Math.round(hdr.bottom + window.scrollY + 8);
-      let left = Math.round(hdr.right - panelWidth - 8);
-      if (left < 8) left = 8;
-      if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 8;
-      setNotifPanelStyleDoc({ top: `${top}px`, left: `${left}px`, position: 'fixed', maxWidth: '340px' });
-    } catch (e) { console.error('positionNotifPanelDoc error', e); }
-  };
-
   useEffect(() => {
     if (!notifPanelOpen) return;
-    positionNotifPanelDoc();
-    const onScroll = () => positionNotifPanelDoc();
-    const onResize = () => positionNotifPanelDoc();
     const onDocClick = (e) => {
       const tgt = e.target;
+      if (!document.body.contains(tgt)) return;
       if (notifPanelRefDoc.current && bellBtnRefDoc.current) {
         if (!notifPanelRefDoc.current.contains(tgt) && !bellBtnRefDoc.current.contains(tgt)) {
           setNotifPanelOpen(false);
         }
       }
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
     document.addEventListener('mousedown', onDocClick);
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
       document.removeEventListener('mousedown', onDocClick);
     };
   }, [notifPanelOpen]);
-
   const clearNotificationsDoc = async (type = null) => {
     try {
       // If called as event handler, type will be the event object
@@ -4010,7 +3943,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       </div>
 
       {notifPanelOpen && (
-        <div className="notif-panel" ref={notifPanelRefDoc} style={notifPanelStyleDoc}>
+        <div className="notif-panel" ref={notifPanelRefDoc}>
           <div className="notif-panel-header">
             <strong>Notifications</strong>
             <button className="btn-link" onClick={() => clearNotificationsDoc()}>Clear</button>
