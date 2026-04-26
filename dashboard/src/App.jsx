@@ -4682,6 +4682,48 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  const updatePushTokenOnBackend = async (userId, pushToken) => {
+    if (!userId || !pushToken) return;
+    try {
+      const response = await fetch(`${API_URL}/api/user/update-push-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, expo_push_token: pushToken })
+      });
+      console.log('Push token update response:', await response.json());
+    } catch (err) {
+      console.error('Failed to update push token on backend:', err);
+    }
+  };
+
+  // Handle Expo Push Token from WebView
+  useEffect(() => {
+    const handleMessage = (event) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch (e) { return; }
+        }
+        
+        if (data && data.type === 'expo-push-token') {
+          const pushToken = data.token;
+          localStorage.setItem('expo_push_token', pushToken);
+          console.log('Received Expo Push Token from Wrapper:', pushToken);
+          
+          const userId = localStorage.getItem('user_id');
+          if (userId) {
+            updatePushTokenOnBackend(userId, pushToken);
+          }
+        }
+      } catch (e) {
+        console.error('Error handling WebView message:', e);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -4759,6 +4801,12 @@ export default function App() {
     // clear any auth hashes from URL and go to dashboard
     try { window.location.hash = ''; } catch (e) {}
     setCurrentPage(data.role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
+    
+    // Send push token to backend if it exists
+    const pushToken = localStorage.getItem('expo_push_token');
+    if (pushToken && data.user_id) {
+      updatePushTokenOnBackend(data.user_id, pushToken);
+    }
   };
 
   const handleSignupSuccess = (data) => {
@@ -4774,6 +4822,12 @@ export default function App() {
     // clear any auth hashes from URL and go to dashboard
     try { window.location.hash = ''; } catch (e) {}
     setCurrentPage(data.role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
+    
+    // Send push token to backend if it exists
+    const pushToken = localStorage.getItem('expo_push_token');
+    if (pushToken && data.user_id) {
+      updatePushTokenOnBackend(data.user_id, pushToken);
+    }
   };
 
   const handleLogout = () => {

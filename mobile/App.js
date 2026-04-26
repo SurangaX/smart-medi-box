@@ -56,14 +56,32 @@ export default function App() {
   // When token is received, inject it into the WebView
   useEffect(() => {
     if (expoPushToken && webViewRef.current) {
-      const script = `
-        window.postMessage(JSON.stringify({
-          type: 'expo-push-token',
-          token: '${expoPushToken}'
-        }), '*');
-        true;
-      `;
-      webViewRef.current.injectJavaScript(script);
+      const injectToken = () => {
+        const script = `
+          (function() {
+            const tokenData = {
+              type: 'expo-push-token',
+              token: '${expoPushToken}'
+            };
+            window.postMessage(JSON.stringify(tokenData), '*');
+            // Also try direct injection into localStorage as backup
+            localStorage.setItem('expo_push_token', '${expoPushToken}');
+          })();
+          true;
+        `;
+        webViewRef.current.injectJavaScript(script);
+      };
+
+      injectToken();
+      
+      // Retry injection a few times after load to ensure the web app is ready
+      const interval = setInterval(injectToken, 5000);
+      const timeout = setTimeout(() => clearInterval(interval), 30000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
     }
   }, [expoPushToken]);
 

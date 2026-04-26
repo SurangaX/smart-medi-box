@@ -28,6 +28,9 @@ switch ($action) {
     case 'update':
         handleUpdateUser($method);
         break;
+    case 'update-push-token':
+        handleUpdatePushToken($method);
+        break;
     case 'dashboard':
         handleGetDashboard($method);
         break;
@@ -387,6 +390,49 @@ function validatePhoneNumber($phone) {
     }
     
     return '+' . $phone;
+}
+
+/**
+ * Update Expo Push Token for a user
+ */
+function handleUpdatePushToken($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $user_id = $input['user_id'] ?? null;
+    $push_token = $input['expo_push_token'] ?? null;
+    
+    if (!$user_id || !$push_token) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id and expo_push_token required']);
+        return;
+    }
+    
+    try {
+        $query = "UPDATE users SET expo_push_token = $1, updated_at = NOW() WHERE user_id = $2";
+        $result = pg_query_params($conn, $query, array($push_token, $user_id));
+        
+        if ($result && pg_affected_rows($result) > 0) {
+            http_response_code(200);
+            echo json_encode([
+                'status' => 'SUCCESS',
+                'message' => 'Push token updated successfully'
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'User not found or token already set']);
+        }
+    } catch (Exception $e) {
+        error_log("Update Push Token Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+    }
 }
 
 ?>

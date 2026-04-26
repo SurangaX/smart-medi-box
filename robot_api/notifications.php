@@ -106,7 +106,7 @@ function handleSendNotification($method) {
     try {
         // Get user phone if not provided
         if (!$phone) {
-            $userQuery = "SELECT phone FROM users WHERE id = $1";
+            $userQuery = "SELECT phone FROM users WHERE user_id = $1";
             $userResult = pg_query_params($conn, $userQuery, [$user_id]);
             if ($userResult && pg_num_rows($userResult) > 0) {
                 $user = pg_fetch_assoc($userResult);
@@ -139,11 +139,25 @@ function handleSendNotification($method) {
         }
         
         // Queue app notification (would be sent to app via push service)
-        $app_sent = true; // Mark as queued for app
+        $app_sent = false;
+        
+        // Get user's expo_push_token
+        $tokenQuery = "SELECT expo_push_token FROM users WHERE user_id = $1";
+        $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
+        if ($tokenResult && pg_num_rows($tokenResult) > 0) {
+            $user = pg_fetch_assoc($tokenResult);
+            $token = $user['expo_push_token'];
+            
+            if ($token) {
+                $app_sent = sendExpoPushNotification($token, "Smart Medi Box", $message);
+                error_log("EXPO PUSH SENT: token=$token, sent=$app_sent");
+            }
+        }
+        
         $updateQuery = "UPDATE notifications SET app_sent = $1, app_sent_at = NOW() WHERE id = $2";
         pg_query_params($conn, $updateQuery, [$app_sent, $notif_id]);
         
-        error_log("SEND_NOTIFICATION SUCCESS: notif_id=$notif_id, sms_sent=$sms_sent");
+        error_log("SEND_NOTIFICATION SUCCESS: notif_id=$notif_id, sms_sent=$sms_sent, push_sent=$app_sent");
         
         http_response_code(201);
         echo json_encode([
@@ -380,8 +394,29 @@ function handleTriggerAlarm($method) {
         
         // Send notification
         $notifQuery = "INSERT INTO notifications (user_id, schedule_id, type, message) 
-                      VALUES ($1, $2, $3, $4)";
-        pg_query_params($conn, $notifQuery, [$user_id, $schedule_id, 'ALARM_' . $schedule_type, $message]);
+                      VALUES ($1, $2, $3, $4) RETURNING id";
+        $notifRes = pg_query_params($conn, $notifQuery, [$user_id, $schedule_id, 'ALARM_' . $schedule_type, $message]);
+        
+        $notif_id = null;
+        if ($notifRes) {
+            $notifRow = pg_fetch_assoc($notifRes);
+            $notif_id = $notifRow['id'];
+        }
+
+        // Send Push Notification
+        $app_sent = false;
+        $tokenQuery = "SELECT expo_push_token FROM users WHERE user_id = $1";
+        $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
+        if ($tokenResult && pg_num_rows($tokenResult) > 0) {
+            $user = pg_fetch_assoc($tokenResult);
+            if ($user['expo_push_token']) {
+                $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_id]);
+            }
+        }
+
+        if ($notif_id && $app_sent) {
+            pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
+        }
         
         // Queue commands to Arduino: activate buzzer, display, unlock solenoid
         $commands = [
@@ -629,6 +664,43 @@ function errorResponse($code, $message) {
         'status' => 'ERROR',
         'message' => $message
     ]);
+}
+
+/**
+ * Send push notification via Expo Push API
+ */
+function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
+    $url = 'https://exp.host/--/api/v2/push/send';
+
+    $payload = [
+        'to' => $expoPushToken,
+        'title' => $title,
+        'body' => $body,
+        'data' => $data,
+        'sound' => 'default',
+        'priority' => 'high'
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        $resData = json_decode($response, true);
+        if (isset($resData['data']['status']) && $resData['data']['status'] === 'ok') {
+            return true;
+        }
+    }
+
+    error_log("EXPO PUSH FAILED: code=$httpCode, response=$response");
+    return false;
 }
 
 ?>
