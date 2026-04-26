@@ -68,8 +68,8 @@ define('DB_CONNECTED', true);
 define('VAPID_PUBLIC_KEY', 'BGI1Gh5bI6T4k70t9hxd8VdWMk9-elOXjU-u9vYoNLkD8vhuhgT3XdboPQmJFU3oFXLAdEd4AkEsAvrPWFiYZgE');
 define('VAPID_PRIVATE_KEY', 'zMyrGmmYPlNKOHdMS5r-Y1pHqpegQm9PHWABztiVp0s');
 
-// FCM Server Key - For Android APK (REPLACE THIS WITH YOUR AAAA... KEY)
-define('FCM_SERVER_KEY', 'YOUR_FIREBASE_SERVER_KEY_HERE');
+// FCM Server Key - For Android APK
+define('FCM_SERVER_KEY', 'AIzaSyDUJBrzaP3RAbAX5171Nk0nLmXpzYpT33E');
 
 /**
  * Send push notification via Expo Push API
