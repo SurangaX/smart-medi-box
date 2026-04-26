@@ -1004,8 +1004,8 @@ function handleDispenseNow($method) {
         $display_name = substr(strtoupper($med_name), 0, 16);
         
         // 3. Queue Arduino commands
-        // SOL:UNLOCK is the command the device expects for solenoid
-        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'SOL:UNLOCK', 'PENDING')", array($user_id));
+        // We include the med name in SOL:UNLOCK to allow the ESP32 to display it correctly
+        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, "SOL:UNLOCK|" . $med_name));
         pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, "DISPLAY:" . $display_name));
         
         // 4. Create a tracking notification for the door sensor (med-taken)
