@@ -226,6 +226,7 @@ void checkRFID() {
   digitalWrite(BUZZER_PIN, LOW);
   
   Serial.println("DEBUG: Manual RFID unlock with beep");
+  readAndSendData();
 
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
@@ -265,6 +266,7 @@ void monitorDoor() {
         
         // Complete reset
         resetAllStates();
+        readAndSendData();
       }
     }
     
@@ -309,6 +311,7 @@ void checkIncomingCommands() {
     } else {
       Serial.println("DEBUG: Scheduled SOL:UNLOCK (during alarm)");
     }
+    readAndSendData();
   }
   else if (cmd.indexOf("SOL:LOCK") >= 0) {
     resetAllStates();

@@ -78,6 +78,7 @@ void loop() {
            box.hum = doc["h"];
            box.door = doc["d"];
            box.alarm = doc["a"];
+           Serial.print("DEBUG: Current Alarm State: "); Serial.println(box.alarm);
            
            // Special handling for RFID Access display
            if (box.alarm == 3) {
