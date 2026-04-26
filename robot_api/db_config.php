@@ -116,38 +116,50 @@ function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
     return false;
     }
 
-    /**
-    * Send push notification via Firebase Cloud Messaging (FCM)
-    * For Capacitor/Native Android apps
-    */
-    function sendFCMPushNotification($fcmToken, $title, $body, $data = []) {
+/**
+* Send push notification via Firebase Cloud Messaging (FCM)
+* Upgraded to HTTP v1 API using Service Account
+*/
+function sendFCMPushNotification($fcmToken, $title, $body, $data = []) {
     if (empty($fcmToken)) return false;
 
-    $serverKey = FCM_SERVER_KEY; 
-    
-    if ($serverKey === 'YOUR_FIREBASE_SERVER_KEY_HERE') {
-        error_log("FCM PUSH SKIPPED: Server key not configured in db_config.php");
+    // 1. Get Google OAuth2 Access Token
+    $accessToken = getGoogleAccessToken();
+    if (!$accessToken) {
+        error_log("FCM PUSH FAILED: Could not generate OAuth2 token");
         return false;
     }
 
-    $url = 'https://fcm.googleapis.com/fcm/send';
+    $projectId = 'smart-medi-box-69d5e';
+    $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
-    $notification = [
-        'title' => $title,
-        'body' => $body,
-        'sound' => 'default',
-        'badge' => '1'
-    ];
+    // 2. Format payload for HTTP v1
+    // Flatten data values to strings (FCM v1 requirement)
+    $formattedData = [];
+    foreach ($data as $key => $val) {
+        $formattedData[$key] = strval($val);
+    }
 
     $payload = [
-        'to' => $fcmToken,
-        'notification' => $notification,
-        'data' => $data,
-        'priority' => 'high'
+        'message' => [
+            'token' => $fcmToken,
+            'notification' => [
+                'title' => $title,
+                'body' => $body
+            ],
+            'data' => $formattedData,
+            'android' => [
+                'priority' => 'high',
+                'notification' => [
+                    'sound' => 'default',
+                    'click_action' => 'TOP_STORY_ACTIVITY'
+                ]
+            ]
+        ]
     ];
 
     $headers = [
-        'Authorization: key=' . $serverKey,
+        'Authorization: Bearer ' . $accessToken,
         'Content-Type: application/json'
     ];
 
@@ -164,14 +176,63 @@ function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
     curl_close($ch);
 
     if ($httpCode === 200) {
-        $resData = json_decode($response, true);
-        if (isset($resData['success']) && $resData['success'] > 0) {
-            return true;
-        }
-        error_log("FCM PUSH API ERROR: " . $response);
+        return true;
     }
 
-    error_log("FCM PUSH FAILED: code=$httpCode, response=$response");
+    error_log("FCM v1 PUSH FAILED: code=$httpCode, response=$response");
     return false;
-    }
-    ?>
+}
+
+/**
+ * Generate Google OAuth2 Access Token using Service Account JSON
+ * Helper for FCM v1 API
+ */
+function getGoogleAccessToken() {
+    $jsonPath = __DIR__ . '/firebase_service_account.json';
+    if (!file_exists($jsonPath)) return null;
+
+    $config = json_decode(file_get_contents($jsonPath), true);
+    $privateKey = $config['private_key'];
+    $clientEmail = $config['client_email'];
+    $tokenUri = $config['token_uri'];
+
+    // Header
+    $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+    $headerBase64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+
+    // Payload
+    $now = time();
+    $payload = json_encode([
+        'iss' => $clientEmail,
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+        'aud' => $tokenUri,
+        'exp' => $now + 3600,
+        'iat' => $now
+    ]);
+    $payloadBase64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+
+    // Sign
+    $signature = '';
+    openssl_sign($headerBase64 . '.' . $payloadBase64, $signature, $privateKey, 'SHA256');
+    $signatureBase64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+    $jwt = $headerBase64 . '.' . $payloadBase64 . '.' . $signatureBase64;
+
+    // Exchange for Access Token
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $tokenUri);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        'assertion' => $jwt
+    ]));
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+    return $data['access_token'] ?? null;
+}
+?>

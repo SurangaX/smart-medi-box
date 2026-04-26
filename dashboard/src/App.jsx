@@ -1,5 +1,8 @@
 // Smart Medi Box Dashboard - v1.5.5
 import React, { useState, useEffect, useRef } from 'react';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu, ChevronDown, ChevronUp, Unlock } from 'lucide-react';
@@ -4655,7 +4658,7 @@ export default function App() {
     }
   };
 
-  // Handle Expo Push Token from WebView
+  // Handle Expo Push Token from WebView (Old approach - keeping for compatibility)
   useEffect(() => {
     const processToken = (pushToken) => {
       if (!pushToken) return;
@@ -4674,6 +4677,58 @@ export default function App() {
         updatePushTokenOnBackend(userId, pushToken);
       }
     };
+
+    // CAPACITOR NATIVE PUSH REGISTRATION
+    if (Capacitor.isNativePlatform()) {
+      console.log('🚀 Capacitor: Registering native push notifications...');
+      
+      const setupPush = async () => {
+        let permStatus = await PushNotifications.checkPermissions();
+
+        if (permStatus.receive === 'prompt') {
+          permStatus = await PushNotifications.requestPermissions();
+        }
+
+        if (permStatus.receive !== 'granted') {
+          console.warn('User denied push permissions');
+          return;
+        }
+
+        await PushNotifications.register();
+
+        // Listen for successful registration
+        PushNotifications.addListener('registration', (token) => {
+          console.log('✅ Capacitor Push Token:', token.value);
+          // Capacitor provides FCM tokens, but we'll store it in the same slot for the backend
+          processToken(token.value);
+        });
+
+        // Listen for errors
+        PushNotifications.addListener('registrationError', (err) => {
+          console.error('Push registration error: ', err.error);
+        });
+
+        // Listen for incoming notifications (foreground)
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.log('🔔 Push received:', notification);
+          window.appNotify({
+            message: notification.title + ': ' + notification.body,
+            type: 'info'
+          });
+        });
+
+        // Listen for notification tap
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          console.log('👉 Push action performed:', notification.actionId, notification.notification);
+          const data = notification.notification.data;
+          if (data && data.tab) {
+             window.appNavigate(null, data.tab);
+          }
+        });
+      };
+
+      setupPush();
+    }
 
     const handleMessage = (event) => {
       try {

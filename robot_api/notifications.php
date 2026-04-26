@@ -158,8 +158,14 @@ function handleSendNotification($method) {
             $token = $user['expo_push_token'];
             
             if ($token) {
-                $app_sent = sendExpoPushNotification($token, "Smart Medi Box", $message);
-                error_log("EXPO PUSH SENT: token=$token, sent=$app_sent");
+                // Try Expo delivery
+                $expo_sent = sendExpoPushNotification($token, "Smart Medi Box", $message);
+                
+                // Try FCM delivery (Capacitor)
+                $fcm_sent = sendFCMPushNotification($token, "Smart Medi Box", $message);
+                
+                $app_sent = $expo_sent || $fcm_sent;
+                error_log("PUSH ATTEMPT: token=$token, expo=$expo_sent, fcm=$fcm_sent");
             }
         }
         
