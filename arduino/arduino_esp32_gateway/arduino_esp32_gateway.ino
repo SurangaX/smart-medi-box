@@ -308,19 +308,7 @@ void fetchCommands() {
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd: "); Serial.println(commandStr);
         
-        // --- STAGGERED FEEDBACK SEQUENCE ---
-        // 1. Display commands (ALARM_DATA, DISPLAY, SOL:UNLOCK with med name)
-        if (commandStr.startsWith("ALARM_DATA") || commandStr.startsWith("DISPLAY") || (commandStr.startsWith("SOL:UNLOCK") && commandStr.indexOf('|') != -1)) {
-           delay(2000); // 2 second pause for user to read display
-        }
-        // 2. Buzzer commands
-        else if (commandStr == "BUZZ:ON") {
-           delay(1000); // 1 second buzz before solenoid triggers
-        }
-        else {
-           delay(50); // Fast processing for other commands
-        }
-        
+        delay(100); // Short delay to ensure Leonardo processes each command sequentially but quickly
         markCommandComplete(cmdId);
       }
     }
