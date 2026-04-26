@@ -62,6 +62,16 @@ pg_query($conn, "SET TIMEZONE TO 'Asia/Colombo'");
 define('DB_CONNECTED', true);
 
 /**
+ * Push Notification Configuration
+ */
+// Web Push (VAPID) - For Desktop/Browser notifications
+define('VAPID_PUBLIC_KEY', 'BGI1Gh5bI6T4k70t9hxd8VdWMk9-elOXjU-u9vYoNLkD8vhuhgT3XdboPQmJFU3oFXLAdEd4AkEsAvrPWFiYZgE');
+define('VAPID_PRIVATE_KEY', 'zMyrGmmYPlNKOHdMS5r-Y1pHqpegQm9PHWABztiVp0s');
+
+// FCM Server Key - For Android APK (REPLACE THIS WITH YOUR AAAA... KEY)
+define('FCM_SERVER_KEY', 'YOUR_FIREBASE_SERVER_KEY_HERE');
+
+/**
  * Send push notification via Expo Push API
  * Shared utility for all API modules
  */
@@ -106,4 +116,62 @@ function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
     return false;
     }
 
-?>
+    /**
+    * Send push notification via Firebase Cloud Messaging (FCM)
+    * For Capacitor/Native Android apps
+    */
+    function sendFCMPushNotification($fcmToken, $title, $body, $data = []) {
+    if (empty($fcmToken)) return false;
+
+    $serverKey = FCM_SERVER_KEY; 
+    
+    if ($serverKey === 'YOUR_FIREBASE_SERVER_KEY_HERE') {
+        error_log("FCM PUSH SKIPPED: Server key not configured in db_config.php");
+        return false;
+    }
+
+    $url = 'https://fcm.googleapis.com/fcm/send';
+
+    $notification = [
+        'title' => $title,
+        'body' => $body,
+        'sound' => 'default',
+        'badge' => '1'
+    ];
+
+    $payload = [
+        'to' => $fcmToken,
+        'notification' => $notification,
+        'data' => $data,
+        'priority' => 'high'
+    ];
+
+    $headers = [
+        'Authorization: key=' . $serverKey,
+        'Content-Type: application/json'
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        $resData = json_decode($response, true);
+        if (isset($resData['success']) && $resData['success'] > 0) {
+            return true;
+        }
+        error_log("FCM PUSH API ERROR: " . $response);
+    }
+
+    error_log("FCM PUSH FAILED: code=$httpCode, response=$response");
+    return false;
+    }
+    ?>
