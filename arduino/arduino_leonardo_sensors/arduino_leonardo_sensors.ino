@@ -172,14 +172,6 @@ void startAlarm() {
 
 void stopAlarm() {
   Serial.println("DEBUG: stopAlarm() called");
-  
-  // Only send MED_TAKEN if not already sent
-  if (alarmActive && !medTakenSent) {
-    Serial1.println(F("MED_TAKEN"));
-    medTakenSent = true;
-    Serial.println("DEBUG: MED_TAKEN sent");
-  }
-  
   resetAllStates();
 }
 
@@ -206,6 +198,11 @@ void checkRFID() {
 
   // If alarm is active, treat RFID as medicine taken
   if (alarmActive) {
+    if (!medTakenSent) {
+      Serial1.println(F("MED_TAKEN"));
+      medTakenSent = true;
+      Serial.println("DEBUG: RFID MED_TAKEN sent");
+    }
     stopAlarm();
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();

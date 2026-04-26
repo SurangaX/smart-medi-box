@@ -746,6 +746,18 @@ function handleTriggerDueSchedules($method) {
             $user_db_id = $row['user_id'];
             $type = $row['type'];
             $med_name = $row['medicine_name'] ?? $type;
+            $is_recurring = ($row['is_recurring'] === 't' || $row['is_recurring'] === true);
+
+            // Additional check for recurring schedules: were they already completed today?
+            if ($is_recurring) {
+                $checkCompletedToday = pg_query_params($conn, 
+                    "SELECT id FROM schedule_logs WHERE schedule_id = $1 AND DATE(created_at) = $2 AND action LIKE 'COMPLETED%' LIMIT 1", 
+                    array($schedule_db_id, $date));
+                if ($checkCompletedToday && pg_num_rows($checkCompletedToday) > 0) {
+                    error_log("TRIGGER_DUE - Skipping schedule $schedule_db_id: already completed today (recurring)");
+                    continue;
+                }
+            }
 
             // Check for existing alarms today to handle repeat reminders (every 5 mins up to 30 mins)
             $lastAlarmQuery = "SELECT triggered_at FROM alarm_logs 
