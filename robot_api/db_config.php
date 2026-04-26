@@ -69,7 +69,7 @@ define('VAPID_PUBLIC_KEY', 'BGI1Gh5bI6T4k70t9hxd8VdWMk9-elOXjU-u9vYoNLkD8vhuhgT3
 define('VAPID_PRIVATE_KEY', 'zMyrGmmYPlNKOHdMS5r-Y1pHqpegQm9PHWABztiVp0s');
 
 // FCM Server Key - For Android APK
-define('FCM_SERVER_KEY', 'AIzaSyDUJBrzaP3RAbAX5171Nk0nLmXpzYpT33E');
+define('FCM_SERVER_KEY', 'AIzaSyC84CWZ6doiGn11XR_LLNKql8m9HlBkHn0');
 
 /**
  * Send push notification via Expo Push API
