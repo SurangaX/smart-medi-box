@@ -78,12 +78,14 @@ void loop() {
            box.hum = doc["h"];
            box.door = doc["d"];
            box.alarm = doc["a"];
-           box.lock = doc["l"];
            
-           // If door is closed, force exit alarm UI mode immediately
-           if (box.door == 0) {
-             box.alarm = 0;
+           // Special handling for RFID Access display
+           if (box.alarm == 3) {
+             box.sched_name = "RFID ACCESS";
+             box.sched_time = "AUTHORIZED";
            }
+           
+           box.lock = doc["l"];
            
            // REAL-TIME: Force refresh UI when state packet arrives
            renderUI(); 
@@ -268,9 +270,10 @@ void fetchCommands() {
     
     if (doc["status"] == "SUCCESS") {
       JsonArray cmds = doc["commands"].as<JsonArray>();
+      
+      // 1. FORWARD ALL COMMANDS IMMEDIATELY (Simultaneous feeling)
       for (JsonObject cmd : cmds) {
         String commandStr = cmd["command"].as<String>();
-        int cmdId = cmd["id"].as<int>();
         
         // Handle ALARM_DATA for display
         if (commandStr.startsWith("ALARM_DATA|")) {
@@ -280,7 +283,6 @@ void fetchCommands() {
              box.sched_name = commandStr.substring(firstPipe + 1, secondPipe);
              box.sched_time = commandStr.substring(secondPipe + 1);
              box.alarm = 1; // FORCE alarm state on for UI immediate update
-             Serial.println("Received Sched: " + box.sched_name + " @ " + box.sched_time);
              renderUI(); // Immediate refresh
            }
         }
@@ -288,7 +290,6 @@ void fetchCommands() {
         // Handle TEMP_SET for display
         if (commandStr.startsWith("TEMP_SET|")) {
            box.target_temp = commandStr.substring(9).toFloat();
-           Serial.println("Target Temp Updated: " + String(box.target_temp));
            renderUI();
         }
 
@@ -300,7 +301,7 @@ void fetchCommands() {
              box.sched_name = "MANUAL TRIGGER";
            }
            box.sched_time = "NOW";
-           box.alarm = 1; // Reuse alarm UI for clear visual indication
+           box.alarm = 1; 
            renderUI();
         }
 
@@ -313,9 +314,12 @@ void fetchCommands() {
 
         LeoSerial.println(commandStr);
         Serial.print("Forwarded cmd: "); Serial.println(commandStr);
-        
-        delay(100); // Short delay to ensure Leonardo processes each command sequentially but quickly
-        markCommandComplete(cmdId);
+        delay(20); // Tiny gap for serial stability
+      }
+      
+      // 2. MARK ALL AS COMPLETE (Done after forwarding to eliminate network lag)
+      for (JsonObject cmd : cmds) {
+        markCommandComplete(cmd["id"].as<int>());
       }
     }
   }

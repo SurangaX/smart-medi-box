@@ -57,6 +57,7 @@ bool waitingForDoorOpen = false;
 bool doorWasOpened = false;
 bool medTakenSent = false;  // CRITICAL: Prevents multiple MED_TAKEN sends
 bool manualTriggerActive = false; // Flag for dashboard manual triggers (dispense-now)
+bool rfidTriggerActive = false;   // Flag for RFID manual triggers
 
 unsigned long alarmStartTime = 0;
 unsigned long lastUpdate = 0;
@@ -141,7 +142,10 @@ void readAndSendData() {
   Serial1.print(F(",\"d\":"));
   Serial1.print(doorOpen);
   Serial1.print(F(",\"a\":"));
-  Serial1.print(alarmActive ? 1 : 0);
+  if (alarmActive) Serial1.print(1);
+  else if (manualTriggerActive) Serial1.print(2);
+  else if (rfidTriggerActive) Serial1.print(3);
+  else Serial1.print(0);
   Serial1.print(F(",\"l\":"));
   Serial1.print(digitalRead(SOLENOID_PIN));
   Serial1.println('}');
@@ -176,6 +180,7 @@ void resetAllStates() {
   alarmActive = false;
   solenoidUnlocked = false;
   manualTriggerActive = false;
+  rfidTriggerActive = false;
   waitingForDoorOpen = false;
   doorWasOpened = false;
   
@@ -210,6 +215,7 @@ void checkRFID() {
   // Manual RFID unlock (no alarm)
   digitalWrite(SOLENOID_PIN, HIGH);
   solenoidUnlocked = true;
+  rfidTriggerActive = true;
   waitingForDoorOpen = true;
   doorWasOpened = false;
   medTakenSent = false;
