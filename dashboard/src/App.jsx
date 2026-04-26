@@ -889,7 +889,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
   const fetchNotifications = async () => {
     try {
-      setNotifsLoading(true);
+      if (notifications.length === 0) setNotifsLoading(true);
       // Get current local time in YYYY-MM-DD HH:mm format for the server
       const now = new Date();
       const year = now.getFullYear();
@@ -3682,7 +3682,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   const fetchNotificationsDoc = async () => {
     try {
-      setNotifsLoading(true);
+      if (notifications.length === 0) setNotifsLoading(true);
       const now = new Date();
       const localTime = now.toISOString().slice(0, 16).replace('T', ' ');
       
