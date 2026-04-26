@@ -4638,7 +4638,7 @@ export default function App() {
     }
     console.log(`Sending push token to backend for user ${userId}...`);
     try {
-      const response = await fetch(`${API_URL}/api/user/update-push-token`, {
+      const response = await fetch(`${API_URL}/index.php/api/user/update-push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, expo_push_token: pushToken })
@@ -4668,6 +4668,7 @@ export default function App() {
           const pushToken = data.token;
           localStorage.setItem('expo_push_token', pushToken);
           console.log('Received Expo Push Token from Wrapper:', pushToken);
+          alert('DEBUG: Received Push Token: ' + pushToken);
           
           const userId = localStorage.getItem('user_id');
           if (userId) {
@@ -4710,18 +4711,22 @@ export default function App() {
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const profile = localStorage.getItem('profile');
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+      const profileStr = localStorage.getItem('profile');
 
-    if (token && role && profile) {
-      setCurrentUser({
-        token,
-        role,
-        profile: JSON.parse(profile)
-      });
-      setCurrentPage(role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
-    } else {
+      if (token && role && profileStr) {
+        const profile = JSON.parse(profileStr);
+        setCurrentUser({ token, role, profile });
+        setCurrentPage(role === 'PATIENT' ? 'patient-dashboard' : 'doctor-dashboard');
+        
+        // Register push token if available
+        const pushToken = localStorage.getItem('expo_push_token');
+        const userId = localStorage.getItem('user_id');
+        if (pushToken && userId) {
+          updatePushTokenOnBackend(userId, pushToken);
+        }
+      } else {
       // Handle hash routing for auth pages
       const hash = window.location.hash.slice(1) || 'login';
       if (hash === 'signup' || hash === 'login') {
