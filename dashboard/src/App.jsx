@@ -950,7 +950,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
           // CRITICAL: Only trigger popup for VERY RECENT medicine alarms (created in last 60 seconds)
           const now = new Date();
           const medicineAlarm = newOnes.find(n => {
-            if (!n.rawType.startsWith('ALARM_')) return false;
+            if (!n.rawType.startsWith('ALARM_') || n.rawType === 'ALARM_MISSED') return false;
             const created = new Date(n.timestamp);
             const diffSeconds = (now - created) / 1000;
             return diffSeconds < 60; // Only if created in the last minute

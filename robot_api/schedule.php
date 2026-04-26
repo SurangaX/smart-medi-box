@@ -804,7 +804,7 @@ function handleTriggerDueSchedules($method) {
                         
                         // Final Missed Notification
                         $missedMessage = "MISSED: It's time for your $med_name has passed. Please contact your doctor if necessary.";
-                        pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message) VALUES ($1, $2, 'ALARM_MISSED', $3)", array($user_db_id, $schedule_db_id, $missedMessage));
+                        pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, app_sent, is_read) VALUES ($1, $2, 'ALARM_MISSED', $3, true, true)", array($user_db_id, $schedule_db_id, $missedMessage));
                         
                         // Stop Arduino buzzer if it was still on
                         pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'BUZZ:OFF', 'PENDING')", array($user_db_id));
