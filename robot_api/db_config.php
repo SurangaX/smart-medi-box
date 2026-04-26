@@ -2,7 +2,7 @@
 // ==================== DATABASE CONFIGURATION ====================
 // Smart Medi Box System - Cloud Ready
 // Supports: PostgreSQL via Neon
-// Version: 1.0.0
+// Version: 1.0.1
 
 // Check if DATABASE_URL is set (Render/Railway deployment)
 if (!empty(getenv('DATABASE_URL'))) {

@@ -441,6 +441,6 @@ For device integration issues:
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 2.0.1  
 **Status**: Ready for Implementation  
 **Date**: 2026-04-16

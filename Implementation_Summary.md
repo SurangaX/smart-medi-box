@@ -396,7 +396,7 @@ Option 2: Automated Migration (future)
 
 ## 📝 Version Information
 
-- **System Version**: 2.0.0
+- **System Version**: 2.0.1
 - **API Version**: 2.0
 - **Migration Version**: 001
 - **Last Updated**: 2026-04-16

@@ -1,5 +1,5 @@
 -- Smart Medi Box - PostgreSQL Database Schema
--- Version: 1.0.0
+-- Version: 1.0.1
 -- Created: 2026-04-13
 
 -- Create database first (if needed)

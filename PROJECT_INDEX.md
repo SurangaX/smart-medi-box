@@ -1,6 +1,6 @@
 # 📑 Smart Medi Box - Complete Project Index
 
-**Version:** 1.0.0 | **Status:** Production Ready ✅ | **Last Updated:** April 13, 2026
+**Version:** 1.0.1 | **Status:** Production Ready ✅ | **Last Updated:** April 26, 2026
 
 ---
 

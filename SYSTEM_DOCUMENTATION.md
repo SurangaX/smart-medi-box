@@ -293,7 +293,7 @@ POST /api/device/register
     device_name: "My Medi Box",
     device_type: "ARDUINO_LEONARDO",
     mac_address: "AA:BB:CC:DD:EE:FF",
-    firmware_version: "1.0.0"
+    firmware_version: "1.0.1"
   }
 
 # List devices
@@ -498,6 +498,6 @@ For support or issues, contact: support@smartmedibox.com
 
 ---
 
-**Version:** 2.0.0  
+**Version:** 2.0.1  
 **Last Updated:** April 13, 2026  
 **Created By:** SurangaX

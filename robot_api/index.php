@@ -219,7 +219,7 @@ function handleSystemStatus() {
     echo json_encode([
         'status' => 'OK',
         'service' => 'Smart Medi Box API',
-        'version' => '2.0.0',
+        'version' => '2.0.1',
         'timestamp' => date('Y-m-d H:i:s'),
         'endpoints' => [
             'auth' => '/api/auth/{action}',

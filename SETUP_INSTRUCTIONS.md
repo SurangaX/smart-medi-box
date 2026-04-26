@@ -759,7 +759,7 @@ tail -f /var/log/apache2/error.log
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.0.0 | 2026-04-15 | Complete setup instructions, consolidated guides |
+| 2.0.1 | 2026-04-26 | Complete setup instructions, consolidated guides |
 | 1.0.0 | 2026-04-13 | Initial documentation release |
 
 ---

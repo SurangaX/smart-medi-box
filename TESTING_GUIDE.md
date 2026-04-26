@@ -1,6 +1,6 @@
 # Smart Medi Box - Testing & Validation Guide
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Purpose:** Comprehensive testing procedures for all system components  
 **Status:** Use this guide to validate before production deployment  
 

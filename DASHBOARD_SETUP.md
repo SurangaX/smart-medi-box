@@ -361,7 +361,7 @@ For issues:
 
 ---
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Last Updated:** April 13, 2026  
 **Status:** Ready to Deploy ✅
 

@@ -252,7 +252,7 @@ For issues:
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 2.0.1  
 **Date**: 2026-04-16  
 **Status**: Ready for Deployment
 

@@ -270,5 +270,5 @@
 ---
 
 **Last Updated:** April 16, 2026
-**Version:** 1.0.0
+**Version:** 1.0.1
 

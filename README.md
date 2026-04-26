@@ -2,7 +2,7 @@
 
 > An intelligent, temperature-controlled medicine storage system with automated scheduling, real-time monitoring, and GSM-based notifications. Built on Arduino, PHP, and MySQL with QR-based authentication.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.0.1-blue)
 ![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen)
 ![License](https://img.shields.io/badge/license-Proprietary-red)
 
@@ -461,7 +461,7 @@ Before deploying to production:
 
 ## 🐛 Known Limitations & Future Improvements
 
-### Current Version (1.0.0)
+### Current Version (1.0.1)
 - ✅ Basic hysteresis temperature control (not PID)
 - ✅ SMS-only notifications (not push notifications)
 - ✅ Single-user per device setup
@@ -579,7 +579,7 @@ Q4 2026
 
 ## 📝 Change Log
 
-### Version 1.0.0 (2026-04-13) - Production Release
+### Version 1.0.1 (2026-04-26) - Production Release
 - ✅ Complete Arduino firmware with all sensors
 - ✅ Full REST API with 6 modules
 - ✅ 13-table database with triggers
