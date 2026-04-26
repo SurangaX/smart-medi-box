@@ -117,33 +117,32 @@ void renderUI() {
   u8g2.clearBuffer();
   
   if (box.alarm) {
-    // --- ALARM ACTIVE UI ---
-    // Cycle through info every 2 seconds
-    int cycle = (millis() / 2000) % 4;
+    // --- ALARM ACTIVE UI (4 ROWS ALL AT ONCE) ---
     u8g2.setFont(u8g2_font_7x14_tf); 
     
-    String text = "";
-    if (cycle == 0) text = box.sched_name;
-    else if (cycle == 1) text = "Time: " + box.sched_time;
-    else if (cycle == 2) {
-       // Shorten user name (First name only)
-       String shortUser = box.user;
-       int spaceIdx = shortUser.indexOf(' ');
-       if (spaceIdx != -1) shortUser = shortUser.substring(0, spaceIdx);
-       if (shortUser.length() > 10) shortUser = shortUser.substring(0, 10);
-       text = "User: " + shortUser;
-    }
-    else if (cycle == 3) text = "DOOR UNLOCKED";
-
-    // Center the text
-    int x = (128 - u8g2.getStrWidth(text.c_str())) / 2;
-    u8g2.drawStr(x > 0 ? x : 0, 32, text.c_str());
+    // Row 1: Schedule Name
+    String row1 = box.sched_name;
+    int x1 = (128 - u8g2.getStrWidth(row1.c_str())) / 2;
+    u8g2.drawStr(x1 > 0 ? x1 : 0, 14, row1.c_str());
     
-    // Bottom status bar
-    u8g2.setFont(u8g2_font_6x10_tf);
-    u8g2.drawFrame(0, 50, 128, 14);
-    int labelX = (128 - u8g2.getStrWidth("TAKE MEDICINE!")) / 2;
-    u8g2.drawStr(labelX, 62, "TAKE MEDICINE!");
+    // Row 2: Schedule Time
+    String row2 = "Time: " + box.sched_time;
+    int x2 = (128 - u8g2.getStrWidth(row2.c_str())) / 2;
+    u8g2.drawStr(x2 > 0 ? x2 : 0, 30, row2.c_str());
+    
+    // Row 3: Shortened user name
+    String shortUser = box.user;
+    int spaceIdx = shortUser.indexOf(' ');
+    if (spaceIdx != -1) shortUser = shortUser.substring(0, spaceIdx);
+    if (shortUser.length() > 10) shortUser = shortUser.substring(0, 10);
+    String row3 = "User: " + shortUser;
+    int x3 = (128 - u8g2.getStrWidth(row3.c_str())) / 2;
+    u8g2.drawStr(x3 > 0 ? x3 : 0, 46, row3.c_str());
+    
+    // Row 4: Status / Door State
+    String row4 = "DOOR UNLOCKED";
+    int x4 = (128 - u8g2.getStrWidth(row4.c_str())) / 2;
+    u8g2.drawStr(x4 > 0 ? x4 : 0, 62, row4.c_str());
 
   } else {
     // --- NORMAL UI ---
@@ -267,7 +266,9 @@ void fetchCommands() {
            if (firstPipe != -1 && secondPipe != -1) {
              box.sched_name = commandStr.substring(firstPipe + 1, secondPipe);
              box.sched_time = commandStr.substring(secondPipe + 1);
+             box.alarm = 1; // FORCE alarm state on for UI immediate update
              Serial.println("Received Sched: " + box.sched_name + " @ " + box.sched_time);
+             renderUI(); // Immediate refresh
            }
         }
 

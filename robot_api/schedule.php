@@ -774,8 +774,8 @@ function handleTriggerDueSchedules($method) {
             // Always queue arduino commands when a schedule triggers
             $time_str = str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ":" . str_pad($row['minute'], 2, '0', STR_PAD_LEFT);
             $commands = [
-                "BUZZ:ON",
                 "ALARM_DATA|" . $med_name . "|" . $time_str,
+                "BUZZ:ON",
                 "SOL:UNLOCK"
             ];
             
