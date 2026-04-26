@@ -57,6 +57,9 @@ switch ($action) {
     case 'snooze':
         handleSnoozeSchedule($method);
         break;
+    case 'dispense-now':
+        handleDispenseNow($method);
+        break;
     default:
         http_response_code(404);
         echo json_encode(['status' => 'ERROR', 'message' => 'Endpoint not found']);
@@ -946,6 +949,82 @@ function handleSnoozeSchedule($method) {
 
     } catch (Exception $e) {
         error_log("Snooze Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+    }
+}
+
+// ============================================================================
+// MANUAL DISPENSE TRIGGER
+// Queues unlock command and creates a tracking notification for door sensor
+// ============================================================================
+function handleDispenseNow($method) {
+    global $conn;
+    
+    if ($method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Method not allowed']);
+        return;
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $schedule_id = $input['schedule_id'] ?? null;
+    $token = $input['token'] ?? null;
+    
+    if (!$schedule_id || !$token) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'Missing required parameters: schedule_id and token']);
+        return;
+    }
+    
+    try {
+        // 1. Verify token and get user_id
+        $token_query = "SELECT user_id FROM session_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP";
+        $token_result = pg_query_params($conn, $token_query, array($token));
+        
+        if (!$token_result || pg_num_rows($token_result) === 0) {
+            http_response_code(401);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Invalid or expired token']);
+            return;
+        }
+        $user_id = pg_fetch_assoc($token_result)['user_id'];
+        
+        // 2. Fetch medicine name for display and verify ownership
+        $sched_query = "SELECT medicine_name, type FROM schedules WHERE id = $1 AND user_id = $2";
+        $sched_result = pg_query_params($conn, $sched_query, array($schedule_id, $user_id));
+        
+        if (!$sched_result || pg_num_rows($sched_result) === 0) {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'Schedule not found or unauthorized']);
+            return;
+        }
+        
+        $sched_row = pg_fetch_assoc($sched_result);
+        $med_name = $sched_row['medicine_name'] ?? $sched_row['type'];
+        $display_name = substr(strtoupper($med_name), 0, 16);
+        
+        // 3. Queue Arduino commands
+        // SOL:UNLOCK is the command the device expects for solenoid
+        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'SOL:UNLOCK', 'PENDING')", array($user_id));
+        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, "DISPLAY:" . $display_name));
+        
+        // 4. Create a tracking notification for the door sensor (med-taken)
+        // This ensures that when the user opens/closes the door, the backend finds this
+        // notification and marks the associated schedule as completed.
+        // We set app_sent = false to indicate this is a tracking placeholder, not a popup.
+        $message = "Manual dispense triggered for: $med_name. Please take your medicine.";
+        pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, app_sent, is_dismissed) 
+                               VALUES ($1, $2, 'MANUAL_DISPENSE', $3, false, false)", 
+                               array($user_id, $schedule_id, $message));
+        
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'SUCCESS',
+            'message' => 'Dispense command sent to device'
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("Dispense Now Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
     }

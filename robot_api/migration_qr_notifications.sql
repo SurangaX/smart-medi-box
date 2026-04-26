@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     sms_sent_at TIMESTAMP,
     app_sent BOOLEAN DEFAULT FALSE,
     app_sent_at TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    is_dismissed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -251,11 +251,12 @@ void monitorDoor() {
         // Medicine taken - close everything
         Serial.println("DEBUG: Door closed");
         
-        // ONLY send MED_TAKEN if this door open/close happened because of an alarm
-        if (alarmActive && !medTakenSent) {
+        // Send MED_TAKEN if door was opened and closed after an alarm OR manual unlock
+        // This avoids sending MED_TAKEN for generic unlocks (like RFID/DEBUG) that aren't tied to medicine
+        if ((alarmActive || solenoidUnlocked) && !medTakenSent) {
           Serial1.println(F("MED_TAKEN"));
           medTakenSent = true;
-          Serial.println("DEBUG: MED_TAKEN sent (Alarm Active)");
+          Serial.println("DEBUG: MED_TAKEN sent");
         }
         
         // Complete reset
