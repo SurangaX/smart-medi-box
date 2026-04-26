@@ -666,41 +666,4 @@ function errorResponse($code, $message) {
     ]);
 }
 
-/**
- * Send push notification via Expo Push API
- */
-function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
-    $url = 'https://exp.host/--/api/v2/push/send';
-
-    $payload = [
-        'to' => $expoPushToken,
-        'title' => $title,
-        'body' => $body,
-        'data' => $data,
-        'sound' => 'default',
-        'priority' => 'high'
-    ];
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200) {
-        $resData = json_decode($response, true);
-        if (isset($resData['data']['status']) && $resData['data']['status'] === 'ok') {
-            return true;
-        }
-    }
-
-    error_log("EXPO PUSH FAILED: code=$httpCode, response=$response");
-    return false;
-}
-
 ?>

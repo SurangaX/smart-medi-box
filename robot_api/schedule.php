@@ -848,6 +848,24 @@ function handleTriggerDueSchedules($method) {
             } else {
                 $notifId = pg_fetch_assoc($notifResult)['id'] ?? null;
                 error_log("TRIGGER_DUE - Inserted notification ID: " . $notifId . " for user: " . $user_db_id);
+
+                // Send Push Notification
+                $app_sent = false;
+                // Get user's expo_push_token using user_id string from user_db_id (which is integer primary key in some contexts, but let's check what user_db_id is)
+                // Actually, let's look at the query: SELECT id, user_id FROM schedules. 
+                // In schedules table, user_id is often the primary key of users table.
+                $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
+                $tokenResult = pg_query_params($conn, $tokenQuery, [$user_db_id]);
+                if ($tokenResult && pg_num_rows($tokenResult) > 0) {
+                    $user = pg_fetch_assoc($tokenResult);
+                    if (!empty($user['expo_push_token'])) {
+                        $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_db_id]);
+                        if ($app_sent && $notifId) {
+                            pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notifId]);
+                        }
+                    }
+                }
+            }
             }
 
             // Always queue arduino commands when a schedule triggers

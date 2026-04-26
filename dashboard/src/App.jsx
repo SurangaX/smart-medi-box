@@ -726,6 +726,18 @@ const SignupScreen = ({ onSignupSuccess }) => {
 // ==================== Patient Dashboard ====================
 const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Handle remote tab change from mobile wrapper
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && e.detail.tab) {
+        console.log(`🎯 PatientDashboard switching to tab: ${e.detail.tab}`);
+        setActiveTab(e.detail.tab);
+      }
+    };
+    window.addEventListener('app-change-tab', handler);
+    return () => window.removeEventListener('app-change-tab', handler);
+  }, []);
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
@@ -3390,21 +3402,19 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
 // ==================== Doctor Dashboard ====================
 const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
-  // Debug: show profile shape when doctor dashboard mounts
-  useEffect(() => {
-    try {
-      console.log('DoctorDashboard profile:', profile);
-      // Also log a serialized version so console expansion/collapse doesn't hide fields
-      console.log('DoctorDashboard profile (JSON):', JSON.stringify(profile, null, 2));
-    } catch (e) { }
-  }, [profile]);
-
-  // Friendly fallbacks for various backend field names
-  // Prefer real name fields; DO NOT fall back to email to avoid showing email in header
-  const displayName = (profile && (profile.name || profile.full_name || profile.display_name || profile.username)) || '';
-  const displaySpecialization = (profile && (profile.specialty || profile.specialization || profile.speciality || profile.field)) || '';
-  const displayHospital = (profile && (profile.hospital || profile.hospital_name || profile.clinic || profile.affiliation)) || '';
   const [activeTab, setActiveTab] = useState('patients');
+
+  // Handle remote tab change from mobile wrapper
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && e.detail.tab) {
+        console.log(`🎯 DoctorDashboard switching to tab: ${e.detail.tab}`);
+        setActiveTab(e.detail.tab);
+      }
+    };
+    window.addEventListener('app-change-tab', handler);
+    return () => window.removeEventListener('app-change-tab', handler);
+  }, []);
   const [patients, setPatients] = useState([]);
   const [articles, setArticles] = useState([]);
   const [showNewArticle, setShowNewArticle] = useState(false);
@@ -4660,7 +4670,26 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    
+    // Expose navigation to mobile wrapper for deep linking
+    window.appNavigate = (page, tab = null) => {
+      console.log(`🤖 Remote navigation to page: ${page}, tab: ${tab}`);
+      if (page) setCurrentPage(page);
+      if (tab) {
+        // We need to wait for the page to change if it's different
+        setTimeout(() => {
+          // This relies on the setActiveTab being available in the component scope
+          // Since we are in the main App, we can't directly call PatientDashboard's setActiveTab
+          // unless we lift that state or use an event.
+          window.dispatchEvent(new CustomEvent('app-change-tab', { detail: { tab } }));
+        }, 100);
+      }
+    };
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      delete window.appNavigate;
+    };
   }, []);
 
   useEffect(() => {

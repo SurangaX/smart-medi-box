@@ -32,7 +32,38 @@ export default function App() {
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log(response);
+      const data = response.notification.request.content.data;
+      console.log('Notification clicked:', data);
+
+      if (data && webViewRef.current) {
+        let page = null;
+        let tab = null;
+
+        switch (data.type) {
+          case 'alarm':
+            tab = 'schedules';
+            break;
+          case 'chat':
+            tab = 'chat';
+            break;
+          case 'article':
+            tab = 'articles';
+            break;
+          case 'report':
+            tab = 'reports';
+            break;
+        }
+
+        if (tab) {
+          const script = `
+            if (window.appNavigate) {
+              window.appNavigate(null, '${tab}');
+            }
+            true;
+          `;
+          webViewRef.current.injectJavaScript(script);
+        }
+      }
     });
 
     // Handle back button on Android to navigate back in WebView

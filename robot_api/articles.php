@@ -491,6 +491,38 @@ function handleCreateArticle($method) {
         
         error_log("CREATE ARTICLE - Article created successfully with id: " . $article_id);
         
+        // Notify all patients assigned to this doctor about the new article
+        try {
+            $patient_query = "SELECT p.user_id, u.expo_push_token 
+                             FROM patient_doctor_assignments pda
+                             JOIN patients p ON pda.patient_id = p.id
+                             JOIN users u ON p.user_id = u.id
+                             WHERE pda.doctor_id = $1 AND pda.is_active = TRUE AND u.expo_push_token IS NOT NULL";
+            $patient_result = pg_query_params($conn, $patient_query, [$doctor_id]);
+            
+            if ($patient_result) {
+                while ($p_row = pg_fetch_assoc($patient_result)) {
+                    $p_user_id = $p_row['user_id'];
+                    $p_token = $p_row['expo_push_token'];
+                    $notif_msg = "Your doctor has published a new article: " . $title;
+                    
+                    // Store in database
+                    $notif_res = pg_query_params($conn, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$p_user_id, 'NEW_ARTICLE', $notif_msg]);
+                    
+                    // Send Push
+                    if ($notif_res && pg_num_rows($notif_res) > 0) {
+                        $notif_id = pg_fetch_assoc($notif_res)['id'];
+                        $sent = sendExpoPushNotification($p_token, "New Health Article", $notif_msg, ['type' => 'article', 'article_id' => $article_id]);
+                        if ($sent) {
+                            pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Failed to notify patients about new article: " . $e->getMessage());
+        }
+
         http_response_code(201);
         echo json_encode([
             'status' => 'SUCCESS',

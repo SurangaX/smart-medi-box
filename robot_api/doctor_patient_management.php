@@ -263,7 +263,22 @@ class DoctorPatientManager {
 
             // Add notification for patient (using patient_user_id)
             $notif_msg = "Your doctor has uploaded a new medical report: " . $title;
-            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$patient_user_id, 'NEW_REPORT', $notif_msg]);
+            $notif_res = pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$patient_user_id, 'NEW_REPORT', $notif_msg]);
+            
+            // Send Push Notification
+            if ($notif_res && pg_num_rows($notif_res) > 0) {
+                $notif_id = pg_fetch_assoc($notif_res)['id'];
+                $token_res = pg_query_params($this->db, "SELECT expo_push_token FROM users WHERE id = $1", [$patient_user_id]);
+                if ($token_res && pg_num_rows($token_res) > 0) {
+                    $user = pg_fetch_assoc($token_res);
+                    if (!empty($user['expo_push_token'])) {
+                        $sent = sendExpoPushNotification($user['expo_push_token'], "New Medical Report", $notif_msg, ['type' => 'report']);
+                        if ($sent) {
+                            pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
+                        }
+                    }
+                }
+            }
 
             return ['status' => 'SUCCESS', 'message' => 'Report uploaded successfully'];
         } catch (Exception $e) { 
@@ -338,7 +353,22 @@ class ChatManager {
             
             // Add notification for receiver
             $notif_msg = "New message from " . $sender_name . ": " . (strlen($message) > 50 ? substr($message, 0, 47) . "..." : $message);
-            pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)", [$receiver_user_id, 'NEW_MESSAGE', $notif_msg]);
+            $notif_res = pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$receiver_user_id, 'NEW_MESSAGE', $notif_msg]);
+
+            // Send Push Notification
+            if ($notif_res && pg_num_rows($notif_res) > 0) {
+                $notif_id = pg_fetch_assoc($notif_res)['id'];
+                $token_res = pg_query_params($this->db, "SELECT expo_push_token FROM users WHERE id = $1", [$receiver_user_id]);
+                if ($token_res && pg_num_rows($token_res) > 0) {
+                    $user = pg_fetch_assoc($token_res);
+                    if (!empty($user['expo_push_token'])) {
+                        $sent = sendExpoPushNotification($user['expo_push_token'], "New Message", $notif_msg, ['type' => 'chat', 'sender_id' => $sender_id]);
+                        if ($sent) {
+                            pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
+                        }
+                    }
+                }
+            }
 
             return ['status' => 'SUCCESS', 'message' => 'Sent'];
         } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
