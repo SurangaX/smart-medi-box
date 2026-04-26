@@ -148,7 +148,17 @@ void readAndSendData() {
   else Serial1.print(0);
   Serial1.print(F(",\"l\":"));
   Serial1.print(digitalRead(SOLENOID_PIN));
-  Serial1.println('}');
+  
+  // Add RTC Time Fallback for ESP32
+  DateTime now = rtc.now();
+  char timeBuf[20];
+  sprintf(timeBuf, "%04d-%02d-%02d %02d:%02d", 
+          now.year(), now.month(), now.day(), 
+          now.hour(), now.minute());
+  Serial1.print(F(",\"time\":\""));
+  Serial1.print(timeBuf);
+  Serial1.print(F("\"}"));
+  Serial1.println();
 }
 
 // ================= ALARM FUNCTIONS =================
@@ -321,6 +331,28 @@ void checkIncomingCommands() {
     targetTempSet = true;
     Serial.print("DEBUG: Target Temp Set: ");
     Serial.println(targetTemp);
+  }
+  else if (cmd.startsWith("SET_TIME|")) {
+    // Format: SET_TIME|YYYY|MM|DD|HH|MM|SS
+    int p1 = cmd.indexOf('|');
+    int p2 = cmd.indexOf('|', p1+1);
+    int p3 = cmd.indexOf('|', p2+1);
+    int p4 = cmd.indexOf('|', p3+1);
+    int p5 = cmd.indexOf('|', p4+1);
+    int p6 = cmd.indexOf('|', p5+1);
+    
+    if (p6 != -1) {
+      int y = cmd.substring(p1+1, p2).toInt();
+      int m = cmd.substring(p2+1, p3).toInt();
+      int d = cmd.substring(p3+1, p4).toInt();
+      int hh = cmd.substring(p4+1, p5).toInt();
+      int mm = cmd.substring(p5+1, p6).toInt();
+      int ss = cmd.substring(p6+1).toInt();
+      
+      rtc.adjust(DateTime(y, m, d, hh, mm, ss));
+      Serial.print(F("DEBUG: RTC Time Set: "));
+      Serial.println(cmd.substring(p1+1));
+    }
   }
 }
 

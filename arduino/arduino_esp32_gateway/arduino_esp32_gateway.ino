@@ -38,6 +38,7 @@ struct {
   String sched_name = "Medicine";
   String sched_time = "Now";
   float target_temp = 25.0; // Default target
+  String rtc_time = "";     // Leonardo RTC fallback time
 } box;
 
 void setup() {
@@ -87,6 +88,10 @@ void loop() {
            }
            
            box.lock = doc["l"];
+           
+           if (doc.containsKey("time")) {
+             box.rtc_time = doc["time"].as<String>();
+           }
            
            // REAL-TIME: Force refresh UI when state packet arrives
            renderUI(); 
@@ -159,7 +164,9 @@ void renderUI() {
     struct tm timeinfo;
     u8g2.setFont(u8g2_font_6x10_tf);
 
-    if (getLocalTime(&timeinfo)) {
+    bool ntpSynced = getLocalTime(&timeinfo);
+
+    if (ntpSynced) {
       char dateStr[12];
       char timeStr[6];
       strftime(dateStr, 12, "%Y-%m-%d", &timeinfo);
@@ -169,6 +176,24 @@ void renderUI() {
       u8g2.print(dateStr);
       u8g2.print(" | ");
       u8g2.print(timeStr);
+      
+      // Every 1 hour, sync Leonardo RTC with NTP time
+      static unsigned long lastRTCSync = 0;
+      if (millis() - lastRTCSync > 3600000 || lastRTCSync == 0) {
+        char rtcCmd[50];
+        sprintf(rtcCmd, "SET_TIME|%04d|%02d|%02d|%02d|%02d|%02d",
+                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        LeoSerial.println(rtcCmd);
+        lastRTCSync = millis();
+        Serial.println("DEBUG: Synced NTP to Leonardo RTC");
+      }
+
+    } else if (box.rtc_time != "") {
+      // NTP Fail - Use Leonardo RTC Fallback
+      u8g2.setCursor(0, 10);
+      u8g2.print(box.rtc_time);
+      u8g2.drawStr(100, 10, "RTC"); 
     } else {
       u8g2.setCursor(0, 10);
       u8g2.print("Time Sync Error");
