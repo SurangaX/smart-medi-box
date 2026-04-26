@@ -4,6 +4,14 @@
 // Supports: PostgreSQL via Neon
 // Version: 1.0.1
 
+// Suppress all error output to prevent HTML from being sent
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+// Set custom error log
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/api_debug.log');
+
 // Check if DATABASE_URL is set (Render/Railway deployment)
 if (!empty(getenv('DATABASE_URL'))) {
     $db_url = parse_url(getenv('DATABASE_URL'));
@@ -87,9 +95,15 @@ function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
         if (isset($resData['data']['status']) && $resData['data']['status'] === 'ok') {
             return true;
         }
+        error_log("EXPO PUSH API ERROR: " . json_encode($resData));
     }
 
-    error_log("EXPO PUSH FAILED: code=$httpCode, response=$response");
+    error_log("EXPO PUSH HTTP FAILED: code=$httpCode, response=$response");
+    if (curl_errno($ch)) {
+        error_log("CURL ERROR: " . curl_error($ch));
+    }
+    curl_close($ch);
     return false;
-}
+    }
+
 ?>
