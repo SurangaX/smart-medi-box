@@ -156,19 +156,15 @@ void startAlarm() {
   
   // Now set new alarm
   alarmActive = true;
-  solenoidUnlocked = true;
+  solenoidUnlocked = false; // Will be set to true by SOL:UNLOCK command later
   waitingForDoorOpen = true;
   doorWasOpened = false;
   medTakenSent = false;
   
   alarmStartTime = millis();
   
-  // Unlock solenoid
-  digitalWrite(SOLENOID_PIN, HIGH);
-  Serial.println("DEBUG: Solenoid UNLOCKED");
-  
-  // Audio player disabled for now
-  // myDFPlayer.play(1);
+  // NOTE: Solenoid unlock moved to SOL:UNLOCK command handler for staggered sequence
+  Serial.println("DEBUG: Alarm started (Buzzer only)");
 }
 
 void stopAlarm() {
@@ -295,15 +291,17 @@ void checkIncomingCommands() {
     stopAlarm();
   }
   else if (cmd.indexOf("SOL:UNLOCK") >= 0) {
-    // Only unlock if not already in alarm state
+    digitalWrite(SOLENOID_PIN, HIGH);
+    solenoidUnlocked = true;
+    waitingForDoorOpen = true;
+    doorWasOpened = false;
+    medTakenSent = false;
+    
     if (!alarmActive) {
-      digitalWrite(SOLENOID_PIN, HIGH);
-      solenoidUnlocked = true;
       manualTriggerActive = true;
-      waitingForDoorOpen = true;
-      doorWasOpened = false;
-      medTakenSent = false;
       Serial.println("DEBUG: Manual SOL:UNLOCK");
+    } else {
+      Serial.println("DEBUG: Scheduled SOL:UNLOCK (during alarm)");
     }
   }
   else if (cmd.indexOf("SOL:LOCK") >= 0) {

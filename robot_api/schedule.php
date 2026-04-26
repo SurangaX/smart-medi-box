@@ -1003,10 +1003,16 @@ function handleDispenseNow($method) {
         $med_name = $sched_row['medicine_name'] ?? $sched_row['type'];
         $display_name = substr(strtoupper($med_name), 0, 16);
         
-        // 3. Queue Arduino commands
-        // We include the med name in SOL:UNLOCK to allow the ESP32 to display it correctly
-        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, "SOL:UNLOCK|" . $med_name));
-        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, "DISPLAY:" . $display_name));
+        // 3. Queue Arduino commands in sequence: Display -> Buzzer -> Solenoid
+        $commands = [
+            "ALARM_DATA|" . $med_name . "|NOW",
+            "BUZZ:ON",
+            "SOL:UNLOCK|" . $med_name
+        ];
+        
+        foreach ($commands as $cmd) {
+            pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, $cmd));
+        }
         
         // 4. Create a tracking notification for the door sensor (med-taken)
         // This ensures that when the user opens/closes the door, the backend finds this
