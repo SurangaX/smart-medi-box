@@ -2780,7 +2780,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                             <div className="spinner-mini" style={{ margin: '0 10px' }}></div>
                           ) : (
                             <>
-                              {!sched.is_completed && (
+                              {!sched.is_completed && sched.status !== 'MISSED' && (
                                 <button
                                   className="btn-action-done"
                                   onClick={() => handleCompleteSchedule(sched.schedule_id)}
