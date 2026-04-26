@@ -320,7 +320,13 @@ const OverviewSection = ({ schedules, tempData, currentTemp, deviceStatus }) => 
                 <div className="schedule-time">{String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')}</div>
                 <div className="schedule-type">{schedule.type}</div>
                 <div className="schedule-status">
-                  {schedule.is_completed ? <CheckCircle2 size={16} className="success" /> : <Clock size={16} className="warning" />}
+                  {schedule.status === 'MISSED' ? (
+                    <X size={16} className="danger" />
+                  ) : schedule.is_completed ? (
+                    <CheckCircle2 size={16} className="success" />
+                  ) : (
+                    <Clock size={16} className="warning" />
+                  )}
                 </div>
               </div>
             ))}
@@ -423,7 +429,7 @@ const SchedulesSection = ({ schedules, onRefresh, userId }) => {
           <div key={idx} className="schedule-card">
             <div className="schedule-header">
               <h4>{schedule.type}</h4>
-              <button className="btn-icon-danger" onClick={() => handleDeleteSchedule(schedule.id)}>
+              <button className="btn-icon-danger" onClick={() => handleDeleteSchedule(schedule.schedule_id || schedule.id)}>
                 <Trash2 size={16} />
               </button>
             </div>
@@ -432,7 +438,9 @@ const SchedulesSection = ({ schedules, onRefresh, userId }) => {
             </div>
             {schedule.description && <p className="schedule-description">{schedule.description}</p>}
             <div className="schedule-footer">
-              {schedule.is_completed ? (
+              {schedule.status === 'MISSED' ? (
+                <span className="badge danger"><X size={14} /> Missed</span>
+              ) : schedule.is_completed ? (
                 <span className="badge success"><CheckCircle2 size={14} /> Completed</span>
               ) : (
                 <span className="badge warning"><Clock size={14} /> Active</span>

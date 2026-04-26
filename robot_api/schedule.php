@@ -435,15 +435,18 @@ function handleGetTodaySchedules($method) {
                     SELECT CAST(generate_series(CAST($2 AS DATE), CAST($3 AS DATE), '1 day') AS DATE) as d
                   )
                   SELECT 
-                    s.id, s.type, s.medicine_name, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date,
+                    s.id, s.type, s.medicine_name, s.hour, s.minute, s.description, s.photo, s.is_recurring, s.end_date, s.status as sched_status,
                     dr.d as current_day,
                     (SELECT COUNT(*) > 0 FROM schedule_logs sl 
                      WHERE sl.schedule_id = s.id AND sl.action LIKE 'COMPLETED%' 
-                     AND DATE(sl.created_at) = dr.d) as day_completed
+                     AND DATE(sl.created_at) = dr.d) as day_completed,
+                    (SELECT COUNT(*) > 0 FROM schedule_logs sl 
+                     WHERE sl.schedule_id = s.id AND sl.action = 'MISSED' 
+                     AND DATE(sl.created_at) = dr.d) as day_missed
                   FROM schedules s
                   CROSS JOIN date_range dr
                   WHERE s.user_id = $1 
-                  AND s.status = 'ACTIVE'
+                  AND s.status != 'DELETED'
                   AND (
                       (s.is_recurring = false AND s.schedule_date = dr.d)
                       OR
@@ -466,6 +469,7 @@ function handleGetTodaySchedules($method) {
         
         $schedules = [];
         while ($row = pg_fetch_assoc($result)) {
+            $is_missed = ($row['day_missed'] === 't' || $row['day_missed'] === true || $row['sched_status'] === 'MISSED');
             $schedules[] = [
                 'schedule_id' => $row['id'],
                 'type' => $row['type'],
@@ -478,6 +482,8 @@ function handleGetTodaySchedules($method) {
                 'is_recurring' => $row['is_recurring'] === 't' || $row['is_recurring'] === true,
                 'end_date' => $row['end_date'],
                 'is_completed' => $row['day_completed'] === 't' || $row['day_completed'] === true,
+                'is_missed' => $is_missed,
+                'status' => $is_missed ? 'MISSED' : ($row['day_completed'] === 't' || $row['day_completed'] === true ? 'COMPLETED' : 'ACTIVE'),
                 'datetime' => $row['current_day'] . ' ' . str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ':' . str_pad($row['minute'], 2, '0', STR_PAD_LEFT)
             ];
         }
@@ -779,7 +785,30 @@ function handleTriggerDueSchedules($method) {
                 $mins_since_last_alarm = ($now->getTimestamp() - $lastTriggered->getTimestamp()) / 60;
                 
                 if ($diff_minutes_from_schedule > 30) {
-                    error_log("TRIGGER_DUE - Skipping schedule $schedule_db_id: past 30-minute window ($diff_minutes_from_schedule mins)");
+                    error_log("TRIGGER_DUE - Marking schedule $schedule_db_id as MISSED (past 30-minute window)");
+                    
+                    // Check if we already logged this as MISSED to avoid duplicate MISSED entries
+                    $checkMissed = pg_query_params($conn, "SELECT id FROM alarm_logs WHERE schedule_id = $1 AND DATE(triggered_at) = $2 AND status = 'MISSED' LIMIT 1", array($schedule_db_id, $date));
+                    
+                    if (!$checkMissed || pg_num_rows($checkMissed) === 0) {
+                        // Mark alarm as MISSED
+                        pg_query_params($conn, "INSERT INTO alarm_logs (user_id, schedule_id, triggered_at, status) VALUES ($1, $2, NOW(), 'MISSED')", array($user_db_id, $schedule_db_id));
+                        
+                        // For non-recurring, also mark the main schedule as MISSED
+                        if (!$is_recurring) {
+                            pg_query_params($conn, "UPDATE schedules SET status = 'MISSED' WHERE id = $1", array($schedule_db_id));
+                        }
+                        
+                        // Log it in schedule_logs
+                        pg_query_params($conn, "INSERT INTO schedule_logs (user_id, schedule_id, action, details) VALUES ($1, $2, 'MISSED', 'Timed out after 30 mins')", array($user_db_id, $schedule_db_id));
+                        
+                        // Final Missed Notification
+                        $missedMessage = "MISSED: It's time for your $med_name has passed. Please contact your doctor if necessary.";
+                        pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message) VALUES ($1, $2, 'ALARM_MISSED', $3)", array($user_db_id, $schedule_db_id, $missedMessage));
+                        
+                        // Stop Arduino buzzer if it was still on
+                        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'BUZZ:OFF', 'PENDING')", array($user_db_id));
+                    }
                     continue; 
                 }
                 if ($mins_since_last_alarm < 5) {
