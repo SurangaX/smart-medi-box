@@ -216,7 +216,12 @@ void checkRFID() {
   doorWasOpened = false;
   medTakenSent = false;
   
-  Serial.println("DEBUG: Manual RFID unlock");
+  // Provide short beep for feedback
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(200);
+  digitalWrite(BUZZER_PIN, LOW);
+  
+  Serial.println("DEBUG: Manual RFID unlock with beep");
 
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
