@@ -4657,6 +4657,24 @@ export default function App() {
 
   // Handle Expo Push Token from WebView
   useEffect(() => {
+    const processToken = (pushToken) => {
+      if (!pushToken) return;
+      localStorage.setItem('expo_push_token', pushToken);
+      console.log('Received Expo Push Token:', pushToken);
+      
+      // Use the existing toast system instead of alert for better UX
+      setToasts(prev => [...prev, { 
+        id: Date.now(), 
+        message: '📱 Mobile Notifications Linked Successfully', 
+        type: 'success' 
+      }]);
+      
+      const userId = localStorage.getItem('user_id');
+      if (userId) {
+        updatePushTokenOnBackend(userId, pushToken);
+      }
+    };
+
     const handleMessage = (event) => {
       try {
         let data = event.data;
@@ -4665,23 +4683,24 @@ export default function App() {
         }
         
         if (data && data.type === 'expo-push-token') {
-          const pushToken = data.token;
-          localStorage.setItem('expo_push_token', pushToken);
-          console.log('Received Expo Push Token from Wrapper:', pushToken);
-          alert('DEBUG: Received Push Token: ' + pushToken);
-          
-          const userId = localStorage.getItem('user_id');
-          if (userId) {
-            updatePushTokenOnBackend(userId, pushToken);
-          }
+          processToken(data.token);
         }
       } catch (e) {
         console.error('Error handling WebView message:', e);
       }
     };
 
+    const handleCustomEvent = (e) => {
+      if (e.detail) processToken(e.detail);
+    };
+
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('expo-token-ready', handleCustomEvent);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('expo-token-ready', handleCustomEvent);
+    };
   }, []);
 
   useEffect(() => {

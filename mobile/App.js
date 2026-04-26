@@ -25,7 +25,12 @@ export default function App() {
   const DASHBOARD_URL = 'https://smart-medi-box.vercel.app/';
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    registerForPushNotificationsAsync().then(token => {
+      if (token) {
+        setExpoPushToken(token);
+        Alert.alert('Mobile Sync', 'Notification system initialized!');
+      }
+    });
 
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       setNotification(notification);
@@ -90,28 +95,39 @@ export default function App() {
       const injectToken = () => {
         const script = `
           (function() {
-            const tokenData = {
-              type: 'expo-push-token',
-              token: '${expoPushToken}'
-            };
-            window.postMessage(JSON.stringify(tokenData), '*');
-            // Also try direct injection into localStorage as backup
-            localStorage.setItem('expo_push_token', '${expoPushToken}');
+            try {
+              const token = '${expoPushToken}';
+              localStorage.setItem('expo_push_token', token);
+              window.postMessage(JSON.stringify({type: 'expo-push-token', token: token}), '*');
+              window.dispatchEvent(new CustomEvent('expo-token-ready', { detail: token }));
+
+              // Visible debug banner
+              const banner = document.createElement('div');
+              banner.innerHTML = '📱 Notification Link Active';
+              banner.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:#4CAF50;color:white;text-align:center;padding:5px;z-index:999999;font-weight:bold;font-size:12px;';
+              document.body.appendChild(banner);
+              setTimeout(() => banner.remove(), 4000);
+
+              console.log('Push token injected successfully');
+            } catch (e) {
+              console.error('Injection error:', e);
+            }
           })();
           true;
         `;
         webViewRef.current.injectJavaScript(script);
       };
 
+      // Inject multiple times to handle slow loads
       injectToken();
-      
-      // Retry injection a few times after load to ensure the web app is ready
-      const interval = setInterval(injectToken, 5000);
-      const timeout = setTimeout(() => clearInterval(interval), 30000);
+      const i1 = setTimeout(injectToken, 2000);
+      const i2 = setTimeout(injectToken, 5000);
+      const i3 = setTimeout(injectToken, 10000);
 
       return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
+        clearTimeout(i1);
+        clearTimeout(i2);
+        clearTimeout(i3);
       };
     }
   }, [expoPushToken]);
