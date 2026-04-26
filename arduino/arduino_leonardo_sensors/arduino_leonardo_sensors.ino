@@ -249,12 +249,13 @@ void monitorDoor() {
     else {
       if (solenoidUnlocked && doorWasOpened) {
         // Medicine taken - close everything
-        Serial.println("DEBUG: Door closed - medicine taken");
+        Serial.println("DEBUG: Door closed");
         
-        if (!medTakenSent) {
+        // ONLY send MED_TAKEN if this door open/close happened because of an alarm
+        if (alarmActive && !medTakenSent) {
           Serial1.println(F("MED_TAKEN"));
           medTakenSent = true;
-          Serial.println("DEBUG: MED_TAKEN sent");
+          Serial.println("DEBUG: MED_TAKEN sent (Alarm Active)");
         }
         
         // Complete reset
