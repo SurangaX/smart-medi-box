@@ -29,16 +29,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
-$path = trim($_SERVER['PATH_INFO'] ?? '', '/');
-$segments = explode('/', $path);
 
-// Remove 'api' segment
-if (isset($segments[0]) && $segments[0] === 'api') {
-    array_shift($segments);
+// Get module/action from router or parse from path
+$action = $_GET['module'] ?? '';
+$subaction = $_GET['action'] ?? '';
+
+if (!$action) {
+    $path = trim($_SERVER['PATH_INFO'] ?? '', '/');
+    $segments = explode('/', $path);
+
+    // Remove 'api' segment
+    if (isset($segments[0]) && $segments[0] === 'api') {
+        array_shift($segments);
+    }
+
+    $action = $segments[0] ?? '';
+    $subaction = $segments[1] ?? '';
 }
-
-$action = $segments[0] ?? '';
-$subaction = $segments[1] ?? '';
 
 error_log("NOTIFICATION REQUEST: action=$action, subaction=$subaction");
 
