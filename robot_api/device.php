@@ -100,8 +100,16 @@ function handleUpdateDeviceStatus($method) {
             
             // Update sensor logs if user is mapped
             if ($user_id && isset($input['temperature'])) {
-                pg_query_params($conn, "INSERT INTO temperature_logs (user_id, internal_temp, external_humidity, timestamp) VALUES ($1, $2, $3, NOW())", 
-                    array($user_id, $input['temperature'], $input['humidity']));
+                // Fetch current target_temp from settings
+                $setRes = pg_query_params($conn, "SELECT target_temp FROM temperature_settings WHERE user_id = $1", array($user_id));
+                $target_temp = ($setRes && pg_num_rows($setRes) > 0) ? floatval(pg_fetch_result($setRes, 0, 0)) : 4.0;
+                
+                $internal_temp = floatval($input['temperature']);
+                $humidity = isset($input['humidity']) ? floatval($input['humidity']) : 0.0;
+                $cooling_status = ($internal_temp >= ($target_temp + 0.5)) ? 'ACTIVE' : 'INACTIVE';
+
+                pg_query_params($conn, "INSERT INTO temperature_logs (user_id, internal_temp, external_humidity, target_temp, cooling_status, timestamp) VALUES ($1, $2, $3, $4, $5, NOW())", 
+                    array($user_id, $internal_temp, $humidity, $target_temp, $cooling_status));
             }
             
             // Update device with new real-time columns
@@ -227,11 +235,26 @@ function handleRegisterDevice($method) {
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $mac = trim($input['mac_address'] ?? $_POST['mac_address'] ?? '');
     try {
-        $q = "SELECT d.device_id, u.name as user_name FROM devices d JOIN device_user_map dum ON d.id = dum.device_id JOIN users u ON dum.user_id = u.id WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
+        $q = "SELECT d.device_id, u.id as db_user_id, u.name as user_name 
+              FROM devices d 
+              JOIN device_user_map dum ON d.id = dum.device_id 
+              JOIN users u ON dum.user_id = u.id 
+              WHERE UPPER(TRIM(d.mac_address)) = UPPER($1)";
         $res = pg_query_params($conn, $q, array($mac));
         if ($res && pg_num_rows($res) > 0) {
             $data = pg_fetch_assoc($res);
-            sendJSON(['status' => 'SUCCESS', 'user_name' => $data['user_name'], 'device_id' => $data['device_id']]);
+            $db_user_id = $data['db_user_id'];
+            
+            // Fetch target temp
+            $setRes = pg_query_params($conn, "SELECT target_temp FROM temperature_settings WHERE user_id = $1", array($db_user_id));
+            $target_temp = ($setRes && pg_num_rows($setRes) > 0) ? floatval(pg_fetch_result($setRes, 0, 0)) : 4.0;
+
+            sendJSON([
+                'status' => 'SUCCESS', 
+                'user_name' => $data['user_name'], 
+                'device_id' => $data['device_id'],
+                'target_temp' => $target_temp
+            ]);
         } else { sendJSON(['status' => 'UNPAIRED']); }
     } catch (Exception $e) { sendJSON(['status' => 'ERROR']); }
 }

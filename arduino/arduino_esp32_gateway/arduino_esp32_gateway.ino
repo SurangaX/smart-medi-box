@@ -199,8 +199,14 @@ void fetchUserInfo() {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, http.getString());
     
-    if (doc["status"] == "SUCCESS" && doc.containsKey("user_name")) {
-      box.user = doc["user_name"].as<String>();
+    if (doc["status"] == "SUCCESS") {
+      if (doc.containsKey("user_name")) {
+        box.user = doc["user_name"].as<String>();
+      }
+      if (doc.containsKey("target_temp")) {
+        box.target_temp = doc["target_temp"].as<float>();
+        Serial.println("Initial Target Temp: " + String(box.target_temp));
+      }
     } else {
       box.user = "Unpaired";
     }

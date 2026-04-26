@@ -91,17 +91,19 @@ function handleGetCurrentTemp($method) {
     }
     
     try {
-        $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
-                  FROM temperature_logs 
-                  WHERE user_id = $1
-                  ORDER BY timestamp DESC LIMIT 1";
+        // Use COALESCE to fallback to settings if log entry target_temp is NULL
+        $query = "SELECT l.internal_temp, l.external_humidity, COALESCE(l.target_temp, s.target_temp, 4.0) as target_temp, l.cooling_status, l.timestamp 
+                  FROM temperature_logs l
+                  LEFT JOIN temperature_settings s ON l.user_id = s.user_id
+                  WHERE l.user_id = $1
+                  ORDER BY l.timestamp DESC LIMIT 1";
         
         $result = pg_query_params($conn, $query, array($db_user_id));
         
         if ($result && pg_num_rows($result) > 0) {
             $row = pg_fetch_assoc($result);
             $internal_temp = floatval($row['internal_temp']);
-            $target_temp = (isset($row['target_temp']) && $row['target_temp'] !== null) ? floatval($row['target_temp']) : 25.0;
+            $target_temp = floatval($row['target_temp']);
 
             // Logic-based cooling status with +0.5 breath point
             $cooling_active = ($internal_temp >= ($target_temp + 0.5));
@@ -121,7 +123,7 @@ function handleGetCurrentTemp($method) {
             $setRes = pg_query_params($conn, "SELECT target_temp FROM temperature_settings WHERE user_id = $1", array($db_user_id));
             $target = ($setRes && pg_num_rows($setRes) > 0) ? pg_fetch_result($setRes, 0, 0) : 4.0;
             
-            http_response_code(200); // Return 200 but with NO_DATA status
+            http_response_code(200); 
             echo json_encode([
                 'status' => 'NO_DATA', 
                 'message' => 'Waiting for device to report data',
@@ -152,7 +154,7 @@ function handleSetTargetTemp($method) {
     $target_temp = floatval($target_temp);
     
     try {
-        pg_query_params($conn, "UPDATE temperature_settings SET target_temp = $1, updated_at = NOW() WHERE user_id = $2", array($target_temp, $db_user_id));
+        pg_query_params($conn, "INSERT INTO temperature_settings (user_id, target_temp) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET target_temp = EXCLUDED.target_temp, updated_at = NOW()", array($db_user_id, $target_temp));
         pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($db_user_id, "TEMP_SET|" . $target_temp));
         
         echo json_encode(['status' => 'SUCCESS', 'target_temp' => $target_temp]);
@@ -171,10 +173,11 @@ function handleGetTempHistory($method) {
     if (!$db_user_id) { http_response_code(400); return; }
     
     try {
-        $query = "SELECT internal_temp, external_humidity, target_temp, cooling_status, timestamp 
-                  FROM temperature_logs 
-                  WHERE user_id = $1 AND timestamp >= NOW() - INTERVAL '1 day' * $2
-                  ORDER BY timestamp ASC LIMIT 2000";
+        $query = "SELECT l.internal_temp, l.external_humidity, COALESCE(l.target_temp, s.target_temp, 4.0) as target_temp, l.cooling_status, l.timestamp 
+                  FROM temperature_logs l
+                  LEFT JOIN temperature_settings s ON l.user_id = s.user_id
+                  WHERE l.user_id = $1 AND l.timestamp >= NOW() - INTERVAL '1 day' * $2
+                  ORDER BY l.timestamp ASC LIMIT 2000";
         
         $result = pg_query_params($conn, $query, array($db_user_id, $days));
         $history = [];
@@ -182,7 +185,8 @@ function handleGetTempHistory($method) {
             $history[] = [
                 'timestamp' => $row['timestamp'],
                 'temp' => floatval($row['internal_temp']),
-                'humidity' => floatval($row['external_humidity'])
+                'humidity' => floatval($row['external_humidity']),
+                'target_temp' => floatval($row['target_temp'])
             ];
         }
         echo json_encode(['status' => 'SUCCESS', 'history' => $history]);
