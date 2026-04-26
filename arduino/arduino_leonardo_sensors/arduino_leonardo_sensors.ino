@@ -339,12 +339,12 @@ void loop() {
   // Check ESP commands
   checkIncomingCommands();
 
-  // Cooling logic based on target temperature
+  // Cooling logic based on target temperature with +-0.5 breath point
   if (targetTempSet) {
     if (tempC >= targetTemp + 0.5) {
       digitalWrite(COOLING_PIN, HIGH);
     } 
-    else if (tempC <= targetTemp) {
+    else if (tempC <= targetTemp - 0.5) {
       digitalWrite(COOLING_PIN, LOW);
     }
   }

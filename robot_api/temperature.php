@@ -100,13 +100,19 @@ function handleGetCurrentTemp($method) {
         
         if ($result && pg_num_rows($result) > 0) {
             $row = pg_fetch_assoc($result);
+            $internal_temp = floatval($row['internal_temp']);
+            $target_temp = (isset($row['target_temp']) && $row['target_temp'] !== null) ? floatval($row['target_temp']) : 25.0;
+
+            // Logic-based cooling status with +0.5 breath point
+            $cooling_active = ($internal_temp >= ($target_temp + 0.5));
+
             echo json_encode([
                 'status' => 'SUCCESS',
                 'temperature' => [
-                    'internal_temp' => floatval($row['internal_temp']),
+                    'internal_temp' => $internal_temp,
                     'external_humidity' => floatval($row['external_humidity']),
-                    'target_temp' => floatval($row['target_temp']),
-                    'cooling_status' => ($row['cooling_status'] === 'ON' || $row['cooling_status'] === 'ALARM'),
+                    'target_temp' => $target_temp,
+                    'cooling_status' => $cooling_active,
                     'timestamp' => $row['timestamp']
                 ]
             ]);
