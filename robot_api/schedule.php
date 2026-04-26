@@ -712,8 +712,12 @@ function handleTriggerDueSchedules($method) {
     // Use GMT+5:30 timezone (Asia/Colombo); allow override for testing via query param
     $now = new DateTime();
     $override = $_GET['now'] ?? $_POST['now'] ?? null;
-    if ($override && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $override)) {
-        $now = DateTime::createFromFormat('Y-m-d H:i', $override);
+    if ($override) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $override)) {
+            $now = DateTime::createFromFormat('Y-m-d H:i:s', $override);
+        } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $override)) {
+            $now = DateTime::createFromFormat('Y-m-d H:i', $override);
+        }
     }
 
     $date = $now->format('Y-m-d');
