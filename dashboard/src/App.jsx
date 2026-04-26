@@ -730,6 +730,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
   const [notifications, setNotifications] = useState([]);
+  const isClearingRef = useRef(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [notifsLoading, setNotifsLoading] = useState(false);
 
@@ -907,7 +908,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.status === 'SUCCESS') {
+      if (data.status === 'SUCCESS' && !isClearingRef.current) {
         // Map the backend notifications to the frontend format
         const formattedNotifs = data.notifications.map(n => {
           let medName = n.medicine_name;
@@ -1121,6 +1122,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       
       console.log(actualType ? `🧹 Clearing ${actualType} notifications...` : '🧹 Clearing all notifications permanently...');
 
+      // Optimistic update: remove from local state immediately
+      isClearingRef.current = true;
       if (actualType) {
         setNotifications(prev => prev.filter(n => n.rawType !== actualType));
       } else {
@@ -1152,6 +1155,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       }
     } catch (err) {
       console.error('Failed to clear notifications:', err);
+    } finally {
+      // Re-enable polling after a short delay to ensure DB operation finished
+      setTimeout(() => {
+        isClearingRef.current = false;
+      }, 2000);
     }
   };
   const fetchDoctors = async () => {
@@ -3610,6 +3618,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
   // Local notification state for doctor dashboard
   const [notifications, setNotifications] = useState([]);
+  const isClearingRef = useRef(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [notifsLoading, setNotifsLoading] = useState(false);
 
@@ -3713,6 +3722,8 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       // If called as event handler, type will be the event object
       const actualType = (type && typeof type === 'string') ? type : null;
 
+      // Optimistic update
+      isClearingRef.current = true;
       if (actualType) {
         setNotifications(prev => prev.filter(n => n.rawType !== actualType));
       } else {
@@ -3734,6 +3745,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       }
     } catch (err) {
       console.error('Failed to clear notifications:', err);
+    } finally {
+      // Re-enable polling after a short delay
+      setTimeout(() => {
+        isClearingRef.current = false;
+      }, 2000);
     }
   };
 
