@@ -2461,8 +2461,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                               </div>
                               <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.6 }}>{sched.type}</div>
                               <div className="schedule-status">
-                                {isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
-                                {isDone ? 'Completed' : 'Pending'}
+                                {sched.status === 'MISSED' ? <X size={16} style={{ color: 'var(--danger)' }} /> : isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                                {sched.status === 'MISSED' ? 'Missed' : (isDone ? 'Completed' : 'Pending')}
                               </div>
                             </div>
                           </div>
@@ -2761,8 +2761,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                         <div className="card-info">
                           <div className="card-top">
                             <h4>{sched.medicine_name || sched.type}</h4>
-                            <span className={`status-pill ${sched.is_completed ? 'done' : 'pending'}`}>
-                              {sched.is_completed ? 'Completed' : 'Upcoming'}
+                            <span className={`status-pill ${sched.status === 'MISSED' ? 'danger' : (sched.is_completed ? 'done' : 'pending')}`}>
+                              {sched.status === 'MISSED' ? 'Missed' : (sched.is_completed ? 'Completed' : 'Upcoming')}
                             </span>
                           </div>
                           <div className="card-meta-details">
