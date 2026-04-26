@@ -2112,47 +2112,47 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
             <LogOut size={18} /> Logout
           </button>
         </div>
-      </div>
 
-      {notifPanelOpen && (
-        <div className="notif-panel" ref={notifPanelRef}>
-          <div className="notif-panel-header">
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <strong>Notifications</strong>
-              <button 
-                className="btn-link" 
-                onClick={async () => {
-                  try {
-                    const btn = document.activeElement;
-                    if (btn) btn.disabled = true;
-                    await fetchNotifications();
-                    if (btn) btn.disabled = false;
-                    window.appNotify({ message: 'Notifications synced', type: 'info', toastOnly: true });
-                  } catch (e) {
-                    console.error('Sync error:', e);
-                  }
-                }}
-                style={{ fontSize: '11px', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}
-              >
-                Sync Now
-              </button>
-            </div>
-            <button className="btn-link" onClick={() => clearNotifications()}>Clear</button>
-          </div>
-          <div className="notif-list">
-            {notifsLoading && <LoadingSpinner size={20} padding="15px" />}
-            {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
-            {notifications.map(n => (
-              <div key={n.id} className={`notif-item ${n.type || ''}`}>
-                <div className="notif-message">{n.message}</div>
-                <div className="notif-meta">
-                  <small>{new Date(n.timestamp).toLocaleString()}</small>
-                </div>
+        {notifPanelOpen && (
+          <div className="notif-panel" ref={notifPanelRef}>
+            <div className="notif-panel-header">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <strong>Notifications</strong>
+                <button 
+                  className="btn-link" 
+                  onClick={async () => {
+                    try {
+                      const btn = document.activeElement;
+                      if (btn) btn.disabled = true;
+                      await fetchNotifications();
+                      if (btn) btn.disabled = false;
+                      window.appNotify({ message: 'Notifications synced', type: 'info', toastOnly: true });
+                    } catch (e) {
+                      console.error('Sync error:', e);
+                    }
+                  }}
+                  style={{ fontSize: '11px', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}
+                >
+                  Sync Now
+                </button>
               </div>
-            ))}
+              <button className="btn-link" onClick={() => clearNotifications()}>Clear</button>
+            </div>
+            <div className="notif-list">
+              {notifsLoading && <LoadingSpinner size={20} padding="15px" />}
+              {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
+              {notifications.map(n => (
+                <div key={n.id} className={`notif-item ${n.type || ''}`}>
+                  <div className="notif-message">{n.message}</div>
+                  <div className="notif-meta">
+                    <small>{new Date(n.timestamp).toLocaleString()}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="dashboard-tabs">
         <button
@@ -3940,32 +3940,32 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
             <LogOut size={18} /> Logout
           </button>
         </div>
-      </div>
 
-      {notifPanelOpen && (
-        <div className="notif-panel" ref={notifPanelRefDoc}>
-          <div className="notif-panel-header">
-            <strong>Notifications</strong>
-            <button className="btn-link" onClick={() => clearNotificationsDoc()}>Clear</button>
-          </div>
-          <div className="notif-list">
-            {notifsLoading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '15px' }}>
-                <div className="spinner-mini" style={{ borderTopColor: 'var(--primary)' }}></div>
-              </div>
-            )}
-            {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
-            {notifications.map(n => (
-              <div key={n.id} className={`notif-item ${n.type || ''}`}>
-                <div className="notif-message">{n.message}</div>
-                <div className="notif-meta">
-                  <small>{new Date(n.timestamp).toLocaleString()}</small>
+        {notifPanelOpen && (
+          <div className="notif-panel" ref={notifPanelRefDoc}>
+            <div className="notif-panel-header">
+              <strong>Notifications</strong>
+              <button className="btn-link" onClick={() => clearNotificationsDoc()}>Clear</button>
+            </div>
+            <div className="notif-list">
+              {notifsLoading && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '15px' }}>
+                  <div className="spinner-mini" style={{ borderTopColor: 'var(--primary)' }}></div>
                 </div>
-              </div>
-            ))}
+              )}
+              {notifications.length === 0 && !notifsLoading && <div className="notif-empty">No notifications</div>}
+              {notifications.map(n => (
+                <div key={n.id} className={`notif-item ${n.type || ''}`}>
+                  <div className="notif-message">{n.message}</div>
+                  <div className="notif-meta">
+                    <small>{new Date(n.timestamp).toLocaleString()}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="dashboard-tabs">
         <button

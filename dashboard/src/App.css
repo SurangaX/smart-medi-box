@@ -404,6 +404,7 @@ button, a { user-select: none; cursor: pointer; }
   border-radius: 12px;
   margin-bottom: 24px;
   border: 1px solid var(--border);
+  position: relative;
 }
 
 .header-content h1 {

@@ -21,9 +21,9 @@
 }
 
 .notif-panel {
-  position: fixed;
-  right: 16px;
-  top: 64px; /* directly below header */
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px); /* directly below header */
   width: 340px;
   max-height: 60vh;
   background: var(--card-bg);
