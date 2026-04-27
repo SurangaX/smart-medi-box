@@ -1,9 +1,5 @@
 // Smart Medi Box Dashboard - v1.5.5
 import React, { useState, useEffect, useRef } from 'react';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { Device } from '@capacitor/device';
-import { Capacitor } from '@capacitor/core';
-import './notifications.css';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Thermometer, Clock, Users, LogOut, CheckCircle2, FileText, Plus, Edit, Trash2, Phone, MapPin, Calendar, Lock, Eye, EyeOff, X, Camera, Activity, Bell, Check, Menu, ChevronDown, ChevronUp, Unlock } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
@@ -4659,76 +4655,6 @@ export default function App() {
 
   // Handle Expo Push Token from WebView (Old approach - keeping for compatibility)
   useEffect(() => {
-    const processToken = (pushToken) => {
-      if (!pushToken) return;
-      localStorage.setItem('expo_push_token', pushToken);
-      console.log('Received Expo Push Token:', pushToken);
-      
-      // Use the existing toast system instead of alert for better UX
-      setToasts(prev => [...prev, { 
-        id: Date.now(), 
-        message: '📱 Mobile Notifications Linked Successfully', 
-        type: 'success' 
-      }]);
-      
-      const userId = localStorage.getItem('user_id');
-      if (userId) {
-        updatePushTokenOnBackend(userId, pushToken);
-      }
-    };
-
-    // CAPACITOR NATIVE PUSH REGISTRATION
-    if (Capacitor.isNativePlatform()) {
-      console.log('🚀 Capacitor: Registering native push notifications...');
-      
-      const setupPush = async () => {
-        let permStatus = await PushNotifications.checkPermissions();
-
-        if (permStatus.receive === 'prompt') {
-          permStatus = await PushNotifications.requestPermissions();
-        }
-
-        if (permStatus.receive !== 'granted') {
-          console.warn('User denied push permissions');
-          return;
-        }
-
-        await PushNotifications.register();
-
-        // Listen for successful registration
-        PushNotifications.addListener('registration', (token) => {
-          console.log('✅ Capacitor Push Token:', token.value);
-          // Capacitor provides FCM tokens, but we'll store it in the same slot for the backend
-          processToken(token.value);
-        });
-
-        // Listen for errors
-        PushNotifications.addListener('registrationError', (err) => {
-          console.error('Push registration error: ', err.error);
-        });
-
-        // Listen for incoming notifications (foreground)
-        PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          console.log('🔔 Push received:', notification);
-          window.appNotify({
-            message: notification.title + ': ' + notification.body,
-            type: 'info'
-          });
-        });
-
-        // Listen for notification tap
-        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-          console.log('👉 Push action performed:', notification.actionId, notification.notification);
-          const data = notification.notification.data;
-          if (data && data.tab) {
-             window.appNavigate(null, data.tab);
-          }
-        });
-      };
-
-      setupPush();
-    }
-
     const handleMessage = (event) => {
       try {
         let data = event.data;
@@ -4737,7 +4663,21 @@ export default function App() {
         }
         
         if (data && data.type === 'expo-push-token') {
-          processToken(data.token);
+          const pushToken = data.token;
+          if (!pushToken) return;
+          localStorage.setItem('expo_push_token', pushToken);
+          console.log('Received Expo Push Token:', pushToken);
+          
+          setToasts(prev => [...prev, { 
+            id: Date.now(), 
+            message: '📱 Mobile Notifications Linked Successfully', 
+            type: 'success' 
+          }]);
+          
+          const userId = localStorage.getItem('user_id');
+          if (userId) {
+            updatePushTokenOnBackend(userId, pushToken);
+          }
         }
       } catch (e) {
         console.error('Error handling WebView message:', e);
@@ -4745,7 +4685,12 @@ export default function App() {
     };
 
     const handleCustomEvent = (e) => {
-      if (e.detail) processToken(e.detail);
+      if (e.detail) {
+        const pushToken = e.detail;
+        localStorage.setItem('expo_push_token', pushToken);
+        const userId = localStorage.getItem('user_id');
+        if (userId) updatePushTokenOnBackend(userId, pushToken);
+      }
     };
 
     window.addEventListener('message', handleMessage);
