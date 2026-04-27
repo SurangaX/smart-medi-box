@@ -879,7 +879,6 @@ function handleTriggerDueSchedules($method) {
                     pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notifId]);
                 }
             }
-            }
 
             // Always queue arduino commands when a schedule triggers
             $time_str = str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ":" . str_pad($row['minute'], 2, '0', STR_PAD_LEFT);
