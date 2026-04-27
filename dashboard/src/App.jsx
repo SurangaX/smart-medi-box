@@ -3098,6 +3098,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
         {activeTab === 'chat' && <ChatSection user={{ role: 'PATIENT', id: profile.id, user_id: profile.user_id }} token={token} isMobile={isMobile} />}
       </div>
 
+      {/* --- Modals (Moved Outside Dashboard Content for Mobile Fix) --- */}
       {/* Article Detail Modal */}
       {selectedArticle && (
         <div className={`modal-overlay ${isArticleLoading ? 'no-backdrop-blur' : ''}`} onClick={() => setSelectedArticle(null)}>
@@ -3131,7 +3132,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="modal-overlay">
+        <div className="modal-overlay urgent-alert">
           <div className="modal-content">
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
@@ -4547,6 +4548,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
         {activeTab === 'chat' && <ChatSection user={{ role: 'DOCTOR', id: profile.id, user_id: profile.user_id }} token={token} initialContactId={chatInitialContactId} isMobile={isMobile} />}
       </div>
 
+      {/* --- Modals (Moved Outside Dashboard Content for Mobile Fix) --- */}
       {/* Delete Article Confirmation Modal */}
       {showDeleteArticleConfirm && (
         <div className="modal-overlay">
@@ -4574,7 +4576,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="modal-overlay">
+        <div className="modal-overlay urgent-alert">
           <div className="modal-content">
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
@@ -4592,27 +4594,25 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
 
       {/* Unassign Confirmation Modal */}
       {showUnassignConfirm && (
-        <div className="unassign-confirm-overlay" onClick={() => setShowUnassignConfirm(false)}>
-          <div className="unassign-confirm-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div style={{ textAlign: 'center', padding: '10px' }}>
+        <div className="modal-overlay" onClick={() => setShowUnassignConfirm(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center' }}>
               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}>
                 <AlertCircle size={32} />
               </div>
-              <h2 style={{ marginBottom: '10px' }}>Unassign Patient?</h2>
-              <p style={{ opacity: 0.7, marginBottom: '20px' }}>
+              <h2>Unassign Patient?</h2>
+              <p style={{ marginBottom: '20px' }}>
                 Are you sure you want to unassign <strong>{selectedPatient?.name}</strong>? You will no longer be able to manage their medical data.
               </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  className="btn-secondary" 
-                  style={{ flex: 1 }}
+              <div className="modal-buttons">
+                <button
+                  className="btn-secondary"
                   onClick={() => setShowUnassignConfirm(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  className="btn-danger" 
-                  style={{ flex: 1 }}
+                <button
+                  className="btn-danger"
                   onClick={() => unassignPatient()}
                   disabled={unassigningId !== null}
                 >
@@ -4622,8 +4622,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
             </div>
           </div>
         </div>
-      )}
-    </div>
+      )}    </div>
   );
 };
 
