@@ -2333,19 +2333,21 @@ button, a { user-select: none; cursor: pointer; }
 
 /* ==================== Modal Styles ==================== */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
   display: flex;
-  align-items: center; /* Center vertically */
+  align-items: center;
   justify-content: center;
-  z-index: 3000;
+  z-index: 9999 !important;
   animation: fadeIn 0.3s ease;
-  padding: 16px; /* Optimized padding for mobile edges */
+  padding: 16px;
 }
 
 /* When we only want to blur the modal content, disable the overlay's backdrop blur */
