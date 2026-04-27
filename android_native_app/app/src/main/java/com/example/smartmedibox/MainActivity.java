@@ -96,14 +96,10 @@ public class MainActivity extends AppCompatActivity {
         // This script checks localStorage for user info and calls the Android interface
         String script = "javascript:(function() {" +
                 "  const checkLogin = () => {" +
-                "    const user = localStorage.getItem('user');" +
-                "    if (user) {" +
+                "    const userId = localStorage.getItem('user_id');" +
+                "    if (userId) {" +
                 "      try {" +
-                "        const userData = JSON.parse(user);" +
-                "        const userId = userData.user_id || userData.id;" +
-                "        if (userId) {" +
-                "          AndroidInterface.onUserLogin(userId.toString());" +
-                "        }" +
+                "        AndroidInterface.onUserLogin(userId.toString());" +
                 "      } catch (e) { console.error(e); }" +
                 "    }" +
                 "  };" +
