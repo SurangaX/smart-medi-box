@@ -2611,7 +2611,8 @@ strong.offline {
 }
 
 .profile-auth-form .form-row .form-group {
-  flex: 1 !important;
+  flex: 1 1 0% !important;
+  min-width: 0;
 }
 
 .profile-auth-form .form-group label {
@@ -2619,10 +2620,14 @@ strong.offline {
   font-size: 13px !important;
   font-weight: 600 !important;
   color: var(--text-secondary) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-auth-form .form-group input,
 .profile-auth-form .form-group select {
+  width: 100% !important;
   padding: 10px 14px !important;
   height: 42px !important;
   border-radius: 8px !important;
