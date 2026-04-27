@@ -1,10 +1,9 @@
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.smartmedibox"
+    namespace = "com.smartmedibox.finalapp"
     compileSdk = 34
 
     defaultConfig {
@@ -39,13 +38,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
-
-    // Add the dependency for the Firebase Cloud Messaging
-    implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.firebase:firebase-analytics")
 
     // WebView
     implementation("androidx.webkit:webkit:1.10.0")

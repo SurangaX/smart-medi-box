@@ -850,30 +850,8 @@ function handleTriggerDueSchedules($method) {
                 error_log("TRIGGER_DUE - Inserted notification ID: " . $notifId . " for user: " . $user_db_id);
 
                 // Send Push Notification
-                $app_sent = false;
-                // Prioritize ntfy.sh delivery
+                // Delivery strictly via ntfy.sh (Bypasses Google limits)
                 $app_sent = sendNtfyNotification($user_db_id, "Smart Medi Box Alarm", $message);
-                
-                if (!$app_sent) {
-                    // Fallback to Expo/FCM
-                    $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
-                    $tokenResult = pg_query_params($conn, $tokenQuery, [$user_db_id]);
-                    if ($tokenResult && pg_num_rows($tokenResult) > 0) {
-                        $user = pg_fetch_assoc($tokenResult);
-                        $token = $user['expo_push_token'];
-                        
-                        if (!empty($token)) {
-                            // Try Expo delivery
-                            $expo_sent = sendExpoPushNotification($token, "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_db_id]);
-                            
-                            // Try FCM delivery (Capacitor)
-                            $fcm_sent = sendFCMPushNotification($token, "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_db_id]);
-                            
-                            $app_sent = $expo_sent || $fcm_sent;
-                            error_log("SCHEDULE PUSH ATTEMPT: token=$token, expo=$expo_sent, fcm=$fcm_sent");
-                        }
-                    }
-                }
 
                 if ($app_sent && $notifId) {
                     pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notifId]);

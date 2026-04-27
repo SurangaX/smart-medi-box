@@ -29,7 +29,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Register the Background Notification Service -->
+        <!-- Register the Background Notification Service (ntfy.sh) -->
         <service
             android:name=".NotificationService"
             android:enabled="true"
