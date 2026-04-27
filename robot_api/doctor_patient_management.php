@@ -178,10 +178,6 @@ class DoctorPatientManager {
             $patient_info = pg_fetch_assoc($result);
             if (!$patient_info) return ['status' => 'ERROR', 'message' => 'Patient not found'];
 
-            // Robust query:
-            // 1. Filter by ACTIVE status to hide deleted ones
-            // 2. For one-time schedules (is_recurring=false), use the persistent is_completed column
-            // 3. For recurring schedules, check if completed TODAY via logs
             $query = "SELECT 
                         s.*,
                         (CASE 
@@ -196,7 +192,6 @@ class DoctorPatientManager {
             $result = pg_query_params($this->db, $query, [$patient_info['user_id']]);
             $schedules = [];
             while ($row = pg_fetch_assoc($result)) {
-                // Ensure is_completed reflects our calculation
                 $row['is_completed'] = ($row['calculated_completed'] === 't' || $row['calculated_completed'] === true);
                 $schedules[] = $row;
             }
@@ -235,12 +230,10 @@ class DoctorPatientManager {
             if ($auth['status'] !== 'SUCCESS') return $auth;
             $doctor_user_id = $auth['user_id'];
 
-            // Get the patient's user_id from their patient_id
             $res = pg_query_params($this->db, "SELECT user_id FROM patients WHERE id = $1", [$patient_id]);
             if (!$res || pg_num_rows($res) === 0) return ['status' => 'ERROR', 'message' => 'Patient not found'];
             $patient_user_id = pg_fetch_assoc($res)['user_id'];
 
-            // Handle file upload
             $file_data = null;
             $file_mime = null;
             $file_name = null;
@@ -256,27 +249,19 @@ class DoctorPatientManager {
 
             $query = "INSERT INTO patient_reports (patient_id, doctor_id, title, notes, file_data, file_mime, file_name) 
                       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id";
-            // Use pg_escape_bytea for the binary data parameter
             $result = pg_query_params($this->db, $query, [$patient_user_id, $doctor_user_id, $title, $notes, pg_escape_bytea($file_data), $file_mime, $file_name]);
             
             if (!$result) throw new Exception(pg_last_error($this->db));
 
-            // Add notification for patient (using patient_user_id)
             $notif_msg = "Your doctor has uploaded a new medical report: " . $title;
             $notif_res = pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$patient_user_id, 'NEW_REPORT', $notif_msg]);
             
-            // Send Push Notification
+            // Send Push Notification strictly via ntfy.sh
             if ($notif_res && pg_num_rows($notif_res) > 0) {
                 $notif_id = pg_fetch_assoc($notif_res)['id'];
-                $token_res = pg_query_params($this->db, "SELECT expo_push_token FROM users WHERE id = $1", [$patient_user_id]);
-                if ($token_res && pg_num_rows($token_res) > 0) {
-                    $user = pg_fetch_assoc($token_res);
-                    if (!empty($user['expo_push_token'])) {
-                        $sent = sendExpoPushNotification($user['expo_push_token'], "New Medical Report", $notif_msg, ['type' => 'report']);
-                        if ($sent) {
-                            pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
-                        }
-                    }
+                $sent = sendNtfyNotification($patient_user_id, "New Medical Report", $notif_msg);
+                if ($sent) {
+                    pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
                 }
             }
 
@@ -293,29 +278,20 @@ class DoctorPatientManager {
             if ($auth['status'] !== 'SUCCESS') return $auth;
             $user_id = $auth['user_id'];
 
-            // If patient_id is provided, check if the doctor is assigned to this patient
             if ($patient_id) {
-                // Get doctor's ID from doctors table
                 $res = pg_query_params($this->db, "SELECT id FROM doctors WHERE user_id = $1", [$user_id]);
                 if (!$res || pg_num_rows($res) === 0) return ['status' => 'ERROR', 'message' => 'Doctor profile not found'];
                 $doctor_id = pg_fetch_assoc($res)['id'];
-
-                // Check assignment
                 $check = pg_query_params($this->db, "SELECT 1 FROM patient_doctor_assignments WHERE doctor_id = $1 AND patient_id = $2", [$doctor_id, $patient_id]);
                 if (!$check || pg_num_rows($check) === 0) return ['status' => 'ERROR', 'message' => 'Unauthorized access to patient reports'];
-                
-                // Get patient's user_id
                 $res = pg_query_params($this->db, "SELECT user_id FROM patients WHERE id = $1", [$patient_id]);
                 $patient_user_id = pg_fetch_assoc($res)['user_id'];
-
                 $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
                 $result = pg_query_params($this->db, $query, [$patient_user_id]);
             } else {
-                // For patient calling their own reports (user_id is users.id)
                 $query = "SELECT id, title, notes, file_name, file_mime, created_at FROM patient_reports WHERE patient_id = $1 ORDER BY created_at DESC";
                 $result = pg_query_params($this->db, $query, [$user_id]);
             }
-
             $reports = [];
             if ($result) {
                 while ($row = pg_fetch_assoc($result)) $reports[] = $row;
@@ -340,7 +316,6 @@ class ChatManager {
             $auth = $this->authenticateUser($token);
             if ($auth['status'] !== 'SUCCESS') return $auth;
             
-            // Get sender's name for the notification
             $sender_id = $auth['user_id'];
             $sender_res = pg_query_params($this->db, "SELECT name FROM users WHERE id = $1", [$sender_id]);
             $sender_name = "Someone";
@@ -348,28 +323,19 @@ class ChatManager {
                 $sender_name = pg_fetch_assoc($sender_res)['name'];
             }
 
-            // Insert message
             pg_query_params($this->db, "INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3)", [$sender_id, $receiver_user_id, $message]);
             
-            // Add notification for receiver
             $notif_msg = "New message from " . $sender_name . ": " . (strlen($message) > 50 ? substr($message, 0, 47) . "..." : $message);
             $notif_res = pg_query_params($this->db, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$receiver_user_id, 'NEW_MESSAGE', $notif_msg]);
 
-            // Send Push Notification
+            // Send Push Notification via ntfy.sh strictly
             if ($notif_res && pg_num_rows($notif_res) > 0) {
                 $notif_id = pg_fetch_assoc($notif_res)['id'];
-                $token_res = pg_query_params($this->db, "SELECT expo_push_token FROM users WHERE id = $1", [$receiver_user_id]);
-                if ($token_res && pg_num_rows($token_res) > 0) {
-                    $user = pg_fetch_assoc($token_res);
-                    if (!empty($user['expo_push_token'])) {
-                        $sent = sendExpoPushNotification($user['expo_push_token'], "New Message", $notif_msg, ['type' => 'chat', 'sender_id' => $sender_id]);
-                        if ($sent) {
-                            pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
-                        }
-                    }
+                $sent = sendNtfyNotification($receiver_user_id, "New Message from " . $sender_name, $message);
+                if ($sent) {
+                    pg_query_params($this->db, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
                 }
             }
-
             return ['status' => 'SUCCESS', 'message' => 'Sent'];
         } catch (Exception $e) { return ['status' => 'ERROR', 'message' => $e->getMessage()]; }
     }
@@ -442,7 +408,6 @@ try {
             case 'article/create': echo json_encode($am->createArticle($input['token'] ?? '', $input['title'] ?? '', $input['content'] ?? '', $input['summary'] ?? '', $input['category'] ?? '')); break;
             
             case 'doctor/upload-report':
-                // Handle multipart form data
                 $token = $_POST['token'] ?? '';
                 $patient_id = $_POST['patient_id'] ?? '';
                 $title = $_POST['title'] ?? '';
