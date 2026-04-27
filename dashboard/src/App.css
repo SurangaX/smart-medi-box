@@ -3498,9 +3498,20 @@ strong.offline {
   }
 
   .modal-content {
-    width: 98% !important;
-    height: 95vh !important;
-    margin: 5px !important;
+    width: 95% !important;
+    height: auto !important;
+    max-height: 90vh !important;
+    margin: auto !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Specialized centering for simple confirmation modals */
+  .logout-modal-content {
+    justify-content: center;
+    padding: 32px 24px !important;
+    text-align: center;
+    min-height: 200px;
   }
 
   .modal-header {

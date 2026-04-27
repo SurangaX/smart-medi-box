@@ -3133,7 +3133,7 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="modal-overlay urgent-alert">
-          <div className="modal-content">
+          <div className="modal-content logout-modal-content">
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
             <div className="modal-buttons">
@@ -4577,7 +4577,7 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="modal-overlay urgent-alert">
-          <div className="modal-content">
+          <div className="modal-content logout-modal-content">
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to logout? You'll need to log in again to access your dashboard.</p>
             <div className="modal-buttons">
