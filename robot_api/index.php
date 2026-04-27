@@ -97,10 +97,18 @@ foreach ($path_parts as $index => $part) {
 
 // If we didn't find a clear start, use the last parts of the path as a fallback
 if (empty($request_parts)) {
-    // Filter out index.php and empty parts
+    // Filter out index.php, other physical files, and empty parts
     $request_parts = array_values(array_filter($path_parts, function($p) {
         $p_low = strtolower($p);
-        return $p_low !== 'index.php' && $p_low !== '' && $p_low !== 'robot_api' && $p_low !== 'api';
+        $ignore_list = ['index.php', 'robot_api', 'api', 'test_links.html', 'env_check.php', 'db_config.php'];
+        if (in_array($p_low, $ignore_list) || $p_low === '') {
+            return false;
+        }
+        // Also ignore anything with a .php or .html extension that isn't a known module
+        if (preg_match('/\.(php|html|htm|js|css)$/', $p_low)) {
+            return false;
+        }
+        return true;
     }));
 }
 
