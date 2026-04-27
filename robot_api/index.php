@@ -58,50 +58,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Set default content type
 header('Content-Type: application/json');
 
-// Parse the request URL - use PATH_INFO which doesn't include script name
-// PATH_INFO = /api/auth/patient/signup (without the /index.php part)
-$request_path = $_SERVER['PATH_INFO'] ?? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// Parse the request URL more robustly
+$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+$script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // e.g. /robot_api/index.php
+$base_dir = rtrim(dirname($script_name), '/\\'); // e.g. /robot_api
 
-error_log("INDEX.PHP - REQUEST_URI: " . $_SERVER['REQUEST_URI']);
-error_log("INDEX.PHP - PATH_INFO: " . ($_SERVER['PATH_INFO'] ?? 'NOT SET'));
-error_log("INDEX.PHP - request_path: " . $request_path);
+$path = parse_url($request_uri, PHP_URL_PATH);
 
-// Remove leading/trailing slashes and split
+// Remove the base directory and index.php from the path to get the API segments
+$request_path = $path;
+if ($script_name && strpos($request_path, $script_name) === 0) {
+    $request_path = substr($request_path, strlen($script_name));
+} elseif ($base_dir && strpos($request_path, $base_dir) === 0) {
+    $request_path = substr($request_path, strlen($base_dir));
+}
+
+error_log("INDEX.PHP - REQUEST_URI: " . $request_uri);
+error_log("INDEX.PHP - Final request_path (before clean): " . $request_path);
+
+// Clean path and split into parts
 $request_path = trim($request_path, '/');
 $request_parts = explode('/', $request_path);
 
+// Filter out 'index.php' if it leaked in
+$request_parts = array_values(array_filter($request_parts, function($part) {
+    return $part !== 'index.php' && $part !== '';
+}));
+
 error_log("INDEX.PHP - request_parts: " . json_encode($request_parts));
 
-// Remove 'index.php' if it's the first part (shouldn't be with PATH_INFO, but be safe)
-if (isset($request_parts[0]) && $request_parts[0] === 'index.php') {
-    error_log("INDEX.PHP - Removing index.php from request_parts");
+// Skip optional 'api' prefix
+if (isset($request_parts[0]) && $request_parts[0] === 'api') {
     array_shift($request_parts);
 }
 
-// Expected format: /api/{module}/{action}
-// Example: /api/auth/verify or /api/status
-if (count($request_parts) < 2 || $request_parts[0] !== 'api') {
-    error_log("INDEX.PHP - Invalid API request. Count: " . count($request_parts) . ", First part: " . ($request_parts[0] ?? 'EMPTY'));
+// Skip optional version prefix (e.g., v1, v3)
+if (isset($request_parts[0]) && preg_match('/^v\d+$/', $request_parts[0])) {
+    array_shift($request_parts);
+}
+
+if (empty($request_parts)) {
+    error_log("INDEX.PHP - Empty API request.");
     http_response_code(400);
     echo json_encode([
         'status' => 'ERROR',
         'message' => 'Invalid API request',
         'hint' => 'Use format: /api/{module}/{action}',
-        'received_path' => $_SERVER['PATH_INFO'] ?? 'none',
-        'debug' => true
+        'debug' => [
+            'uri' => $request_uri,
+            'path' => $path,
+            'parts' => $request_parts
+        ]
     ]);
     exit();
 }
 
-error_log("INDEX.PHP - Valid API request");
-$module = $request_parts[1];
-$action = isset($request_parts[2]) ? $request_parts[2] : '';
-$subaction = isset($request_parts[3]) ? $request_parts[3] : '';
+$module = $request_parts[0];
+$action = isset($request_parts[1]) ? $request_parts[1] : '';
+$subaction = isset($request_parts[2]) ? $request_parts[2] : '';
 error_log("INDEX.PHP - module: " . $module . ", action: " . $action . ", subaction: " . $subaction);
 
 // Route to appropriate module
 error_log("INDEX.PHP - Starting switch for module: " . $module);
 switch ($module) {
+    case 'sms':
+        // Handle SMS sending proxy
+        if ($action === 'send') {
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (!$input) $input = $_POST;
+            
+            $res = sendSMSNotification($input['recipient'] ?? '', $input['message'] ?? '');
+            echo json_encode($res);
+        } else {
+            http_response_code(404);
+            echo json_encode(['status' => 'ERROR', 'message' => 'SMS action not found']);
+        }
+        break;
+
     case 'auth':
         // All auth endpoints (login, signup, QR-based verify, pairing, etc.)
         // The auth.php module handles routing to specific handlers
