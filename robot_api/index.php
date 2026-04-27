@@ -121,7 +121,7 @@ if (empty($request_parts)) {
         'status' => 'ERROR',
         'message' => 'Invalid API request',
         'hint' => 'Use format: /api/{module}/{action}',
-        'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report'],
+        'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report', 'doctor', 'patient'],
         'debug' => ['uri' => $request_uri, 'path' => $path]
     ]);
     exit();
@@ -254,7 +254,7 @@ switch ($module) {
         echo json_encode([
             'status' => 'ERROR',
             'message' => 'Unknown API module: ' . $module,
-            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report']
+            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report', 'doctor', 'patient']
         ]);
         break;
 }
@@ -276,7 +276,9 @@ function handleSystemStatus() {
             'device' => '/api/device/{action}',
             'sms' => '/api/sms/send',
             'articles' => '/api/articles/{action}',
-            'notifications' => '/api/notifications/{action}'
+            'notifications' => '/api/notifications/{action}',
+            'doctor' => '/api/doctor/{action}',
+            'patient' => '/api/patient/{action}'
         ]
     ]);
 }
