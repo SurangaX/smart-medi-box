@@ -128,10 +128,31 @@
 }
 
 /* Bell Badge */
+.btn-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border, #404040);
+  cursor: pointer;
+  padding: 8px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary, #3b82f6);
+}
+
 .notif-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   background: var(--danger, #ef4444);
   color: white;
   font-size: 10px;
@@ -143,7 +164,7 @@
   justify-content: center;
   border-radius: 50%;
   border: 2px solid var(--surface, #2d2d2d);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 /* Device actions modern style */
