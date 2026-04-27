@@ -259,6 +259,76 @@ function handleTestPush($method) {
     }
 }
 
+function handleMarkNotificationSent($method) {
+    global $conn;
+    if ($method !== 'POST') return errorResponse(405, 'Method not allowed');
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $notif_id = $input['notification_id'] ?? null;
+    $sent_type = $input['sent_type'] ?? 'app'; // 'app' or 'sms'
+    
+    if (!$notif_id) return errorResponse(400, 'notification_id required');
+    
+    try {
+        $column = ($sent_type === 'sms') ? 'sms_sent' : 'app_sent';
+        $time_column = ($sent_type === 'sms') ? 'sms_sent_at' : 'app_sent_at';
+        $query = "UPDATE notifications SET $column = true, $time_column = NOW() WHERE id = $1";
+        pg_query_params($conn, $query, [$notif_id]);
+        echo json_encode(['status' => 'SUCCESS', 'message' => 'Notification marked as sent']);
+    } catch (Exception $e) {
+        return errorResponse(500, $e->getMessage());
+    }
+}
+
+function handleDismissAllNotifications($method) {
+    global $conn;
+    if ($method !== 'POST') return errorResponse(405, 'Method not allowed');
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $user_id = $input['user_id'] ?? null;
+    $type = $input['type'] ?? null;
+    
+    if (!$user_id) return errorResponse(400, 'user_id required');
+    
+    try {
+        // 1. Dismiss notifications
+        if ($type) {
+            $query = "UPDATE notifications SET is_dismissed = true WHERE user_id = $1 AND type = $2 AND is_dismissed = false";
+            pg_query_params($conn, $query, [$user_id, $type]);
+        } else {
+            $query = "UPDATE notifications SET is_dismissed = true WHERE user_id = $1 AND is_dismissed = false";
+            pg_query_params($conn, $query, [$user_id]);
+        }
+
+        // 2. Also dismiss any active alarms in alarm_logs to stop nagging for today
+        // This is critical because trigger-due checks alarm_logs to decide whether to re-notify
+        $alarmQuery = "UPDATE alarm_logs SET status = 'DISMISSED', dismissed_at = NOW() 
+                      WHERE user_id = $1 AND status = 'TRIGGERED'";
+        pg_query_params($conn, $alarmQuery, [$user_id]);
+
+        // 3. Stop Arduino buzzer if it's currently on
+        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'BUZZ:OFF', 'PENDING')", [$user_id]);
+
+        echo json_encode(['status' => 'SUCCESS', 'message' => 'Notifications and active alarms dismissed']);
+    } catch (Exception $e) {
+        return errorResponse(500, $e->getMessage());
+    }
+}
+
+function handleMarkNotificationsRead($method) {
+    global $conn;
+    if ($method !== 'POST') return errorResponse(405, 'Method not allowed');
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $user_id = $input['user_id'] ?? null;
+    
+    if (!$user_id) return errorResponse(400, 'user_id required');
+    
+    try {
+        pg_query_params($conn, "UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false", [$user_id]);
+        echo json_encode(['status' => 'SUCCESS', 'message' => 'Notifications marked as read']);
+    } catch (Exception $e) {
+        return errorResponse(500, $e->getMessage());
+    }
+}
+
 function sendSMS($phone, $message) {
     error_log("SMS_SENT: phone=$phone, message=$message");
     return true; 

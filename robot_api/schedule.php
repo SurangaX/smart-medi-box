@@ -773,7 +773,7 @@ function handleTriggerDueSchedules($method) {
             }
 
             // Check for existing alarms today to handle repeat reminders (every 5 mins up to 30 mins)
-            $lastAlarmQuery = "SELECT triggered_at FROM alarm_logs 
+            $lastAlarmQuery = "SELECT triggered_at, status FROM alarm_logs 
                                WHERE schedule_id = $1 AND DATE(triggered_at) = $2 
                                ORDER BY triggered_at DESC LIMIT 1";
             $lastAlarmResult = pg_query_params($conn, $lastAlarmQuery, array($schedule_db_id, $date));
@@ -782,6 +782,13 @@ function handleTriggerDueSchedules($method) {
             if ($lastAlarmResult && pg_num_rows($lastAlarmResult) > 0) {
                 $lastAlarmRow = pg_fetch_assoc($lastAlarmResult);
                 $lastTriggered = new DateTime($lastAlarmRow['triggered_at']);
+                $lastStatus = $lastAlarmRow['status'];
+
+                // If user already dismissed or acknowledged today's alarm, stop nagging them for this schedule
+                if ($lastStatus === 'DISMISSED' || $lastStatus === 'ACKNOWLEDGED' || $lastStatus === 'MISSED') {
+                    error_log("TRIGGER_DUE - Skipping schedule $schedule_db_id: last alarm status is $lastStatus");
+                    continue;
+                }
                 
                 // Calculate original scheduled time for today to determine the 30-min window
                 $schedTime = clone $now;
