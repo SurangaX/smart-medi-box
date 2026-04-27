@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Medi Box - API Test Links</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 20px; color: #333; }
+        h1 { color: #2c3e50; }
+        .test-group { margin-bottom: 30px; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
+        .test-group h2 { margin-top: 0; color: #3498db; }
+        .link-item { margin-bottom: 10px; }
+        code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+        a { color: #e67e22; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .method { font-weight: bold; color: #27ae60; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Smart Medi Box API Diagnostics</h1>
+    <p>Use these links to verify that the API router is correctly handling modules and bypassing path prefixes like <code>robot_api</code>.</p>
+
+    <div class="test-group">
+        <h2>System Status</h2>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/api/status" target="_blank">/api/status</a>
+            <span>(Standard path)</span>
+        </div>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/robot_api/api/status" target="_blank">/robot_api/api/status</a>
+            <span>(With redundant prefix)</span>
+        </div>
+    </div>
+
+    <div class="test-group">
+        <h2>SMS Module (New)</h2>
+        <p>To test SMS sending, you should use POST, but you can check the 404 handler for the module via GET:</p>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/api/sms/check" target="_blank">/api/sms/check</a>
+            <span>(Should return SMS action not found)</span>
+        </div>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/robot_api/api/sms/check" target="_blank">/robot_api/api/sms/check</a>
+            <span>(Should also return SMS action not found, NOT Unknown Module)</span>
+        </div>
+    </div>
+
+    <div class="test-group">
+        <h2>Schedule Module</h2>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/api/schedule/get?user_id=TEST" target="_blank">/api/schedule/get</a>
+        </div>
+    </div>
+
+    <div class="test-group">
+        <h2>Articles Module</h2>
+        <div class="link-item">
+            <span class="method">GET</span>
+            <a href="index.php/api/articles/list" target="_blank">/api/articles/list</a>
+        </div>
+    </div>
+
+    <p><small>Note: These links assume <code>index.php</code> is in the same directory. If testing on a server with mod_rewrite, you can remove <code>index.php/</code> from the URLs.</small></p>
+</body>
+</html>

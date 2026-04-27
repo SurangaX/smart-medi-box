@@ -58,57 +58,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Set default content type
 header('Content-Type: application/json');
 
+require_once 'db_config.php';
+
 // Parse the request URL more robustly
 $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-$script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // e.g. /robot_api/index.php
-$base_dir = rtrim(dirname($script_name), '/\\'); // e.g. /robot_api
-
 $path = parse_url($request_uri, PHP_URL_PATH);
 
-// Remove the base directory and index.php from the path to get the API segments
-$request_path = $path;
-if ($script_name && strpos($request_path, $script_name) === 0) {
-    $request_path = substr($request_path, strlen($script_name));
-} elseif ($base_dir && strpos($request_path, $base_dir) === 0) {
-    $request_path = substr($request_path, strlen($base_dir));
+// Split path into parts and clean it
+$path_parts = explode('/', trim($path, '/'));
+
+// We want to find where the actual API request starts.
+// Usually it's after 'api', 'v1', 'v2', etc. or just after index.php
+$request_parts = [];
+$found_start = false;
+
+foreach ($path_parts as $index => $part) {
+    if ($part === 'index.php') {
+        continue;
+    }
+    
+    if (!$found_start) {
+        // Skip 'api', 'robot_api' or a version like 'v3' to find the start
+        if ($part === 'api' || $part === 'robot_api' || preg_match('/^v\d+$/', $part)) {
+            continue;
+        }
+        
+        // Check if this part is a known module
+        $known_modules = ['auth', 'schedule', 'temperature', 'temp', 'user', 'device', 'notifications', 'alarm', 'status', 'articles', 'chat', 'image', 'report', 'sms', 'doctor', 'patient'];
+        if (in_array(strtolower($part), $known_modules)) {
+            $found_start = true;
+            $request_parts[] = strtolower($part);
+            continue;
+        }
+    } else {
+        $request_parts[] = $part;
+    }
 }
 
-error_log("INDEX.PHP - REQUEST_URI: " . $request_uri);
-error_log("INDEX.PHP - Final request_path (before clean): " . $request_path);
-
-// Clean path and split into parts
-$request_path = trim($request_path, '/');
-$request_parts = explode('/', $request_path);
-
-// Filter out 'index.php' if it leaked in
-$request_parts = array_values(array_filter($request_parts, function($part) {
-    return $part !== 'index.php' && $part !== '';
-}));
-
-error_log("INDEX.PHP - request_parts: " . json_encode($request_parts));
-
-// Skip optional 'api' prefix
-if (isset($request_parts[0]) && $request_parts[0] === 'api') {
-    array_shift($request_parts);
+// If we didn't find a clear start, use the last parts of the path as a fallback
+if (empty($request_parts)) {
+    // Filter out index.php and empty parts
+    $request_parts = array_values(array_filter($path_parts, function($p) {
+        $p_low = strtolower($p);
+        return $p_low !== 'index.php' && $p_low !== '' && $p_low !== 'robot_api' && $p_low !== 'api';
+    }));
 }
 
-// Skip optional version prefix (e.g., v1, v3)
-if (isset($request_parts[0]) && preg_match('/^v\d+$/', $request_parts[0])) {
-    array_shift($request_parts);
-}
+error_log("INDEX.PHP - URI: " . $request_uri);
+error_log("INDEX.PHP - Decoded Parts: " . json_encode($request_parts));
 
 if (empty($request_parts)) {
-    error_log("INDEX.PHP - Empty API request.");
     http_response_code(400);
     echo json_encode([
         'status' => 'ERROR',
         'message' => 'Invalid API request',
         'hint' => 'Use format: /api/{module}/{action}',
-        'debug' => [
-            'uri' => $request_uri,
-            'path' => $path,
-            'parts' => $request_parts
-        ]
+        'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report'],
+        'debug' => ['uri' => $request_uri, 'path' => $path]
     ]);
     exit();
 }
@@ -240,7 +246,7 @@ switch ($module) {
         echo json_encode([
             'status' => 'ERROR',
             'message' => 'Unknown API module: ' . $module,
-            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status']
+            'available_modules' => ['auth', 'schedule', 'temperature', 'user', 'device', 'articles', 'status', 'sms', 'notifications', 'chat', 'image', 'report']
         ]);
         break;
 }
@@ -252,14 +258,17 @@ function handleSystemStatus() {
     echo json_encode([
         'status' => 'OK',
         'service' => 'Smart Medi Box API',
-        'version' => '2.0.1',
+        'version' => '2.0.2',
         'timestamp' => date('Y-m-d H:i:s'),
         'endpoints' => [
             'auth' => '/api/auth/{action}',
             'schedule' => '/api/schedule/{action}',
             'temperature' => '/api/temperature/{action}',
             'user' => '/api/user/{action}',
-            'device' => '/api/device/{action}'
+            'device' => '/api/device/{action}',
+            'sms' => '/api/sms/send',
+            'articles' => '/api/articles/{action}',
+            'notifications' => '/api/notifications/{action}'
         ]
     ]);
 }
