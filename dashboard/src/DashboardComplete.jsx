@@ -352,30 +352,12 @@ const OverviewSection = ({ schedules, tempData, currentTemp, deviceStatus }) => 
 
 const SchedulesSection = ({ schedules, onRefresh, userId }) => {
   const [showForm, setShowForm] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = React.useRef(null);
   const [formData, setFormData] = useState({
     type: 'MEDICINE',
     hour: 8,
     minute: 0,
     description: ''
   });
-
-  const scheduleTypes = [
-    { value: 'MEDICINE', label: 'Medicine', icon: '/medicine.png' },
-    { value: 'FOOD', label: 'Food', icon: '/food.png' },
-    { value: 'BLOOD_CHECK', label: 'Blood Check', icon: '/blood.png' }
-  ];
-
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleAddSchedule = async () => {
     try {
@@ -425,39 +407,11 @@ const SchedulesSection = ({ schedules, onRefresh, userId }) => {
           <div className="form-grid">
             <div className="form-group">
               <label>Type</label>
-              <div className="custom-dropdown-container" ref={dropdownRef}>
-                <div 
-                  className="custom-dropdown-selected" 
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img 
-                      src={scheduleTypes.find(t => t.value === formData.type)?.icon} 
-                      style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
-                      alt="" 
-                    />
-                    <span>{scheduleTypes.find(t => t.value === formData.type)?.label}</span>
-                  </div>
-                  <div className="custom-dropdown-arrow"></div>
-                </div>
-                {dropdownOpen && (
-                  <div className="custom-dropdown-options">
-                    {scheduleTypes.map(type => (
-                      <div 
-                        key={type.value} 
-                        className="custom-dropdown-option"
-                        onClick={() => {
-                          setFormData({ ...formData, type: type.value });
-                          setDropdownOpen(false);
-                        }}
-                      >
-                        <img src={type.icon} alt="" />
-                        <span className="custom-dropdown-option-text">{type.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                <option value="MEDICINE">Medicine</option>
+                <option value="FOOD">Food</option>
+                <option value="BLOOD_CHECK">Blood Check</option>
+              </select>
             </div>
             <div className="form-group">
               <label>Hour (0-23)</label>
