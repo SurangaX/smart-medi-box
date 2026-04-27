@@ -147,25 +147,24 @@ function handleSendNotification($method) {
             pg_query_params($conn, $updateQuery, [$sms_sent, $notif_id]);
         }
         
-        // Queue app notification (would be sent to app via push service)
-        $app_sent = false;
-        
-        // Get user's expo_push_token
-        $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
+        // Get user's push tokens
+        $tokenQuery = "SELECT fcm_token, expo_push_token FROM users WHERE id = $1";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
+        
         if ($tokenResult && pg_num_rows($tokenResult) > 0) {
             $user = pg_fetch_assoc($tokenResult);
-            $token = $user['expo_push_token'];
+            $fcm_token = $user['fcm_token'];
+            $expo_token = $user['expo_push_token'];
             
-            if ($token) {
-                // Try Expo delivery
-                $expo_sent = sendExpoPushNotification($token, "Smart Medi Box", $message);
-                
-                // Try FCM delivery (Capacitor)
-                $fcm_sent = sendFCMPushNotification($token, "Smart Medi Box", $message);
-                
-                $app_sent = $expo_sent || $fcm_sent;
-                error_log("PUSH ATTEMPT: token=$token, expo=$expo_sent, fcm=$fcm_sent");
+            // Prioritize native FCM token, fall back to Expo token
+            if ($fcm_token) {
+                error_log("Attempting to send via FCM to token: $fcm_token");
+                $app_sent = sendFCMPushNotification($fcm_token, "Smart Medi Box", $message);
+            } elseif ($expo_token) {
+                error_log("FCM token not found, falling back to Expo to token: $expo_token");
+                $app_sent = sendExpoPushNotification($expo_token, "Smart Medi Box", $message);
+            } else {
+                error_log("No push tokens found for user_id: $user_id");
             }
         }
         
@@ -420,12 +419,21 @@ function handleTriggerAlarm($method) {
 
         // Send Push Notification
         $app_sent = false;
-        $tokenQuery = "SELECT expo_push_token FROM users WHERE id = $1";
+        $tokenQuery = "SELECT fcm_token, expo_push_token FROM users WHERE id = $1";
         $tokenResult = pg_query_params($conn, $tokenQuery, [$user_id]);
         if ($tokenResult && pg_num_rows($tokenResult) > 0) {
             $user = pg_fetch_assoc($tokenResult);
-            if ($user['expo_push_token']) {
-                $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_id]);
+            $fcm_token = $user['fcm_token'];
+            $expo_token = $user['expo_push_token'];
+            
+            $data = ['type' => 'alarm', 'schedule_id' => $schedule_id];
+
+            if ($fcm_token) {
+                error_log("ALARM: Sending via FCM to token: $fcm_token");
+                $app_sent = sendFCMPushNotification($fcm_token, "Smart Medi Box Alarm", $message, $data);
+            } elseif ($expo_token) {
+                error_log("ALARM: FCM token not found, falling back to Expo to token: $expo_token");
+                $app_sent = sendExpoPushNotification($expo_token, "Smart Medi Box Alarm", $message, $data);
             }
         }
 
@@ -658,6 +666,7 @@ function handleRFIDUnlock($method) {
 
 /**
  * Test Push Notification Endpoint
+ * Prioritizes FCM, falls back to Expo.
  * Usage: GET /api/notifications/test-push?user_id=55
  */
 function handleTestPush($method) {
@@ -669,31 +678,44 @@ function handleTestPush($method) {
     }
     
     try {
-        $query = "SELECT expo_push_token, name FROM users WHERE id = $1";
+        $query = "SELECT name, fcm_token, expo_push_token FROM users WHERE id = $1";
         $result = pg_query_params($conn, $query, [$user_id]);
         
         if ($result && pg_num_rows($result) > 0) {
             $user = pg_fetch_assoc($result);
-            $token = $user['expo_push_token'];
             $name = $user['name'];
-            
-            if (!$token) {
-                return errorResponse(404, "No push token found for user $name (ID: $user_id). Please log in on the app first.");
+            $fcm_token = $user['fcm_token'];
+            $expo_token = $user['expo_push_token'];
+
+            if (!$fcm_token && !$expo_token) {
+                return errorResponse(404, "No push tokens (FCM or Expo) found for user $name (ID: $user_id). Please log in on the app first.");
             }
             
             $title = "Test Notification";
             $message = "Hello $name! This is a test push notification from Smart Medi Box.";
-            $sent = sendExpoPushNotification($token, $title, $message, ['test' => true]);
+            $sent = false;
+            $used_token = '';
+            $method = '';
+
+            if ($fcm_token) {
+                $method = 'FCM';
+                $used_token = $fcm_token;
+                $sent = sendFCMPushNotification($fcm_token, $title, $message, ['test' => true]);
+            } elseif ($expo_token) {
+                $method = 'Expo';
+                $used_token = $expo_token;
+                $sent = sendExpoPushNotification($expo_token, $title, $message, ['test' => true]);
+            }
             
             if ($sent) {
                 http_response_code(200);
                 echo json_encode([
                     'status' => 'SUCCESS',
-                    'message' => "Push notification sent to $name",
-                    'token' => $token
+                    'message' => "Push notification sent to $name via $method.",
+                    'token' => $used_token
                 ]);
             } else {
-                return errorResponse(500, "Failed to send push notification via Expo API.");
+                return errorResponse(500, "Failed to send push notification via $method API.");
             }
         } else {
             return errorResponse(404, "User not found");

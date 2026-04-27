@@ -1,2 +1,6 @@
 ﻿smart-medi-box old/
 .claude/
+node_modules/
+.env
+/android_native_app/.idea/
+*.log

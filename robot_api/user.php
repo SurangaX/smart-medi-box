@@ -393,7 +393,7 @@ function validatePhoneNumber($phone) {
 }
 
 /**
- * Update Expo Push Token for a user
+ * Update Push Token for a user (supports both Expo and native FCM)
  */
 function handleUpdatePushToken($method) {
     global $conn;
@@ -410,27 +410,65 @@ function handleUpdatePushToken($method) {
     error_log("UPDATE_PUSH_TOKEN INPUT: " . json_encode($input));
     
     $user_id = $input['user_id'] ?? null;
-    $push_token = $input['expo_push_token'] ?? null;
+    $expo_token = $input['expo_push_token'] ?? null;
+    $fcm_token = $input['fcm_token'] ?? null;
     
-    if (!$user_id || !$push_token) {
+    if (!$user_id) {
         http_response_code(400);
-        echo json_encode(['status' => 'ERROR', 'message' => 'user_id and expo_push_token required']);
+        echo json_encode(['status' => 'ERROR', 'message' => 'user_id is required']);
+        return;
+    }
+
+    if (!$expo_token && !$fcm_token) {
+        http_response_code(400);
+        echo json_encode(['status' => 'ERROR', 'message' => 'At least one token (expo_push_token or fcm_token) is required']);
         return;
     }
     
     try {
-        $query = "UPDATE users SET expo_push_token = $1, updated_at = NOW() WHERE id = $2";
-        $result = pg_query_params($conn, $query, array($push_token, $user_id));
+        $updates = [];
+        $params = [];
+        $param_count = 1;
+
+        if ($expo_token) {
+            $updates[] = "expo_push_token = \$$param_count";
+            $params[] = $expo_token;
+            $param_count++;
+        }
+
+        if ($fcm_token) {
+            $updates[] = "fcm_token = \$$param_count";
+            $params[] = $fcm_token;
+            $param_count++;
+        }
+        
+        $updates[] = "updated_at = NOW()";
+        $params[] = $user_id;
+        
+        $query = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = \$$param_count";
+        
+        $result = pg_query_params($conn, $query, $params);
         
         if ($result && pg_affected_rows($result) > 0) {
             http_response_code(200);
             echo json_encode([
                 'status' => 'SUCCESS',
-                'message' => 'Push token updated successfully'
+                'message' => 'Push token(s) updated successfully'
             ]);
         } else {
-            http_response_code(404);
-            echo json_encode(['status' => 'ERROR', 'message' => 'User not found or token already set']);
+            // It's possible no rows were affected if the token was the same. This isn't strictly an error.
+            // Check if user exists to differentiate between "not found" and "no change".
+            $user_check = pg_query_params($conn, "SELECT id FROM users WHERE id = $1", array($user_id));
+            if (pg_num_rows($user_check) > 0) {
+                 http_response_code(200);
+                 echo json_encode([
+                    'status' => 'SUCCESS',
+                    'message' => 'User found, but token value was already up-to-date.'
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode(['status' => 'ERROR', 'message' => 'User not found']);
+            }
         }
     } catch (Exception $e) {
         error_log("Update Push Token Error: " . $e->getMessage());
