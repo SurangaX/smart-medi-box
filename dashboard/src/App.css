@@ -619,7 +619,6 @@ button, a { user-select: none; cursor: pointer; }
   background: transparent;
   border: none;
   padding: 0;
-  width: 100%;
 }
 
 .schedules-minimal .section-header {
@@ -631,8 +630,6 @@ button, a { user-select: none; cursor: pointer; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .schedules-minimal .header-left h2 {
