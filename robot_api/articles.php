@@ -509,10 +509,10 @@ function handleCreateArticle($method) {
                     // Store in database
                     $notif_res = pg_query_params($conn, "INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3) RETURNING id", [$p_user_id, 'NEW_ARTICLE', $notif_msg]);
                     
-                    // Send Push
+                    // Send Push strictly via ntfy.sh
                     if ($notif_res && pg_num_rows($notif_res) > 0) {
                         $notif_id = pg_fetch_assoc($notif_res)['id'];
-                        $sent = sendExpoPushNotification($p_token, "New Health Article", $notif_msg, ['type' => 'article', 'article_id' => $article_id]);
+                        $sent = sendNtfyNotification($p_user_id, "New Health Article", $notif_msg);
                         if ($sent) {
                             pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notif_id]);
                         }
