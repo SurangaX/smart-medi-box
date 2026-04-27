@@ -34,9 +34,9 @@ if (!empty(getenv('DATABASE_URL'))) {
 define('DB_TYPE', 'postgresql');
 
 // SMS API Configuration (SMSAPI.LK)
-define('SMSAPI_TOKEN', '517|7L7cDWKQg1DYZXZHE4TPCQl9RTeIE8mWkXQP1QUE');
+define('SMSAPI_TOKEN', '7L7cDWKQg1DYZXZHE4TPCQl9RTeIE8mWkXQP1QUE');
 define('SMSAPI_ENDPOINT', 'https://dashboard.smsapi.lk/api/v3/sms/send');
-define('SMSAPI_SENDER_ID', 'SmartMedi');
+define('SMSAPI_SENDER_ID', 'SMSAPI Demo');
 
 // PostgreSQL Connection with SSL for cloud databases
 $connection_string = "host=" . DB_HOST . 
@@ -136,13 +136,13 @@ function sendSMSNotification($recipient, $message) {
     // Clean phone number: remove any non-digit characters
     $recipient = preg_replace('/\D/', '', $recipient);
 
-    // Standardize to Sri Lanka international format (94XXXXXXXXX)
+    // Standardize to Sri Lanka international format with + prefix (+94XXXXXXXXX)
     if (strlen($recipient) === 10 && strpos($recipient, '0') === 0) {
-        // Convert 07XXXXXXXX to 947XXXXXXXX
-        $recipient = '94' . substr($recipient, 1);
+        $recipient = '+94' . substr($recipient, 1);
     } elseif (strlen($recipient) === 9 && strpos($recipient, '7') === 0) {
-        // Convert 7XXXXXXXX to 947XXXXXXXX
-        $recipient = '94' . $recipient;
+        $recipient = '+94' . $recipient;
+    } elseif (strpos($recipient, '94') === 0 && strlen($recipient) > 9) {
+        $recipient = '+' . $recipient;
     }
 
     $payload = [
