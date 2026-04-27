@@ -318,7 +318,14 @@ const OverviewSection = ({ schedules, tempData, currentTemp, deviceStatus }) => 
             {schedules.map((schedule, idx) => (
               <div key={idx} className="schedule-row">
                 <div className="schedule-time">{String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')}</div>
-                <div className="schedule-type">{schedule.type}</div>
+                <div className="schedule-type" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img 
+                    src={schedule.type === 'MEDICINE' ? '/medicine.png' : schedule.type === 'FOOD' ? '/food.png' : '/blood.png'} 
+                    style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
+                    alt="" 
+                  />
+                  {schedule.type}
+                </div>
                 <div className="schedule-status">
                   {schedule.status === 'MISSED' ? (
                     <span className="badge danger" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
@@ -430,7 +437,14 @@ const SchedulesSection = ({ schedules, onRefresh, userId }) => {
         {schedules.map((schedule, idx) => (
           <div key={idx} className="schedule-card">
             <div className="schedule-header">
-              <h4>{schedule.type}</h4>
+              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img 
+                  src={schedule.type === 'MEDICINE' ? '/medicine.png' : schedule.type === 'FOOD' ? '/food.png' : '/blood.png'} 
+                  style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
+                  alt="" 
+                />
+                {schedule.type}
+              </h4>
               <button className="btn-icon-danger" onClick={() => handleDeleteSchedule(schedule.schedule_id || schedule.id)}>
                 <Trash2 size={16} />
               </button>

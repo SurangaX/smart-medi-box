@@ -2469,7 +2469,13 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                             </div>
                             <div className="schedule-details">
                               <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span>{sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'}</span>
+                                <span>
+                                  <img 
+                                    src={sched.type === 'MEDICINE' ? '/medicine.png' : sched.type === 'FOOD' ? '/food.png' : '/blood.png'} 
+                                    style={{ width: '24px', height: '24px', objectFit: 'contain' }} 
+                                    alt="" 
+                                  />
+                                </span>
                                 {sched.medicine_name || sched.type}
                               </div>
                               <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.6 }}>{sched.type}</div>
@@ -2768,7 +2774,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                           {sched.photo ? (
                             <img src={sched.photo} alt="Meds" className="timeline-photo" onClick={() => setExpandedPhoto(sched.photo)} />
                           ) : (
-                            sched.type === 'MEDICINE' ? '💊' : sched.type === 'FOOD' ? '🍽️' : '🩸'
+                            <img 
+                              src={sched.type === 'MEDICINE' ? '/medicine.png' : sched.type === 'FOOD' ? '/food.png' : '/blood.png'} 
+                              style={{ width: '32px', height: '32px', objectFit: 'contain' }} 
+                              alt="" 
+                            />
                           )}
                         </div>
                         <div className="card-info">
@@ -3198,8 +3208,11 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
           <div className="modal-content urgent-content pulse-border">
             <div className="urgent-header">
               <div className="urgent-icon">
-                {activeMedicineAlert.rawType === 'ALARM_FOOD' ? '🍽️' : 
-                 activeMedicineAlert.rawType === 'ALARM_BLOOD_CHECK' ? '🩸' : '💊'}
+                <img 
+                  src={activeMedicineAlert.rawType === 'ALARM_FOOD' ? '/food.png' : activeMedicineAlert.rawType === 'ALARM_BLOOD_CHECK' ? '/blood.png' : '/medicine.png'} 
+                  style={{ width: '48px', height: '48px', objectFit: 'contain' }} 
+                  alt="" 
+                />
               </div>
               <h2>Medicine Reminder!</h2>
             </div>
@@ -4254,7 +4267,11 @@ const DoctorDashboard = ({ profile, token, onLogout, isMobile }) => {
                                     </div>
                                     
                                     <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', border: '1px solid var(--border)' }}>
-                                      {s.type === 'MEDICINE' ? '💊' : s.type === 'FOOD' ? '🍽️' : '🩸'}
+                                      <img 
+                                        src={s.type === 'MEDICINE' ? '/medicine.png' : s.type === 'FOOD' ? '/food.png' : '/blood.png'} 
+                                        style={{ width: '30px', height: '30px', objectFit: 'contain' }} 
+                                        alt="" 
+                                      />
                                     </div>
 
                                     <div style={{ flex: 1 }}>
