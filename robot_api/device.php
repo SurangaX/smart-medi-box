@@ -222,6 +222,13 @@ function handleCheckCommands($method) {
         $res = pg_query_params($conn, $q, array($mac));
         if ($res && pg_num_rows($res) > 0) {
             $user_id = pg_fetch_result($res, 0, 0);
+            
+            // CLEANUP: If there are PENDING commands older than 30 minutes, mark them as FAILED (Expired)
+            // This prevents the device from "going crazy" with old alarms after being offline
+            pg_query_params($conn, "UPDATE arduino_commands SET status = 'FAILED' 
+                                   WHERE user_id = $1 AND status = 'PENDING' 
+                                   AND created_at < NOW() - INTERVAL '30 minutes'", array($user_id));
+
             $cmdRes = pg_query_params($conn, "SELECT id, command FROM arduino_commands WHERE user_id = $1 AND status = 'PENDING' ORDER BY created_at ASC", array($user_id));
             $cmds = [];
             while ($r = pg_fetch_assoc($cmdRes)) { $cmds[] = ['id' => (int)$r['id'], 'command' => $r['command']]; }

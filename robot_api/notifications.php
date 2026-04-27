@@ -168,7 +168,7 @@ function handleTriggerAlarm($method) {
 
         $commands = ["ALARM_DATA|" . strtoupper($schedule_type) . "|NOW", "BUZZ:ON", "SOL:UNLOCK"];
         foreach ($commands as $cmd) {
-            pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", [$user_id, $cmd]);
+            pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status, schedule_id) VALUES ($1, $2, 'PENDING', $3)", [$user_id, $cmd, $schedule_id]);
         }
         
         http_response_code(201);

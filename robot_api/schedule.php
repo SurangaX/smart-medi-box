@@ -363,6 +363,11 @@ function handleCompleteSchedule($method) {
                              WHERE schedule_id = $1 AND user_id = $2 AND is_dismissed = false";
             pg_query_params($conn, $dismiss_query, array($schedule_id, $db_user_id));
             
+            // Also clear any PENDING arduino commands for this schedule
+            pg_query_params($conn, "UPDATE arduino_commands SET status = 'FAILED' 
+                             WHERE schedule_id = $1 AND user_id = $2 AND status = 'PENDING'", 
+                             array($schedule_id, $db_user_id));
+
             logScheduleCompletion($db_user_id, $schedule_id);
             http_response_code(200);
             echo json_encode(['status' => 'SUCCESS', 'message' => 'Schedule marked as completed']);
@@ -824,7 +829,7 @@ function handleTriggerDueSchedules($method) {
                         pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message, app_sent, is_read) VALUES ($1, $2, 'ALARM_MISSED', $3, true, true)", array($user_db_id, $schedule_db_id, $missedMessage));
                         
                         // Stop Arduino buzzer if it was still on
-                        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, 'BUZZ:OFF', 'PENDING')", array($user_db_id));
+                        pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status, schedule_id) VALUES ($1, 'BUZZ:OFF', 'PENDING', $2)", array($user_db_id, $schedule_db_id));
                     }
                     continue; 
                 }
@@ -882,6 +887,12 @@ function handleTriggerDueSchedules($method) {
             }
 
             // Always queue arduino commands when a schedule triggers
+            // BUT FIRST: Clear any PENDING commands for this same schedule 
+            // to avoid accumulation (especially if device was offline)
+            pg_query_params($conn, "UPDATE arduino_commands SET status = 'FAILED' 
+                                   WHERE user_id = $1 AND schedule_id = $2 AND status = 'PENDING'", 
+                                   array($user_db_id, $schedule_db_id));
+
             $time_str = str_pad($row['hour'], 2, '0', STR_PAD_LEFT) . ":" . str_pad($row['minute'], 2, '0', STR_PAD_LEFT);
             $commands = [
                 "ALARM_DATA|" . $med_name . "|" . $time_str,
@@ -891,7 +902,7 @@ function handleTriggerDueSchedules($method) {
             
             $commands_queued = 0;
             foreach ($commands as $cmd) {
-                pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_db_id, $cmd));
+                pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status, schedule_id) VALUES ($1, $2, 'PENDING', $3)", array($user_db_id, $cmd, $schedule_db_id));
                 $commands_queued++;
             }
 
@@ -1046,7 +1057,7 @@ function handleDispenseNow($method) {
         ];
         
         foreach ($commands as $cmd) {
-            pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status) VALUES ($1, $2, 'PENDING')", array($user_id, $cmd));
+            pg_query_params($conn, "INSERT INTO arduino_commands (user_id, command, status, schedule_id) VALUES ($1, $2, 'PENDING', $3)", array($user_id, $cmd, $schedule_id));
         }
         
         // 4. Create a tracking notification for the door sensor (med-taken)
