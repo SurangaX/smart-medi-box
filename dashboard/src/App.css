@@ -3499,8 +3499,6 @@ strong.offline {
 
   .modal-content {
     width: 95% !important;
-    height: auto !important;
-    max-height: 90vh !important;
     margin: auto !important;
     display: flex;
     flex-direction: column;
