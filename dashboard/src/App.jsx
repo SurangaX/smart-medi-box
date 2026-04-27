@@ -855,6 +855,23 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
   });
   const [scheduleFilterDate, setScheduleFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [scheduleDropdownOpen, setScheduleDropdownOpen] = useState(false);
+  const scheduleDropdownRef = useRef(null);
+  const scheduleTypes = [
+    { value: 'MEDICINE', label: 'Medicine', icon: '/medicine.png' },
+    { value: 'FOOD', label: 'Food', icon: '/food.png' },
+    { value: 'BLOOD_CHECK', label: 'Blood Check', icon: '/blood.png' }
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (scheduleDropdownRef.current && !scheduleDropdownRef.current.contains(event.target)) {
+        setScheduleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articleCacheRef = useRef({});
@@ -2605,14 +2622,39 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
                     </div>
                     <div className="form-group">
                       <label>Type</label>
-                      <select 
-                        value={newSchedule.type} 
-                        onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
-                      >
-                        <option value="MEDICINE">💊 Medicine</option>
-                        <option value="FOOD">🍽️ Food</option>
-                        <option value="BLOOD_CHECK">🩸 Blood Check</option>
-                      </select>
+                      <div className="custom-dropdown-container" ref={scheduleDropdownRef}>
+                        <div 
+                          className="custom-dropdown-selected" 
+                          onClick={() => setScheduleDropdownOpen(!scheduleDropdownOpen)}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <img 
+                              src={scheduleTypes.find(t => t.value === newSchedule.type)?.icon} 
+                              style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
+                              alt="" 
+                            />
+                            <span>{scheduleTypes.find(t => t.value === newSchedule.type)?.label}</span>
+                          </div>
+                          <div className="custom-dropdown-arrow"></div>
+                        </div>
+                        {scheduleDropdownOpen && (
+                          <div className="custom-dropdown-options">
+                            {scheduleTypes.map(type => (
+                              <div 
+                                key={type.value} 
+                                className="custom-dropdown-option"
+                                onClick={() => {
+                                  setNewSchedule({ ...newSchedule, type: type.value });
+                                  setScheduleDropdownOpen(false);
+                                }}
+                              >
+                                <img src={type.icon} alt="" />
+                                <span className="custom-dropdown-option-text">{type.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="form-group full-width">
                       <label className="checkbox-label-large">
