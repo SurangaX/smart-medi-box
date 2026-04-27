@@ -77,21 +77,144 @@ function sendNtfyNotification($userId, $title, $body) {
     $topic = "smart_medibox_user_" . $userId;
     $url = "https://ntfy.sh/" . $topic;
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Title: " . $title,
-        "Priority: high",
-        "Tags: pill,bell"
-    ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Title: " . $title,
+            "Priority: high",
+            "Tags: pill,bell"
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-    return ($httpCode === 200);
+        return ($httpCode === 200);
+    } else {
+        // Fallback to file_get_contents
+        $options = [
+            'http' => [
+                'method'  => 'POST',
+                'header'  => "Content-Type: text/plain\r\n" .
+                             "Title: " . $title . "\r\n" .
+                             "Priority: high\r\n" .
+                             "Tags: pill,bell\r\n",
+                'content' => $body,
+                'ignore_errors' => true
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false
+            ]
+        ];
+        $context  = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+        if ($result === false) return false;
+        
+        // Get status code from response headers
+        if (isset($http_response_header)) {
+            preg_match('{HTTP\/\S*\s(\d+)}', $http_response_header[0], $matches);
+            $status = $matches[1];
+            return ($status == 200);
+        }
+        return true;
+    }
+}
+
+/**
+ * Send SMS notification via SMSAPI.LK
+ */
+function sendSMSNotification($recipient, $message) {
+    if (empty($recipient) || empty($message)) {
+        return ['status' => 'error', 'message' => 'Missing recipient or message'];
+    }
+
+    // Clean phone number: remove any non-digit characters
+    $recipient = preg_replace('/\D/', '', $recipient);
+
+    // Standardize to Sri Lanka international format (94XXXXXXXXX)
+    if (strlen($recipient) === 10 && strpos($recipient, '0') === 0) {
+        // Convert 07XXXXXXXX to 947XXXXXXXX
+        $recipient = '94' . substr($recipient, 1);
+    } elseif (strlen($recipient) === 9 && strpos($recipient, '7') === 0) {
+        // Convert 7XXXXXXXX to 947XXXXXXXX
+        $recipient = '94' . $recipient;
+    }
+
+    $payload = [
+        'recipient' => $recipient,
+        'sender_id' => SMSAPI_SENDER_ID,
+        'type' => 'plain',
+        'message' => $message
+    ];
+
+    $json_payload = json_encode($payload);
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init(SMSAPI_ENDPOINT);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_payload);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . SMSAPI_TOKEN,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            error_log("SMS API cURL Error: " . $error);
+            return ['status' => 'error', 'message' => $error];
+        }
+
+        $result = json_decode($response, true);
+        error_log("SMS API Response: " . $response);
+
+        if ($httpCode === 200 && isset($result['status']) && $result['status'] === 'success') {
+            return ['status' => 'success', 'data' => $result['data'] ?? ''];
+        } else {
+            return ['status' => 'error', 'message' => $result['message'] ?? 'Unknown API error'];
+        }
+    } else {
+        // Fallback to file_get_contents
+        $options = [
+            'http' => [
+                'method'  => 'POST',
+                'header'  => "Authorization: Bearer " . SMSAPI_TOKEN . "\r\n" .
+                             "Content-Type: application/json\r\n" .
+                             "Accept: application/json\r\n",
+                'content' => $json_payload,
+                'ignore_errors' => true
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false
+            ]
+        ];
+        $context  = stream_context_create($options);
+        $response = @file_get_contents(SMSAPI_ENDPOINT, false, $context);
+        
+        if ($response === false) {
+            return ['status' => 'error', 'message' => 'Failed to connect to SMS API (file_get_contents)'];
+        }
+
+        $result = json_decode($response, true);
+        error_log("SMS API Response (fallback): " . $response);
+
+        if (isset($result['status']) && $result['status'] === 'success') {
+            return ['status' => 'success', 'data' => $result['data'] ?? ''];
+        } else {
+            return ['status' => 'error', 'message' => $result['message'] ?? 'Unknown API error'];
+        }
+    }
 }
 ?>
