@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "469286732367",
-    "project_id": "smart-medi-box-android",
-    "storage_bucket": "smart-medi-box-android.firebasestorage.app"
+    "project_number": "295019311659",
+    "project_id": "smart-med-box-b6abc",
+    "storage_bucket": "smart-med-box-b6abc.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:469286732367:android:f6dbe9c9f4075481d8e03a",
+        "mobilesdk_app_id": "1:295019311659:android:1a261a68dcb0787124706e",
         "android_client_info": {
-          "package_name": "com.example.smartmedibox"
+          "package_name": "com.smartmedibox.finalapp"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBF5WKFC2COhw4VNk7DOZROtnIZ--wbn6w"
+          "current_key": "AIzaSyABAPY3EcsIWWN-vNqAa0PcgtVokTILuU4"
         }
       ],
       "services": {

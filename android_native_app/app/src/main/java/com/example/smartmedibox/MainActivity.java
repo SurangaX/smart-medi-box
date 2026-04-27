@@ -2,10 +2,14 @@ package com.example.smartmedibox;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -14,28 +18,31 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.installations.FirebaseInstallations;
-import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONObject;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "MediBoxNtfy";
+    private static final String CHANNEL_ID = "medibox_notifications";
+    private WebSocket webSocket;
+    private OkHttpClient client;
+    private String currentTopic = null;
 
-    // Launcher for the notification permission request
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                if (isGranted) {
-                    // Permission is granted. Get the token.
-                    Log.d(TAG, "Notification permission granted. Fetching token...");
-                    getFCMToken();
-                } else {
-                    // Explain to the user that they will not receive notifications
-                    Toast.makeText(this, "Notifications will not be sent.", Toast.LENGTH_SHORT).show();
-                }
+                Log.d(TAG, "Permission result: " + isGranted);
             });
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -44,99 +51,139 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        webView = findViewById(R.id.webview);
+        createNotificationChannel();
         
-        // Basic WebView settings
+        webView = findViewById(R.id.webview);
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
+        webSettings.setDatabaseEnabled(true);
 
-        // Set a WebViewClient to handle page loads
+        // Add JavascriptInterface to receive the user_id from the web app
+        webView.addJavascriptInterface(new WebAppInterface(this), "AndroidInterface");
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                // When the page is fully loaded, you could re-inject the token if needed,
-                // but we will primarily rely on the initial injection.
                 super.onPageFinished(view, url);
+                // Inject script to detect login and send user_id back to Android
+                injectLoginDetector();
             }
         });
 
-        // Load the website
         webView.loadUrl("https://smart-medi-box.vercel.app/");
 
-        // Setup the manual test button
+        client = new OkHttpClient();
+
         FloatingActionButton fab = findViewById(R.id.fab_test);
         fab.setOnClickListener(view -> {
-            Log.d(TAG, "Manual token fetch requested by user.");
-            Toast.makeText(MainActivity.this, "Fetching token, check Logcat.", Toast.LENGTH_SHORT).show();
-            getFCMToken();
+            if (currentTopic != null) {
+                Toast.makeText(this, "Listening to: " + currentTopic, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Not logged in. Waiting for user ID...", Toast.LENGTH_SHORT).show();
+            }
+            showLocalNotification("Connection Check", "The notification system is active.");
         });
 
-        // Ask for notification permission, which then triggers the token fetch
-        if (savedInstanceState == null) {
-            askNotificationPermission();
-        }
-    }
-
-    private void askNotificationPermission() {
-        // This is only necessary for API level >= 33 (Tiramisu)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED) {
-                // Permission is already granted, get the token
-                getFCMToken();
-            } else {
-                // Directly ask for the permission
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             }
-        } else {
-            // For older versions, permission is granted by default, so get the token
-            getFCMToken();
         }
     }
-    
-    private void getFCMToken() {
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        Exception exception = task.getException();
-                        Log.w(TAG, "Fetching FCM registration token failed", exception);
 
-                        // Handle TOO_MANY_REGISTRATIONS error specifically
-                        if (exception != null && exception.getMessage() != null &&
-                                exception.getMessage().contains("TOO_MANY_REGISTRATIONS")) {
-                            Log.e(TAG, "Limit reached: TOO_MANY_REGISTRATIONS. Attempting to reset Firebase Installation ID...");
-                            resetFirebaseInstallation();
-                        }
-                        return;
-                    }
-
-                    // Get new FCM registration token
-                    String token = task.getResult();
-                    Log.d("FCM_TOKEN", "Token successfully fetched: " + token);
-
-                    // Inject the token into the WebView
-                    injectTokenIntoWebView(token);
-                });
+    private void injectLoginDetector() {
+        // This script checks localStorage for user info and calls the Android interface
+        String script = "javascript:(function() {" +
+                "  const checkLogin = () => {" +
+                "    const user = localStorage.getItem('user');" +
+                "    if (user) {" +
+                "      try {" +
+                "        const userData = JSON.parse(user);" +
+                "        const userId = userData.user_id || userData.id;" +
+                "        if (userId) {" +
+                "          AndroidInterface.onUserLogin(userId.toString());" +
+                "        }" +
+                "      } catch (e) { console.error(e); }" +
+                "    }" +
+                "  };" +
+                "  checkLogin();" +
+                "  setInterval(checkLogin, 5000);" + // Check every 5 seconds
+                "})()";
+        webView.evaluateJavascript(script, null);
     }
 
-    private void resetFirebaseInstallation() {
-        FirebaseInstallations.getInstance().delete()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "Firebase Installation deleted. This clears the local FCM state.");
-                        Toast.makeText(this, "FCM state reset. Please tap the test button to retry.", Toast.LENGTH_LONG).show();
-                    } else {
-                        Log.e(TAG, "Failed to delete Firebase Installation", task.getException());
-                    }
-                });
-    }
-
-    private void injectTokenIntoWebView(String token) {
-        if (token != null && webView != null) {
-            String script = "javascript:localStorage.setItem('fcm_token', '" + token + "');";
-            webView.evaluateJavascript(script, value -> Log.d(TAG, "Token injected into WebView."));
+    public void startNtfyListener(String userId) {
+        String newTopic = "smart_medibox_user_" + userId;
+        
+        if (newTopic.equals(currentTopic)) return; // Already listening to this topic
+        
+        if (webSocket != null) {
+            webSocket.close(1000, "Switching user");
         }
+
+        currentTopic = newTopic;
+        Log.d(TAG, "Starting ntfy listener for topic: " + currentTopic);
+
+        Request request = new Request.Builder()
+                .url("wss://ntfy.sh/" + currentTopic + "/ws")
+                .build();
+
+        webSocket = client.newWebSocket(request, new WebSocketListener() {
+            @Override
+            public void onMessage(WebSocket webSocket, String text) {
+                try {
+                    JSONObject json = new JSONObject(text);
+                    if (json.has("message")) {
+                        String title = json.optString("title", "Smart Medi Box");
+                        String message = json.getString("message");
+                        runOnUiThread(() -> showLocalNotification(title, message));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing ntfy message", e);
+                }
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                Log.e(TAG, "Ntfy Connection Failed, retrying...", t);
+                // Retry after 5 seconds if still logged in
+                if (currentTopic != null) {
+                    runOnUiThread(() -> {
+                        webView.postDelayed(() -> {
+                            if (currentTopic != null) startNtfyListener(userId);
+                        }, 5000);
+                    });
+                }
+            }
+        });
+    }
+
+    private void showLocalNotification(String title, String message) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "MediBox Alerts", NotificationManager.IMPORTANCE_HIGH);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        currentTopic = null;
+        if (webSocket != null) webSocket.close(1000, "App closed");
     }
 
     @Override
@@ -145,6 +192,18 @@ public class MainActivity extends AppCompatActivity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    // Javascript Interface class
+    public class WebAppInterface {
+        Context mContext;
+        WebAppInterface(Context c) { mContext = c; }
+
+        @JavascriptInterface
+        public void onUserLogin(String userId) {
+            Log.d(TAG, "User logged in with ID: " + userId);
+            runOnUiThread(() -> startNtfyListener(userId));
         }
     }
 }

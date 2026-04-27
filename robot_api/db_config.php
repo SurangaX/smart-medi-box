@@ -117,6 +117,35 @@ function sendExpoPushNotification($expoPushToken, $title, $body, $data = []) {
     }
 
 /**
+ * Send push notification via ntfy.sh
+ * Simple, reliable, and bypasses Google/FCM registration limits.
+ */
+function sendNtfyNotification($userId, $title, $body) {
+    if (empty($userId)) return false;
+
+    // Use a unique topic for each user
+    $topic = "smart_medibox_user_" . $userId;
+    $url = "https://ntfy.sh/" . $topic;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Title: " . $title,
+        "Priority: high",
+        "Tags: pill,bell"
+    ]);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return ($httpCode === 200);
+}
+
+/**
 * Send push notification via Firebase Cloud Messaging (FCM)
 * Upgraded to HTTP v1 API using Service Account
 */

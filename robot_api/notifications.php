@@ -106,13 +106,17 @@ function handleSendNotification($method) {
         }
         
         $app_sent = false;
-        $tRes = pg_query_params($conn, "SELECT fcm_token, expo_push_token FROM users WHERE id = $1", [$user_id]);
-        if ($tRes && pg_num_rows($tRes) > 0) {
-            $user = pg_fetch_assoc($tRes);
-            if ($user['fcm_token']) {
-                $app_sent = sendFCMPushNotification($user['fcm_token'], "Smart Medi Box", $message);
-            } elseif ($user['expo_push_token']) {
-                $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box", $message);
+        // Prioritize ntfy.sh delivery (Bypasses Google limits)
+        $app_sent = sendNtfyNotification($user_id, "Smart Medi Box", $message);
+        
+        if (!$app_sent) {
+            // Fallback to Expo if ntfy fails
+            $tRes = pg_query_params($conn, "SELECT expo_push_token FROM users WHERE id = $1", [$user_id]);
+            if ($tRes && pg_num_rows($tRes) > 0) {
+                $user = pg_fetch_assoc($tRes);
+                if ($user['expo_push_token']) {
+                    $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box", $message);
+                }
             }
         }
         
@@ -172,14 +176,16 @@ function handleTriggerAlarm($method) {
         pg_query_params($conn, "INSERT INTO notifications (user_id, schedule_id, type, message) VALUES ($1, $2, $3, $4)", [$user_id, $schedule_id, 'ALARM_' . $schedule_type, $message]);
 
         $app_sent = false;
-        $tRes = pg_query_params($conn, "SELECT fcm_token, expo_push_token FROM users WHERE id = $1", [$user_id]);
-        if ($tRes && pg_num_rows($tRes) > 0) {
-            $user = pg_fetch_assoc($tRes);
-            $data = ['type' => 'alarm', 'schedule_id' => $schedule_id];
-            if ($user['fcm_token']) {
-                $app_sent = sendFCMPushNotification($user['fcm_token'], "Smart Medi Box Alarm", $message, $data);
-            } elseif ($user['expo_push_token']) {
-                $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box Alarm", $message, $data);
+        // Prioritize ntfy.sh delivery
+        $app_sent = sendNtfyNotification($user_id, "Smart Medi Box Alarm", $message);
+        
+        if (!$app_sent) {
+            $tRes = pg_query_params($conn, "SELECT expo_push_token FROM users WHERE id = $1", [$user_id]);
+            if ($tRes && pg_num_rows($tRes) > 0) {
+                $user = pg_fetch_assoc($tRes);
+                if ($user['expo_push_token']) {
+                    $app_sent = sendExpoPushNotification($user['expo_push_token'], "Smart Medi Box Alarm", $message, ['type' => 'alarm', 'schedule_id' => $schedule_id]);
+                }
             }
         }
 
@@ -267,16 +273,15 @@ function handleTestPush($method) {
         if ($res && pg_num_rows($res) > 0) {
             $user = pg_fetch_assoc($res);
             $sent = false;
-            $m = '';
-            if ($user['fcm_token']) {
-                $sent = sendFCMPushNotification($user['fcm_token'], "Test", "Hello " . $user['name']);
-                $m = 'FCM';
-            } elseif ($user['expo_push_token']) {
+            $m = 'ntfy.sh';
+            // Always try ntfy first
+            $sent = sendNtfyNotification($user_id, "Test", "Hello " . $user['name'] . "! This is a ntfy.sh test.");
+            
+            if (!$sent && $user['expo_push_token']) {
                 $sent = sendExpoPushNotification($user['expo_push_token'], "Test", "Hello " . $user['name']);
                 $m = 'Expo';
-            } else {
-                return errorResponse(404, "No tokens found");
             }
+            
             echo json_encode(['status' => 'SUCCESS', 'message' => "Sent via $m", 'sent' => $sent]);
         } else {
             return errorResponse(404, "User not found");

@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.google.services)
+    id("com.android.application")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.smartmedibox"
+        applicationId = "com.smartmedibox.finalapp"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -49,7 +49,9 @@ dependencies {
 
     // WebView
     implementation("androidx.webkit:webkit:1.10.0")
-    implementation(libs.activity.ktx)
+
+    // OkHttp for ntfy.sh WebSockets
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
