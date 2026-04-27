@@ -729,16 +729,18 @@ function handleTriggerDueSchedules($method) {
     try {
         // Find schedules due now or earlier today (that haven't been triggered yet today)
         // Updated to support Recurring schedules (Today is between start_date and end_date)
-        $query = "SELECT id, user_id, type, medicine_name, schedule_date, end_date, is_recurring, hour, minute, description 
-                  FROM schedules 
-                  WHERE status = 'ACTIVE' 
-                  AND is_completed = false
+        // Joined with users table to fetch phone number for SMS notifications
+        $query = "SELECT s.id, s.user_id, s.type, s.medicine_name, s.schedule_date, s.end_date, s.is_recurring, s.hour, s.minute, s.description, u.phone 
+                  FROM schedules s
+                  JOIN users u ON s.user_id = u.id
+                  WHERE s.status = 'ACTIVE' 
+                  AND s.is_completed = false
                   AND (
-                      (is_recurring = false AND schedule_date = $1)
+                      (s.is_recurring = false AND s.schedule_date = $1)
                       OR
-                      (is_recurring = true AND $1 BETWEEN schedule_date AND end_date)
+                      (s.is_recurring = true AND $1 BETWEEN s.schedule_date AND s.end_date)
                   )
-                  AND (hour < $2 OR (hour = $2 AND minute <= $3))";
+                  AND (s.hour < $2 OR (s.hour = $2 AND s.minute <= $3))";
 
         $result = pg_query_params($conn, $query, array($date, $hour, $minute));
 
@@ -758,6 +760,7 @@ function handleTriggerDueSchedules($method) {
             $schedule_db_id = $row['id'];
             $user_db_id = $row['user_id'];
             $type = $row['type'];
+            $phone = $row['phone'];
             $med_name = $row['medicine_name'] ?? $type;
             $is_recurring = ($row['is_recurring'] === 't' || $row['is_recurring'] === true);
 
@@ -862,6 +865,19 @@ function handleTriggerDueSchedules($method) {
 
                 if ($app_sent && $notifId) {
                     pg_query_params($conn, "UPDATE notifications SET app_sent = true, app_sent_at = NOW() WHERE id = $1", [$notifId]);
+                }
+
+                // Send SMS Notification (Only for the FIRST alarm, not for repeats)
+                if (!$is_repeat && !empty($phone)) {
+                    error_log("TRIGGER_DUE - Sending SMS to $phone for schedule $schedule_db_id");
+                    $sms_result = sendSMSNotification($phone, $message);
+                    
+                    if ($sms_result['status'] === 'success') {
+                        pg_query_params($conn, "UPDATE notifications SET sms_sent = true, sms_sent_at = NOW() WHERE id = $1", [$notifId]);
+                        error_log("TRIGGER_DUE - SMS sent successfully to $phone");
+                    } else {
+                        error_log("TRIGGER_DUE - SMS failed: " . $sms_result['message']);
+                    }
                 }
             }
 
@@ -1052,6 +1068,55 @@ function handleDispenseNow($method) {
         error_log("Dispense Now Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['status' => 'ERROR', 'message' => 'Database error']);
+    }
+}
+
+/**
+ * Send SMS notification via SMSAPI.LK
+ */
+function sendSMSNotification($recipient, $message) {
+    if (empty($recipient) || empty($message)) {
+        return ['status' => 'error', 'message' => 'Missing recipient or message'];
+    }
+
+    // Clean phone number: remove any non-digit characters
+    $recipient = preg_replace('/\D/', '', $recipient);
+
+    $payload = [
+        'recipient' => $recipient,
+        'sender_id' => SMSAPI_SENDER_ID,
+        'type' => 'plain',
+        'message' => $message
+    ];
+
+    $ch = curl_init(SMSAPI_ENDPOINT);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . SMSAPI_TOKEN,
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        error_log("SMS API cURL Error: " . $error);
+        return ['status' => 'error', 'message' => $error];
+    }
+
+    $result = json_decode($response, true);
+    error_log("SMS API Response: " . $response);
+
+    if ($httpCode === 200 && isset($result['status']) && $result['status'] === 'success') {
+        return ['status' => 'success', 'data' => $result['data'] ?? ''];
+    } else {
+        return ['status' => 'error', 'message' => $result['message'] ?? 'Unknown API error'];
     }
 }
 

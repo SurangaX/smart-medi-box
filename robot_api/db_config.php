@@ -33,6 +33,11 @@ if (!empty(getenv('DATABASE_URL'))) {
 
 define('DB_TYPE', 'postgresql');
 
+// SMS API Configuration (SMSAPI.LK)
+define('SMSAPI_TOKEN', '517|7L7cDWKQg1DYZXZHE4TPCQl9RTeIE8mWkXQP1QUE');
+define('SMSAPI_ENDPOINT', 'https://dashboard.smsapi.lk/api/v3/sms/send');
+define('SMSAPI_SENDER_ID', 'SmartMedi');
+
 // PostgreSQL Connection with SSL for cloud databases
 $connection_string = "host=" . DB_HOST . 
                      " port=" . DB_PORT . 
