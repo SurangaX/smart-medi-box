@@ -3184,8 +3184,8 @@ const PatientDashboard = ({ profile, token, onLogout, isMobile, onProfileUpdate 
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
             <h3>Unpair device?</h3>
             <p>Are you sure you want to unpair this device? This will remove it from your account.</p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn-unpair confirm-unpair" onClick={unpairDevice} disabled={loading}>
+            <div className="modal-buttons" style={{ marginTop: '20px' }}>
+              <button className="btn-danger" onClick={unpairDevice} disabled={loading}>
                 {loading ? 'Unpairing...' : 'Yes, Unpair'}
               </button>
               <button className="btn-secondary" onClick={() => setShowUnpairConfirm(false)}>Cancel</button>

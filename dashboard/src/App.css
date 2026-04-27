@@ -1246,63 +1246,69 @@ button, a { user-select: none; cursor: pointer; }
 
 /* ==================== Urgent Alert Modal ==================== */
 .urgent-alert .modal-content {
-  border: none;
+  border: 3px solid var(--danger);
   background: var(--surface);
-  padding: 20px;
-  max-width: 500px;
+  padding: 32px 24px;
+  max-width: 480px;
   text-align: center;
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.3);
 }
 
 .urgent-header {
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .urgent-icon {
-  font-size: 56px;
-  margin-bottom: 8px;
+  font-size: 64px;
+  margin-bottom: 12px;
   animation: shake 0.5s ease-in-out infinite;
   display: inline-block;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 .urgent-content h2 {
   color: var(--danger);
-  font-size: 24px;
-  margin-bottom: 4px;
+  font-size: 28px;
+  margin-bottom: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .urgent-message {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  line-height: 1.4;
 }
 
 .urgent-hint {
   color: var(--text-secondary);
-  margin-bottom: 20px;
-  font-size: 14px;
+  margin-bottom: 24px;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .pulse-border {
-  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  animation: pulse-red 2s infinite;
+  animation: pulse-red-border 2s infinite;
 }
 
 @keyframes shake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(10deg); }
-  75% { transform: rotate(-10deg); }
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(8deg) scale(1.1); }
+  75% { transform: rotate(-8deg) scale(1.1); }
 }
 
-@keyframes pulse-red {
+@keyframes pulse-red-border {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6), inset 0 0 0 0 rgba(239, 68, 68, 0.2);
   }
   70% {
-    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0), inset 0 0 20px rgba(239, 68, 68, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), inset 0 0 0 0 rgba(239, 68, 68, 0);
   }
 }
 
@@ -2332,90 +2338,85 @@ button, a { user-select: none; cursor: pointer; }
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center; /* Center vertically */
   justify-content: center;
-  z-index: 1000;
+  z-index: 3000;
   animation: fadeIn 0.3s ease;
-  padding: 20px; /* Force margin from screen edges on all sides */
+  padding: 16px; /* Optimized padding for mobile edges */
 }
 
 /* When we only want to blur the modal content, disable the overlay's backdrop blur */
 .modal-overlay.no-backdrop-blur {
   backdrop-filter: none;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.6);
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 420px;
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 440px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  animation: slideIn 0.3s ease;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .modal-content::-webkit-scrollbar {
   display: none;
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
 .modal-content h2 {
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   color: var(--text-primary);
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .modal-content p {
-  margin: 0 0 20px 0;
+  margin: 0 0 24px 0;
   color: var(--text-secondary);
-  line-height: 1.5;
-  font-size: 14px;
+  line-height: 1.6;
+  font-size: 15px;
 }
 
 .modal-buttons {
   display: flex;
   gap: 12px;
+  margin-top: 8px;
 }
 
 .modal-buttons button {
   flex: 1;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-secondary {
@@ -2566,12 +2567,21 @@ strong.offline {
   }
 
   .modal-content {
-    width: 90%;
-    padding: 20px;
+    width: 95%;
+    padding: 24px 20px;
+    border-radius: 16px;
   }
 
   .modal-buttons {
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-buttons button {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 12px;
   }
 
   .schedule-main h4 {

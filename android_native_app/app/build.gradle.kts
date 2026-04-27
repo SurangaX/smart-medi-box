@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.smartmedibox.finalapp"
+    namespace = "com.example.smartmedibox"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.smartmedibox.finalapp"
+        applicationId = "com.example.smartmedibox"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
